@@ -1,0 +1,18 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# production
+/build
+.next
+
+# env files (JANGAN PERNAH UPLOAD INI!)
+.env
+.env.local
+.env.production
+
+# misc
+.DS_Store
+*.pem
