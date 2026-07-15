@@ -1,4 +1,7 @@
 {
+  "/trust/page": "app/trust/page.js",
+  "/page": "app/page.js",
   "/[username]/page": "app/[username]/page.js",
-  "/page": "app/page.js"
+  "/cookies/page": "app/cookies/page.js",
+  "/templates/page": "app/templates/page.js"
 }

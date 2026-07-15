@@ -3,18 +3,21 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { Trash2, Plus } from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
+import { 
+  Crown, LogOut, FileText, FileCheck, User, Layout, Trash2, AlertTriangle, X, 
+  Menu, Home, Wand2, Store, Palette, Bell, ChevronRight
+} from 'lucide-react';
+import Link from 'next/link';
 
 export default function Dashboard() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [username, setUsername] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [links, setLinks] = useState<any[]>([]);
-  const [newTitle, setNewTitle] = useState('');
-  const [newUrl, setNewUrl] = useState('');
-  const [userData, setUserData] = useState<any>(null);
-  
+  const [user, setUser] = useState<any>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const supabase = createClientComponentClient();
   const router = useRouter();
 
@@ -22,231 +25,259 @@ export default function Dashboard() {
     const getData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
-
       if (session) {
-        // Ambil data user, jika belum ada, buat baru
-        let { data: user } = await supabase.from('users').select('*').eq('id', session.user.id).single();
-        
-        if (!user) {
-          const { data: newUser } = await supabase
-            .from('users')
-            .insert({ 
-              id: session.user.id, 
-              full_name: session.user.user_metadata?.full_name || '', 
-              username: '' 
-            })
-            .select()
-            .single();
-          user = newUser;
+        let { data: userData } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+        if (!userData) {
+          const { data: newUser } = await supabase.from('users').insert({ id: session.user.id, full_name: '', username: '' }).select().single();
+          userData = newUser;
         }
-
-        setUserData(user);
-        setUsername(user?.username || '');
-        setFullName(user?.full_name || '');
-
-        // Ambil link user
-        const { data: linksData } = await supabase
-          .from('links')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .order('position');
-        setLinks(linksData || []);
+        setUser(userData);
       }
       setLoading(false);
     };
     getData();
   }, [supabase]);
 
-  // Login dengan Google
-  const handleLogin = async () => {
-    await supabase.auth.signInWithOAuth({ 
-      provider: 'google', 
-      options: { redirectTo: window.location.origin + '/dashboard' } 
-    });
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast('Logout berhasil!');
+    setTimeout(() => router.push('/'), 1000);
   };
 
-  // Simpan profil (username & nama)
-  const handleUpdateProfile = async () => {
-  if (!username) return alert('Username wajib diisi!');
-  
-  // Cek apakah user sudah punya data
-  const { data: existingUser } = await supabase
-    .from('users')
-    .select('id')
-    .eq('id', session.user.id)
-    .single();
-
-  let error = null;
-
-  if (existingUser) {
-    // Jika sudah ada, update
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ username, full_name: fullName })
-      .eq('id', session.user.id);
-    error = updateError;
-  } else {
-    // Jika belum ada, insert data baru
-    const { error: insertError } = await supabase
-      .from('users')
-      .insert({ id: session.user.id, username, full_name: fullName });
-    error = insertError;
-  }
-
-  // Tampilkan pesan error jika gagal
-  if (error) {
-    alert('Gagal menyimpan profil: ' + error.message);
-    console.error('Supabase error:', error);
-  } else {
-    alert('Profil berhasil disimpan!');
-    // Refresh halaman agar link publik muncul
-    window.location.reload();
-  }
-};
-  // Tambah link baru
-  const handleAddLink = async () => {
-    if (!newTitle || !newUrl) return alert('Judul dan URL wajib diisi!');
-    
-    // Batasi gratis max 4 link
-    if (!userData.is_premium && links.length >= 4) {
-      return alert('Gratis hanya 4 link. Upgrade ke Premium untuk unlimited!');
-    }
-
-    const { error } = await supabase
-      .from('links')
-      .insert({ 
-        user_id: session.user.id, 
-        title: newTitle, 
-        url: newUrl, 
-        position: links.length 
+  // --- LOGIKA HAPUS AKUN ---
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: session.user.id })
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Gagal menghapus akun');
+      }
+
+      toast.success('Akun berhasil dihapus. Terima kasih telah menggunakan Oneklik.id!');
+      await supabase.auth.signOut();
+      setTimeout(() => {
+        router.push('/');
+      }, 1500);
       
-    if (!error) {
-      setLinks([...links, { title: newTitle, url: newUrl, position: links.length }]);
-      setNewTitle('');
-      setNewUrl('');
+    } catch (error: any) {
+      toast.error(error.message || 'Terjadi kesalahan saat menghapus akun');
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
     }
   };
 
-  // Hapus link
-  const handleDeleteLink = async (id: number) => {
-    const { error } = await supabase.from('links').delete().eq('id', id);
-    if (!error) {
-      setLinks(links.filter(l => l.id !== id));
-    }
-  };
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat dashboard...</div>;
   if (!session) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-        <h1 className="text-3xl font-bold mb-6">Login ke Dashboard</h1>
-        <button 
-          onClick={handleLogin} 
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
-        >
-          Login dengan Google
-        </button>
-      </div>
-    );
+    return <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6">
+      <h1 className="text-4xl font-extrabold text-blue-600 mb-4">Oneklik.id</h1>
+      <h2 className="text-2xl font-bold mb-6 text-slate-800">Silakan Login</h2>
+      <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })} className="px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-lg transition-all">Login dengan Google</button>
+    </div>;
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Dashboard Oneklik</h1>
-      
-      {/* Bagian Profil */}
-      <div className="bg-white p-6 rounded-xl shadow-md mb-8">
-        <h2 className="text-lg font-semibold mb-4">Profil Publikmu</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input 
-            type="text" 
-            placeholder="Username (contoh: johndoe)" 
-            value={username} 
-            onChange={e => setUsername(e.target.value)} 
-            className="border p-2 rounded" 
-          />
-          <input 
-            type="text" 
-            placeholder="Nama Lengkap" 
-            value={fullName} 
-            onChange={e => setFullName(e.target.value)} 
-            className="border p-2 rounded" 
-          />
-        </div>
-        <button 
-          onClick={handleUpdateProfile} 
-          className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-        >
-          Simpan Profil
-        </button>
-        {userData?.username && (
-          <p className="mt-2 text-sm text-gray-500">
-            Link publikmu: <a href={`/${userData.username}`} target="_blank" className="text-blue-600 underline">oneklik.id/{userData.username}</a>
-          </p>
-        )}
-      </div>
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col lg:flex-row overflow-hidden font-sans">
+      <Toaster position="top-center" />
 
-      {/* Bagian Tautan */}
-      <div className="bg-white p-6 rounded-xl shadow-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">Tautanmu ({links.length}/4 Gratis)</h2>
-          {!userData?.is_premium && (
-            <button 
-              className="text-sm bg-yellow-400 px-3 py-1 rounded-full font-semibold hover:bg-yellow-500"
-              onClick={() => alert('Fitur upgrade premium akan diintegrasikan dengan Midtrans/Stripe nanti!')}
-            >
-              Upgrade Premium
-            </button>
-          )}
-        </div>
-        
-        {/* Form Tambah Link */}
-        <div className="flex flex-col md:flex-row gap-3 mb-6">
-          <input 
-            type="text" 
-            placeholder="Judul (misal: Instagram)" 
-            value={newTitle} 
-            onChange={e => setNewTitle(e.target.value)} 
-            className="border p-2 rounded flex-1" 
-          />
-          <input 
-            type="text" 
-            placeholder="URL (misal: https://...)" 
-            value={newUrl} 
-            onChange={e => setNewUrl(e.target.value)} 
-            className="border p-2 rounded flex-1" 
-          />
-          <button 
-            onClick={handleAddLink} 
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Plus size={18}/> Tambah
+      {/* --- SIDEBAR NAVIGASI --- */}
+      <aside className="w-full lg:w-[260px] bg-white border-r border-slate-200 flex flex-col h-screen flex-shrink-0 z-20">
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+          <Link href="/" className="text-2xl font-bold text-blue-600 tracking-tight">Oneklik<span className="text-blue-400">.id</span></Link>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden text-slate-600">
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
+        
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 custom-scrollbar">
+          {/* Menu Utama */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <span>Oneklik</span>
+            </div>
+            <div className="bg-blue-50 text-blue-600 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer">
+              <Home className="w-4 h-4" /> Dashboard
+            </div>
+            <Link href="/bio">
+              <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                <Layout className="w-4 h-4" /> Bio Link
+              </div>
+            </Link>
+            <Link href="/tools/cv">
+              <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                <FileCheck className="w-4 h-4" /> Generator CV
+              </div>
+            </Link>
+            <Link href="/tools/pdf">
+              <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                <FileText className="w-4 h-4" /> Alat PDF
+              </div>
+            </Link>
+            <Link href="/templates">
+              <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                <Palette className="w-4 h-4" /> Templates
+              </div>
+            </Link>
+          </div>
+        </div>
 
-        {/* List Tautan */}
-        <div className="space-y-3">
-          {links.map((link) => (
-            <div key={link.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border">
+        {/* Footer Sidebar: Profil & Logout */}
+        <div className="p-4 border-t border-slate-100 bg-white">
+          <div className="flex items-center gap-3 mb-4 px-2">
+            <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-500 font-bold flex-shrink-0">
+              {user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-slate-700 truncate">{user?.full_name || 'Pengguna'}</div>
+              <div className="text-xs text-slate-400 truncate">{session.user.email}</div>
+            </div>
+          </div>
+          
+          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 text-sm text-red-500 hover:bg-red-50 py-2.5 rounded-lg transition-colors font-medium">
+            <LogOut size={16} /> Keluar
+          </button>
+        </div>
+      </aside>
+
+      {/* --- KONTEN UTAMA --- */}
+      <main className="flex-1 h-screen overflow-y-auto p-6 lg:p-10 bg-[#F8FAFC]">
+        <div className="max-w-4xl mx-auto">
+          {/* Header Konten */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800">Selamat Datang, {user?.full_name || 'Pengguna'} 👋</h2>
+              <p className="text-sm text-slate-500 mt-1">Kelola semua kebutuhan digital Anda dalam satu tempat.</p>
+            </div>
+            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+              <Bell className="w-4 h-4" /> Notifikasi
+            </button>
+          </div>
+
+          {/* KARTU STATUS AKUN */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
+            <div className="flex justify-between items-center flex-wrap gap-4">
               <div>
-                <p className="font-medium">{link.title}</p>
-                <p className="text-sm text-gray-500 truncate max-w-xs">{link.url}</p>
+                <h2 className="text-lg font-semibold text-slate-800">Status Akun</h2>
+                <p className="text-sm text-slate-500">Email: <strong className="text-slate-700">{session.user.email}</strong></p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1.5 ${user?.is_premium ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
+                  {user?.is_premium ? <><Crown size={14} /> Premium</> : 'Gratis'}
+                </span>
+                {!user?.is_premium && (
+                  <Link href="/upgrade?next=/dashboard" className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                    Upgrade Sekarang
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* GRID MENU FITUR */}
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">Akses Cepat Fitur</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            <Link href="/bio" className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all flex flex-col items-start">
+              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                <Layout size={24} />
+              </div>
+              <h3 className="font-medium text-slate-800">Kelola Bio Link</h3>
+              <p className="text-sm text-slate-500 mt-1">Atur profil dan semua tautan sosial media Anda.</p>
+            </Link>
+
+            <Link href="/tools/cv" className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-green-300 transition-all flex flex-col items-start">
+              <div className="w-12 h-12 bg-green-100 text-green-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                <FileCheck size={24} />
+              </div>
+              <h3 className="font-medium text-slate-800">Generator CV</h3>
+              <p className="text-sm text-slate-500 mt-1">Buat CV profesional dengan desain siap pakai.</p>
+            </Link>
+
+            <Link href="/tools/pdf" className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-red-300 transition-all flex flex-col items-start">
+              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                <FileText size={24} />
+              </div>
+              <h3 className="font-medium text-slate-800">Alat PDF</h3>
+              <p className="text-sm text-slate-500 mt-1">Gabung, kompres, dan konversi file PDF Anda.</p>
+            </Link>
+
+            <Link href="/templates" className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-yellow-300 transition-all flex flex-col items-start">
+              <div className="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                <Crown size={24} />
+              </div>
+              <h3 className="font-medium text-slate-800">Galeri Template Premium</h3>
+              <p className="text-sm text-slate-500 mt-1">Pilih dan kustomisasi 100+ template eksklusif.</p>
+            </Link>
+          </div>
+
+          {/* --- ZONA BERBAHAYA: HAPUS AKUN --- */}
+          <div className="mt-8 pt-8 border-t-2 border-red-200">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-red-600 flex items-center gap-2">
+                  <Trash2 size={20} /> Hapus Akun
+                </h3>
+                <p className="text-sm text-slate-500 max-w-lg mt-1">
+                  Menghapus akun akan menghapus semua data Anda (profil, tautan bio, riwayat CV) secara permanen. Tindakan ini <strong className="text-red-600">tidak dapat dibatalkan</strong>.
+                </p>
               </div>
               <button 
-                onClick={() => handleDeleteLink(link.id)} 
-                className="text-red-500 hover:text-red-700"
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="px-6 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-colors text-sm font-medium"
               >
-                <Trash2 size={20}/>
+                Hapus Akun Saya
               </button>
             </div>
-          ))}
-          {links.length === 0 && (
-            <p className="text-gray-400 text-center py-4">Belum ada tautan. Tambahkan sekarang!</p>
-          )}
+          </div>
         </div>
-      </div>
+      </main>
+
+      {/* --- MODAL KONFIRMASI HAPUS AKUN --- */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white max-w-md w-full rounded-2xl shadow-2xl p-6 relative animate-in fade-in zoom-in duration-200">
+            <button 
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"
+            >
+              <X size={24} />
+            </button>
+            
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600 mb-4">
+                <AlertTriangle size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Apakah Anda yakin?</h3>
+              <p className="text-sm text-slate-500 mb-6">
+                Semua data Anda akan dihapus secara permanen. Tindakan ini tidak bisa dibatalkan.
+              </p>
+              
+              <div className="flex gap-4 w-full">
+                <button 
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium"
+                  disabled={isDeleting}
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting}
+                  className="flex-1 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isDeleting ? 'Menghapus...' : 'Hapus Akun'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
