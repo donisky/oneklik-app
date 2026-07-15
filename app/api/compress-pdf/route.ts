@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       pdfDoc.setTitle('');
       pdfDoc.setAuthor('');
       pdfDoc.setSubject('');
-      pdfDoc.setKeywords('');
+      pdfDoc.setKeywords([]);
       pdfDoc.setCreator('');
       pdfDoc.setProducer('');
     } else if (level === 'recommended') {
