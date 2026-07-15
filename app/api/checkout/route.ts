@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import midtransClient from 'midtrans-client';
+const midtransClient = require('midtrans-client');
 
 const snap = new midtransClient.Snap({
   isProduction: true, // UBAH KE true SAAT DI PRODUCTION

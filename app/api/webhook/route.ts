@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import midtransClient from 'midtrans-client';
+const midtransClient = require('midtrans-client');
 import { createClient } from '@supabase/supabase-js';
 
 // Setup Midtrans (Pastikan isProduction: true saat live!)
