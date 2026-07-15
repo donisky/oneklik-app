@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
     const compressedBytes = await pdfDoc.save(options);
 
-    return new NextResponse(compressedBytes, {
+    return new NextResponse(Buffer.from(compressedBytes), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
