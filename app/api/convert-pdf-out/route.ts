@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Document, Packer, Paragraph, TextRun } from 'docx';
-import * as XLSX from 'xlsx';
+const XLSX = require('xlsx');
 import { PDFDocument } from 'pdf-lib';
-import pdfParse from 'pdf-parse-fork';
+const pdfParse = require('pdf-parse-fork');
 
 export async function POST(req: NextRequest) {
   try {
