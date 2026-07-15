@@ -127,7 +127,7 @@ export default function TemplatesPage() {
                     {template.avatar}
                   </div>
                   <h3 className="text-xl font-bold text-white drop-shadow-md">{template.name}</h3>
-                  <p className="text-sm text-white/80 drop-shadow mb-6">{template.description}</p>
+                  <p className="text-sm text-white/80 drop-shadow mb-6">{(template as any).description}</p>
                   
                   <div className="w-full space-y-3 mt-2">
                     {template.links.map((link, i) => (

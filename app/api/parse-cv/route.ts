@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pdfParse from 'pdf-parse-fork';
+const pdfParse = require('pdf-parse-fork');
 import mammoth from 'mammoth';
 
 export const runtime = 'nodejs';

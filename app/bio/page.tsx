@@ -17,7 +17,7 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
   const template = templates.find(t => t.id === parseInt(user?.selected_template || '1', 10)) || templates[0];
   
   const bgColor = user?.theme_bg || template?.colors?.bg || '#f3f4f6';
-  const buttonColor = user?.theme_primary || template?.colors?.primary || '#3b82f6';
+  const buttonColor = (user as any)?.theme_primary || (template as any)?.colors?.primary || '#3b82f6';
   const textColor = user?.theme_secondary || template?.colors?.text || '#ffffff';
   
   const getIcon = (title: string) => {

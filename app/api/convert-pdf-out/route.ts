@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     // 2. Proses sesuai target
         if (targetType === 'word') {
       // 1. Bersihkan teks: pisahkan paragraf berdasarkan baris kosong ganda
-      const rawParagraphs = extractedText.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+      const rawParagraphs = extractedText.split(/\n\s*\n/).filter((p: string) => p.trim().length > 0);
       
       // 2. Bangun struktur dokumen Word
       let children: any[] = [
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       ];
       
       // 3. Tambahkan paragraf hasil ekstraksi dengan format yang rapi
-      rawParagraphs.forEach((para) => {
+      rawParagraphs.forEach((para: string) => {
         // Ganti baris baru tunggal di dalam paragraf dengan spasi agar jadi satu kalimat utuh
         const cleanPara = para.replace(/\n/g, ' ').trim();
         if (cleanPara) {
@@ -69,8 +69,8 @@ export async function POST(req: NextRequest) {
     } 
     else if (targetType === 'excel') {
       const wb = XLSX.utils.book_new();
-      const lines = extractedText.split('\n').filter(p => p.trim());
-      const data = lines.map(line => [line]);
+      const lines = extractedText.split('\n').filter((p: string) => p.trim());
+      const data = lines.map((line: string) => [line]);
       const ws = XLSX.utils.aoa_to_sheet([['Konversi PDF oleh Oneklik.id'], ['']].concat(data));
       XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
       fileBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Tipe konversi tidak dikenali' }, { status: 400 });
     }
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(Buffer.from(fileBuffer), {
       status: 200,
       headers: {
         'Content-Type': mimeType,

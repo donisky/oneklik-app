@@ -1,6 +1,12 @@
 import { useState } from 'react';
 
-export default function PricingButton({ userId, email, name }) {
+interface PricingButtonProps {
+  userId: string;
+  email: string;
+  name: string;
+}
+
+export default function PricingButton({ userId, email, name }: PricingButtonProps) {
   const [loading, setLoading] = useState(false);
 
   const handleUpgrade = async () => {
