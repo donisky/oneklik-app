@@ -100,7 +100,7 @@ export default function MergePDF() {
       }
 
       const mergedPdfBytes = await mergedPdf.save();
-      const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+      const blob = new Blob([mergedPdfBytes as any], { type: 'application/pdf' });
       
       // Download file with custom filename
       saveAs(blob, `${outputFileName || 'Hasil_Gabungan_Oneklik'}.pdf`);
