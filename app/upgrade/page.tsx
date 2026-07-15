@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { 
@@ -9,9 +9,11 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
+
 export const dynamic = 'force-dynamic';
 
-export default function UpgradePage() {
+// Komponen konten utama yang menggunakan useSearchParams
+function UpgradeContent() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
@@ -23,7 +25,6 @@ export default function UpgradePage() {
 
   const supabase = createClientComponentClient();
 
-  // Cek session & status premium user saat halaman dimuat
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
@@ -34,7 +35,6 @@ export default function UpgradePage() {
         return;
       }
 
-      // Cek apakah user sudah premium
       const { data: userData } = await supabase.from('users').select('is_premium').eq('id', session.user.id).single();
       if (userData?.is_premium) {
         toast.success('Akun Anda sudah Premium!');
@@ -43,7 +43,6 @@ export default function UpgradePage() {
     });
   }, [supabase, router, next]);
 
-  // --- LOGIKA PEMBAYARAN MIDTRANS ---
   const handlePayment = async (plan: 'free' | 'premium') => {
     if (!session || isUpgrading) return;
     setIsUpgrading(true);
@@ -56,7 +55,6 @@ export default function UpgradePage() {
         return;
       }
 
-      // --- HARGA BARU SESUAI LANDING PAGE ---
       const amount = billingCycle === 'monthly' ? 49000 : 499000;
       const orderId = `PR-${session.user.id.slice(0, 8)}-${Date.now()}`;
 
@@ -68,7 +66,7 @@ export default function UpgradePage() {
           amount,
           name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
           email: session.user.email,
-          userId: session.user.id, // <--- TAMBAHKAN INI (UUID PENUH)
+          userId: session.user.id,
         }),
       });
 
@@ -91,7 +89,6 @@ export default function UpgradePage() {
     }
   };
 
-  // Fungsi pembantu format harga Rupiah
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -100,7 +97,6 @@ export default function UpgradePage() {
     }).format(price);
   };
 
-  // --- DATA PAKET DENGAN FITUR & HARGA BARU ---
   const plans = {
     free: {
       name: 'Gratis',
@@ -121,7 +117,7 @@ export default function UpgradePage() {
     premium: {
       name: 'Premium',
       priceMonthly: 49000,
-      priceYearly: 499000, // Hemat 15% dari harga bulanan
+      priceYearly: 499000,
       description: 'Untuk kreator & pebisnis yang serius.',
       features: [
         { icon: Layout, text: 'Halaman Bio Tanpa Batas', included: true },
@@ -145,7 +141,6 @@ export default function UpgradePage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 text-slate-900 flex flex-col items-center justify-start p-6 pb-12">
       <Toaster position="top-center" />
 
-      {/* Header Kecil untuk Kembali */}
       <div className="w-full max-w-5xl flex justify-between items-center mb-8 pt-4">
         <Link href="/dashboard" className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors font-medium text-sm">
           <ArrowLeft size={18} /> Kembali ke Dashboard
@@ -168,7 +163,6 @@ export default function UpgradePage() {
           </p>
         </div>
 
-        {/* Billing Toggle */}
         <div className="flex justify-center items-center gap-4 mb-12 bg-white shadow-sm border border-slate-200 p-1.5 rounded-2xl w-max mx-auto">
           <button 
             onClick={() => setBillingCycle('monthly')}
@@ -185,9 +179,7 @@ export default function UpgradePage() {
           </button>
         </div>
 
-        {/* Grid Kartu Harga */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto text-left">
-          
           {/* Paket Gratis */}
           <div className="bg-white/80 backdrop-blur-md p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-100/50 hover:shadow-2xl hover:-translate-y-1 transition-all flex flex-col relative">
             <div className="mb-6">
@@ -200,11 +192,7 @@ export default function UpgradePage() {
             <div className="flex-1 space-y-3 mb-8">
               {plans.free.features.map((feature, idx) => (
                 <div key={idx} className={`flex items-start gap-3 ${feature.included ? 'text-slate-700' : 'text-slate-400'}`}>
-                  {feature.included ? (
-                    <CheckCircle2 size={18} className="text-green-500 flex-shrink-0 mt-0.5" />
-                  ) : (
-                    <XCircle size={18} className="text-slate-300 flex-shrink-0 mt-0.5" />
-                  )}
+                  {feature.included ? <CheckCircle2 size={18} className="text-green-500 flex-shrink-0 mt-0.5" /> : <XCircle size={18} className="text-slate-300 flex-shrink-0 mt-0.5" />}
                   <span className="text-sm">{feature.text}</span>
                 </div>
               ))}
@@ -221,7 +209,6 @@ export default function UpgradePage() {
 
           {/* Paket Premium */}
           <div className="bg-white p-8 rounded-3xl border-2 border-blue-500 shadow-[0_8px_30px_rgb(59,130,246,0.15)] hover:shadow-[0_8px_40px_rgb(59,130,246,0.25)] hover:-translate-y-1 transition-all flex flex-col relative overflow-hidden">
-            {/* Badge Rekomendasi */}
             <div className="absolute top-0 right-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1.5 rounded-bl-2xl text-[10px] font-bold uppercase tracking-wide flex items-center gap-1">
               <Crown size={12} /> Paling Laris
             </div>
@@ -249,11 +236,7 @@ export default function UpgradePage() {
             <div className="flex-1 space-y-3 mb-8">
               {plans.premium.features.map((feature, idx) => (
                 <div key={idx} className={`flex items-start gap-3 ${feature.included ? 'text-slate-800 font-medium' : 'text-slate-400'}`}>
-                  {feature.included ? (
-                    <CheckCircle2 size={18} className="text-green-500 flex-shrink-0 mt-0.5" />
-                  ) : (
-                    <XCircle size={18} className="text-slate-300 flex-shrink-0 mt-0.5" />
-                  )}
+                  {feature.included ? <CheckCircle2 size={18} className="text-green-500 flex-shrink-0 mt-0.5" /> : <XCircle size={18} className="text-slate-300 flex-shrink-0 mt-0.5" />}
                   <span className="text-sm">{feature.text}</span>
                 </div>
               ))}
@@ -269,7 +252,6 @@ export default function UpgradePage() {
           </div>
         </div>
 
-        {/* Trust & Footer Section */}
         <div className="mt-12 flex flex-col items-center gap-4 text-slate-500">
           <div className="flex items-center gap-6 text-xs font-medium">
             <span className="flex items-center gap-1"><ShieldCheck size={16} className="text-green-500" /> Pembayaran Aman</span>
@@ -282,5 +264,14 @@ export default function UpgradePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Komponen utama yang membungkus dengan Suspense
+export default function UpgradePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat halaman...</div>}>
+      <UpgradeContent />
+    </Suspense>
   );
 }
