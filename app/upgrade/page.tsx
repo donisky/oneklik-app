@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
+export const dynamic = 'force-dynamic';
 
 export default function UpgradePage() {
   const [session, setSession] = useState<any>(null);

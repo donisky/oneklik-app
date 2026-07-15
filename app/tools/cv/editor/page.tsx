@@ -16,7 +16,7 @@ import jsPDF from 'jspdf';
 
 // --- TAMBAHAN: Import Custom Hook AI ---
 import { useAIChat } from '@/app/hooks/useAIChat';
-
+export const dynamic = 'force-dynamic';
 // ==========================================
 // 1. TIPE DATA CV
 // ==========================================
