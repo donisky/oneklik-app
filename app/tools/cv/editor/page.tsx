@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,7 +16,9 @@ import jsPDF from 'jspdf';
 
 // --- TAMBAHAN: Import Custom Hook AI ---
 import { useAIChat } from '@/app/hooks/useAIChat';
+
 export const dynamic = 'force-dynamic';
+
 // ==========================================
 // 1. TIPE DATA CV
 // ==========================================
@@ -1289,9 +1291,9 @@ const Sidebar = ({ data, setData }: { data: CVData; setData: (data: CVData) => v
 };
 
 // ==========================================
-// 6. MAIN PAGE CV EDITOR
+// 6. MAIN PAGE CV EDITOR (SUDAH DIBUNGKUS SUSPENSE)
 // ==========================================
-export default function CVEditorPage() {
+function EditorContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialTemplate = searchParams.get('template') || 'professional';
@@ -1472,5 +1474,16 @@ export default function CVEditorPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ==========================================
+// 7. EKSPOR UTAMA (DIBUNGKUS SUSPENSE)
+// ==========================================
+export default function CVEditorPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat Editor CV...</div>}>
+      <EditorContent />
+    </Suspense>
   );
 }
