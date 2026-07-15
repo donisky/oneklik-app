@@ -1378,7 +1378,7 @@ export default function CVEditorPage() {
         tempCanvas.width = imgWidth;
         const currentPageHeightPx = Math.min(pageHeightPx, heightLeft);
         tempCanvas.height = currentPageHeightPx;
-        const ctx = tempCanvas.getContext('2d');
+        const ctx = tempCanvas.getContext('2d')!;
         ctx.drawImage(canvas, 0, position, imgWidth, currentPageHeightPx, 0, 0, imgWidth, currentPageHeightPx);
         const pageImgData = tempCanvas.toDataURL('image/png');
         const pageImgHeight = (currentPageHeightPx * pdfWidth) / imgWidth;
