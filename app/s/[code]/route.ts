@@ -11,7 +11,7 @@ export async function GET(req: Request, { params }: { params: { code: string } }
   // Cek di tabel short_links
   const { data: linkData } = await supabase
     .from('short_links')
-    .select('original_url')
+    .select('*')  // Ubah dari 'original_url' ke '*' agar dapat mengakses clicks
     .eq('short_code', code)
     .single();
 
@@ -24,7 +24,7 @@ export async function GET(req: Request, { params }: { params: { code: string } }
   // Cek di tabel file_uploads
   const { data: fileData } = await supabase
     .from('file_uploads')
-    .select('file_url')
+    .select('*')  // Ubah dari 'file_url' ke '*' agar dapat mengakses clicks
     .eq('short_code', code)
     .single();
 
