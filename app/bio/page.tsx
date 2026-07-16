@@ -365,7 +365,7 @@ export default function BioPage() {
 
   // --- Fungsi untuk update design_settings ---
   const updateDesign = (key: string, value: any) => {
-    setUser(prev => ({
+    setUser((prev: any) => ({
       ...prev,
       design_settings: {
         ...(prev?.design_settings || {}),
