@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -21,14 +21,51 @@ const SocialIcon = ({ name }: { name: string }) => {
 
 export default function TemplatesPage() {
   const [selectedCategory, setSelectedCategory] = useState('Semua Template');
+  const [isPremium, setIsPremium] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const supabase = createClientComponentClient();
+
+  useEffect(() => {
+    const checkPremiumStatus = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // Belum login, arahkan ke login page (atau biarkan login flow di handleSelectTemplate)
+        // Tapi untuk akses halaman ini, kita minta login dulu
+        router.push('/dashboard'); // atau redirect ke login
+        return;
+      }
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('is_premium')
+        .eq('id', session.user.id)
+        .single();
+
+      setIsPremium(userData?.is_premium || false);
+      setLoading(false);
+
+      // Jika tidak premium, redirect ke halaman upgrade
+      if (!userData?.is_premium) {
+        router.replace('/upgrade?next=/templates');
+      }
+    };
+
+    checkPremiumStatus();
+  }, [router, supabase]);
 
   const filteredTemplates = selectedCategory === 'Semua Template' 
     ? templates 
     : templates.filter(t => t.category === selectedCategory);
 
   const handleSelectTemplate = async (id: number) => {
+    // Jika belum premium, seharusnya sudah di-redirect, tapi ini jaga-jaga
+    if (!isPremium) {
+      router.push('/upgrade?next=/templates');
+      return;
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       supabase.auth.signInWithOAuth({
@@ -51,6 +88,22 @@ export default function TemplatesPage() {
       alert('Gagal menyimpan template: ' + error.message);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Memeriksa status akun...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Jika isPremium null atau false (tapi seharusnya sudah redirect), tampilkan ini
+  if (isPremium === false) {
+    return null; // Redirect sudah dilakukan di useEffect
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
