@@ -14,7 +14,7 @@ import {
   Image as ImageIcon, Video, Sparkles, ChevronRight, ShoppingBag, Package
 } from 'lucide-react';
 
-// --- Komponen Preview Mockup HP (sama) ---
+// --- Komponen Preview Mockup HP ---
 const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
   const template = templates.find(t => t.id === parseInt(user?.selected_template || '1', 10)) || templates[0];
   const design = user?.design_settings || {};
@@ -34,15 +34,9 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
   return (
     <div className="relative mx-auto w-full max-w-[300px] aspect-[9/16] rounded-[2.5rem] border-[6px] border-[#1a1a1a] bg-black overflow-hidden shadow-2xl">
       <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-full z-20 shadow-lg" />
-      <div 
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ 
-          backgroundImage: `url(${template.bgImage})`,
-          backgroundColor: bgColor,
-          backgroundBlendMode: 'overlay'
-        }}
-      />
+      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${template.bgImage})`, backgroundColor: bgColor, backgroundBlendMode: 'overlay' }} />
       <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/70" />
+      
       <div className="relative z-10 h-full flex flex-col items-center pt-10 px-4 text-center">
         <div className="w-14 h-14 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg border-2 border-white/40 mb-3">
           {user?.avatar_url ? (
@@ -53,6 +47,7 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
         </div>
         <h3 className="font-bold text-lg text-white drop-shadow-md">{user?.full_name || 'Nama Kamu'}</h3>
         <p className="text-[10px] mb-4 text-white/80">@{user?.username || 'username'}</p>
+        
         <div className="w-full space-y-2.5 px-2">
           {links && links.map((link) => (
             <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className="block w-full py-2.5 px-3 rounded-xl font-medium transition-all hover:scale-105 flex items-center justify-center gap-2 shadow-sm text-xs" style={{ backgroundColor: buttonColor, color: textColor }}>
@@ -114,30 +109,85 @@ const ShareDropdown = ({ url }: { url: string }) => {
   );
 };
 
-// --- Modal Notifikasi ---
-const NotificationModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+// --- Modal Notifikasi (Fungsional) ---
+const NotificationModal = ({ isOpen, onClose, notifications, loading, tab, setTab }: any) => {
   if (!isOpen) return null;
+  
+  const filtered = notifications.filter((n: any) => {
+    if (tab === 'All') return true;
+    return n.type.toLowerCase() === tab.toLowerCase();
+  });
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
         <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
         <h2 className="text-lg font-bold text-center text-slate-800 mb-6">Notifikasi</h2>
         <div className="flex justify-center gap-2 mb-6">
-          <button className="px-4 py-1.5 bg-slate-900 text-white rounded-full text-xs font-semibold">All</button>
-          <button className="px-4 py-1.5 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">Updates</button>
-          <button className="px-4 py-1.5 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">Opportunities</button>
-          <button className="px-4 py-1.5 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">Insights</button>
+          {['All', 'Updates', 'Opportunities', 'Insights'].map((t) => (
+            <button 
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${tab === t ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}
+            >
+              {t}
+            </button>
+          ))}
         </div>
-        <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-          <Bell size={48} className="text-slate-200 mb-3" />
-          <p className="font-medium text-slate-600">Belum ada notifikasi</p>
-          <p className="text-xs text-slate-400">Pesan, fitur baru, dan insight akan muncul di sini.</p>
+        <div className="flex flex-col items-center justify-center py-4 min-h-[200px]">
+          {loading ? (
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          ) : filtered.length > 0 ? (
+            <div className="w-full space-y-3">
+              {filtered.map((notif: any) => (
+                <div key={notif.id} className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <p className="font-medium text-slate-800 text-sm">{notif.title}</p>
+                  {notif.message && <p className="text-xs text-slate-500">{notif.message}</p>}
+                  <span className="text-[10px] text-slate-400 mt-1 block">{new Date(notif.created_at).toLocaleDateString()}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <Bell size={48} className="text-slate-200 mb-3" />
+              <p className="font-medium text-slate-600">Belum ada notifikasi</p>
+              <p className="text-xs text-slate-400">Pesan, fitur baru, dan insight akan muncul di sini.</p>
+            </>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
+// --- Komponen Modal Design (Fungsional) ---
+const DesignOptionModal = ({ isOpen, onClose, title, options, currentValue, onSelect }: any) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
+        <h2 className="text-lg font-bold text-slate-800 mb-4">{title}</h2>
+        <div className="space-y-2">
+          {options.map((opt: string) => (
+            <button
+              key={opt}
+              onClick={() => { onSelect(opt); onClose(); }}
+              className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${currentValue === opt ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'}`}
+            >
+              {opt.charAt(0).toUpperCase() + opt.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Komponen Helper Ikon Kotak ---
+function SquareIcon(props: any) { return <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="18" height="18" x="3" y="3" rx="2"/></svg>; }
+
+// --- Main Page ---
 export default function BioPage() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -151,7 +201,15 @@ export default function BioPage() {
   const [copied, setCopied] = useState(false);
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  
+  // --- NOTIFICATION STATE ---
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifTab, setNotifTab] = useState('All');
+
+  // --- DESIGN MODAL STATE ---
+  const [designModal, setDesignModal] = useState<string | null>(null);
 
   const supabase = createClientComponentClient();
   const router = useRouter();
@@ -186,6 +244,20 @@ export default function BioPage() {
     };
     getData();
   }, [supabase]);
+
+  // --- FETCH NOTIFICATIONS ---
+  const fetchNotifications = async () => {
+    if (!session?.user?.id) return;
+    setNotifLoading(true);
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+    if (error) console.error('Error fetching notifications:', error);
+    else setNotifications(data || []);
+    setNotifLoading(false);
+  };
 
   // --- SIMPAN PROFIL ---
   const handleSaveProfile = async () => {
@@ -250,8 +322,29 @@ export default function BioPage() {
   const handleLogout = async () => { await supabase.auth.signOut(); toast('Logout berhasil!'); setTimeout(() => router.push('/'), 1000); };
   const handleLogin = async () => { await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/upgrade?next=${encodeURIComponent('/bio')}` } }); };
 
+  // --- UPDATE DESIGN ---
   const updateDesign = (key: string, value: any) => {
     setUser((prev: any) => ({ ...prev, design_settings: { ...(prev?.design_settings || {}), [key]: value } }));
+  };
+
+  // --- TOMBOL ENHANCE (Randomizer) ---
+  const handleEnhance = () => {
+    const themes = ['air', 'customize', 'dark', 'light'];
+    const headers = ['classic', 'minimal', 'gradient'];
+    const wallpapers = ['fill', 'gradient', 'image'];
+    const buttons = ['fill', 'outline', 'ghost'];
+    const fonts = ['sans', 'serif', 'mono'];
+    const newDesign = {
+      theme: themes[Math.floor(Math.random() * themes.length)],
+      header: headers[Math.floor(Math.random() * headers.length)],
+      wallpaper: wallpapers[Math.floor(Math.random() * wallpapers.length)],
+      buttons: buttons[Math.floor(Math.random() * buttons.length)],
+      font: fonts[Math.floor(Math.random() * fonts.length)],
+      stickers: 'decorate',
+      footer: 'default',
+    };
+    setUser((prev: any) => ({ ...prev, design_settings: { ...prev.design_settings, ...newDesign } }));
+    toast.success('Desain telah disempurnakan!');
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat dashboard...</div>;
@@ -269,7 +362,7 @@ export default function BioPage() {
       <aside className="w-full lg:w-[260px] bg-white border-r border-slate-200 flex flex-col h-screen flex-shrink-0 z-20">
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <Link href="/" className="text-2xl font-bold text-blue-600 tracking-tight">Oneklik<span className="text-blue-400">.id</span></Link>
-          <Bell className="w-5 h-5 text-slate-400 hover:text-slate-700 cursor-pointer" onClick={() => setIsNotificationOpen(true)} />
+          <Bell className="w-5 h-5 text-slate-400 hover:text-slate-700 cursor-pointer" onClick={() => { setIsNotificationOpen(true); fetchNotifications(); }} />
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 custom-scrollbar">
           <div className="space-y-1">
@@ -302,7 +395,7 @@ export default function BioPage() {
             </button>
           </div>
 
-          {/* --- TAB: LINKS (Sama seperti sebelumnya, termasuk avatar popup) --- */}
+          {/* --- TAB: LINKS --- */}
           {activeTab === 'links' && (
             <>
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4 relative overflow-hidden">
@@ -339,7 +432,6 @@ export default function BioPage() {
                 </div>
                 <div className="mt-4 border-t border-slate-100 pt-4"><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bio</label><textarea value={user?.bio || ''} onChange={(e) => setUser({...user, bio: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-lg p-3 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent resize-none placeholder:text-slate-300 transition-all" rows={2} placeholder="Ceritakan sedikit tentang dirimu..." /></div>
               </div>
-              {/* Tambah link dan daftar link (sama) */}
               <div className="mb-4">
                 {showAddLink ? (
                   <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
@@ -367,59 +459,68 @@ export default function BioPage() {
             </>
           )}
 
-          {/* --- TAB: DESIGN (Percantik ala Linktree) --- */}
+          {/* --- TAB: DESIGN (Fungsional dengan Modal) --- */}
           {activeTab === 'design' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2"><Palette size={20} className="text-purple-600" /><h3 className="text-lg font-bold text-slate-800">Design</h3></div>
-                <button className="text-sm text-blue-600 font-medium hover:underline">Enhance</button>
+                <button onClick={handleEnhance} className="text-sm text-blue-600 font-medium hover:underline hover:text-blue-700 transition-colors">Enhance</button>
               </div>
               <div className="space-y-2">
                 {/* Theme */}
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
-                  <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><span className="text-sm font-bold">Aa</span></div><div><p className="font-medium text-slate-800 text-sm">Theme</p><p className="text-xs text-slate-500">Air</p></div></div>
+                <div onClick={() => setDesignModal('theme')} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><span className="text-sm font-bold">Aa</span></div><div><p className="font-medium text-slate-800 text-sm">Theme</p><p className="text-xs text-slate-500">{user?.design_settings?.theme || 'Air'}</p></div></div>
                   <ChevronRight size={18} className="text-slate-400" />
                 </div>
                 <div className="space-y-1 pl-2">
                   <p className="text-xs font-medium text-slate-400 uppercase tracking-wider px-2 pt-2">Customize</p>
                   {/* Header */}
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
-                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><User size={18} /></div><div><p className="font-medium text-slate-800 text-sm">Header</p><p className="text-xs text-slate-500">Classic</p></div></div>
+                  <div onClick={() => setDesignModal('header')} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><User size={18} /></div><div><p className="font-medium text-slate-800 text-sm">Header</p><p className="text-xs text-slate-500">{user?.design_settings?.header || 'Classic'}</p></div></div>
                     <ChevronRight size={18} className="text-slate-400" />
                   </div>
                   {/* Wallpaper */}
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
-                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><ImageIcon size={18} /></div><div><p className="font-medium text-slate-800 text-sm">Wallpaper</p><p className="text-xs text-slate-500">Fill</p></div></div>
+                  <div onClick={() => setDesignModal('wallpaper')} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><ImageIcon size={18} /></div><div><p className="font-medium text-slate-800 text-sm">Wallpaper</p><p className="text-xs text-slate-500">{user?.design_settings?.wallpaper || 'Fill'}</p></div></div>
                     <ChevronRight size={18} className="text-slate-400" />
                   </div>
                   {/* Buttons */}
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
-                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><SquareIcon size={18} /></div><div><p className="font-medium text-slate-800 text-sm">Buttons</p><p className="text-xs text-slate-500">Fill</p></div></div>
+                  <div onClick={() => setDesignModal('buttons')} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><SquareIcon size={18} /></div><div><p className="font-medium text-slate-800 text-sm">Buttons</p><p className="text-xs text-slate-500">{user?.design_settings?.buttons || 'Fill'}</p></div></div>
                     <ChevronRight size={18} className="text-slate-400" />
                   </div>
                   {/* Text / Font */}
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
-                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><span className="text-sm font-bold">Aa</span></div><div><p className="font-medium text-slate-800 text-sm">Text</p><p className="text-xs text-slate-500">Link Sans</p></div></div>
+                  <div onClick={() => setDesignModal('font')} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><span className="text-sm font-bold">Aa</span></div><div><p className="font-medium text-slate-800 text-sm">Text</p><p className="text-xs text-slate-500">{user?.design_settings?.font || 'Link Sans'}</p></div></div>
                     <ChevronRight size={18} className="text-slate-400" />
                   </div>
-                  {/* Colors */}
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
+                  {/* Colors (Klik untuk membuka modal color picker atau custom) */}
+                  <div onClick={() => setDesignModal('colors')} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
                     <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><div className="w-4 h-4 rounded-full bg-black border border-slate-300" /></div><div><p className="font-medium text-slate-800 text-sm">Colors</p><p className="text-xs text-slate-500">Edit</p></div></div>
                     <ChevronRight size={18} className="text-slate-400" />
                   </div>
                   {/* Stickers */}
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
-                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><Sparkles size={18} /></div><div><p className="font-medium text-slate-800 text-sm">Stickers</p><p className="text-xs text-slate-500">Decorate your page</p></div></div>
+                  <div onClick={() => setDesignModal('stickers')} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><Sparkles size={18} /></div><div><p className="font-medium text-slate-800 text-sm">Stickers</p><p className="text-xs text-slate-500">{user?.design_settings?.stickers || 'Decorate your page'}</p></div></div>
                     <ChevronRight size={18} className="text-slate-400" />
                   </div>
                   {/* Footer */}
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
-                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><ChevronRight size={18} className="-rotate-90" /></div><div><p className="font-medium text-slate-800 text-sm">Footer</p><p className="text-xs text-slate-500">Default</p></div></div>
+                  <div onClick={() => setDesignModal('footer')} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><ChevronRight size={18} className="-rotate-90" /></div><div><p className="font-medium text-slate-800 text-sm">Footer</p><p className="text-xs text-slate-500">{user?.design_settings?.footer || 'Default'}</p></div></div>
                     <ChevronRight size={18} className="text-slate-400" />
                   </div>
                 </div>
               </div>
               <div className="pt-4 border-t border-slate-100 text-xs text-slate-400">*Perubahan akan tersimpan setelah klik Simpan Perubahan.</div>
+
+              {/* Design Modals */}
+              <DesignOptionModal isOpen={designModal === 'theme'} onClose={() => setDesignModal(null)} title="Choose Theme" options={['air', 'customize', 'dark', 'light']} currentValue={user?.design_settings?.theme || 'air'} onSelect={(val) => updateDesign('theme', val)} />
+              <DesignOptionModal isOpen={designModal === 'header'} onClose={() => setDesignModal(null)} title="Choose Header" options={['classic', 'minimal', 'gradient']} currentValue={user?.design_settings?.header || 'classic'} onSelect={(val) => updateDesign('header', val)} />
+              <DesignOptionModal isOpen={designModal === 'wallpaper'} onClose={() => setDesignModal(null)} title="Choose Wallpaper" options={['fill', 'gradient', 'image']} currentValue={user?.design_settings?.wallpaper || 'fill'} onSelect={(val) => updateDesign('wallpaper', val)} />
+              <DesignOptionModal isOpen={designModal === 'buttons'} onClose={() => setDesignModal(null)} title="Choose Buttons" options={['fill', 'outline', 'ghost']} currentValue={user?.design_settings?.buttons || 'fill'} onSelect={(val) => updateDesign('buttons', val)} />
+              <DesignOptionModal isOpen={designModal === 'font'} onClose={() => setDesignModal(null)} title="Choose Font" options={['sans', 'serif', 'mono']} currentValue={user?.design_settings?.font || 'sans'} onSelect={(val) => updateDesign('font', val)} />
+              <DesignOptionModal isOpen={designModal === 'stickers'} onClose={() => setDesignModal(null)} title="Choose Stickers" options={['none', 'decorate', 'fun']} currentValue={user?.design_settings?.stickers || 'decorate'} onSelect={(val) => updateDesign('stickers', val)} />
+              <DesignOptionModal isOpen={designModal === 'footer'} onClose={() => setDesignModal(null)} title="Choose Footer" options={['default', 'hidden', 'custom']} currentValue={user?.design_settings?.footer || 'default'} onSelect={(val) => updateDesign('footer', val)} />
             </div>
           )}
 
@@ -435,25 +536,19 @@ export default function BioPage() {
               </div>
               <p className="text-sm text-slate-500">Copy and paste links from anywhere to start selling.</p>
               
-              {/* Tombol Add produk */}
               <button className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-colors shadow-sm">
                 <Plus size={20} /> Add
               </button>
 
-              {/* Daftar produk dummy (ganti dengan data dari Supabase nanti) */}
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 relative group hover:shadow-md transition-all">
-                  <div className="w-full aspect-square bg-slate-200 rounded-lg mb-2 flex items-center justify-center text-slate-400">
-                    <Package size={32} />
-                  </div>
+                  <div className="w-full aspect-square bg-slate-200 rounded-lg mb-2 flex items-center justify-center text-slate-400"><Package size={32} /></div>
                   <p className="text-sm font-medium text-slate-800">Summer Fridays Lip Oil</p>
                   <p className="text-xs text-slate-500">$20</p>
                   <button className="absolute top-2 right-2 text-slate-400 hover:text-red-500 bg-white rounded-full p-1 shadow-sm"><Trash2 size={14} /></button>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 relative group hover:shadow-md transition-all">
-                  <div className="w-full aspect-square bg-slate-200 rounded-lg mb-2 flex items-center justify-center text-slate-400">
-                    <Package size={32} />
-                  </div>
+                  <div className="w-full aspect-square bg-slate-200 rounded-lg mb-2 flex items-center justify-center text-slate-400"><Package size={32} /></div>
                   <p className="text-sm font-medium text-slate-800">K18 Hair Mask</p>
                   <p className="text-xs text-slate-500">$45</p>
                   <button className="absolute top-2 right-2 text-slate-400 hover:text-red-500 bg-white rounded-full p-1 shadow-sm"><Trash2 size={14} /></button>
@@ -485,10 +580,14 @@ export default function BioPage() {
       </aside>
 
       {/* NOTIFICATION MODAL */}
-      <NotificationModal isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />
+      <NotificationModal 
+        isOpen={isNotificationOpen} 
+        onClose={() => setIsNotificationOpen(false)} 
+        notifications={notifications} 
+        loading={notifLoading} 
+        tab={notifTab} 
+        setTab={setNotifTab} 
+      />
     </div>
   );
 }
-
-// Small helper component
-function SquareIcon(props: any) { return <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="18" height="18" x="3" y="3" rx="2"/></svg>; }
