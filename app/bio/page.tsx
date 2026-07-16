@@ -11,7 +11,8 @@ import {
   Bell, CheckCircle2, Settings, Share2, Copy, Wand2,
   Store, Palette, DollarSign, Users, BarChart3, X, Paintbrush,
   Facebook, Twitter, Linkedin, MessageCircle, Send,
-  Image as ImageIcon, Video, Sparkles, ChevronRight, ShoppingBag, Package
+  Image as ImageIcon, Video, Sparkles, ChevronRight, ShoppingBag, Package,
+  Upload, Loader2 // Tambahan untuk Shop
 } from 'lucide-react';
 
 // --- Komponen Preview Mockup HP ---
@@ -211,6 +212,12 @@ export default function BioPage() {
   // --- DESIGN MODAL STATE ---
   const [designModal, setDesignModal] = useState<string | null>(null);
 
+  // --- SHOP STATE ---
+  const [products, setProducts] = useState<any[]>([]);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [uploadingProduct, setUploadingProduct] = useState(false);
+  const [newProduct, setNewProduct] = useState({ title: '', price: '', description: '', link: '', image: null as File | null });
+
   const supabase = createClientComponentClient();
   const router = useRouter();
 
@@ -257,6 +264,18 @@ export default function BioPage() {
     if (error) console.error('Error fetching notifications:', error);
     else setNotifications(data || []);
     setNotifLoading(false);
+  };
+
+  // --- FETCH PRODUCTS ---
+  const fetchProducts = async () => {
+    if (!session?.user?.id) return;
+    const { data, error } = await supabase
+      .from('shop_products')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+    if (error) console.error('Error fetching products:', error);
+    else setProducts(data || []);
   };
 
   // --- SIMPAN PROFIL ---
@@ -345,6 +364,54 @@ export default function BioPage() {
     };
     setUser((prev: any) => ({ ...prev, design_settings: { ...prev.design_settings, ...newDesign } }));
     toast.success('Desain telah disempurnakan!');
+  };
+
+  // --- SHOP CRUD ---
+  const handleAddProduct = async () => {
+    if (!newProduct.title || !newProduct.price) {
+      toast.error('Nama dan harga wajib diisi!');
+      return;
+    }
+    setUploadingProduct(true);
+    try {
+      let imageUrl = null;
+      if (newProduct.image) {
+        const fileExt = newProduct.image.name.split('.').pop();
+        const fileName = `shop-${session.user.id}-${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('products')
+          .upload(fileName, newProduct.image, { upsert: true });
+        if (uploadError) throw new Error('Gagal upload gambar');
+        const { data: urlData } = supabase.storage.from('products').getPublicUrl(fileName);
+        imageUrl = urlData.publicUrl;
+      }
+
+      const { error } = await supabase.from('shop_products').insert({
+        user_id: session.user.id,
+        title: newProduct.title,
+        price: newProduct.price,
+        description: newProduct.description,
+        product_link: newProduct.link,
+        image_url: imageUrl,
+      });
+
+      if (error) throw new Error(error.message);
+      toast.success('Produk berhasil ditambahkan!');
+      setShowProductModal(false);
+      setNewProduct({ title: '', price: '', description: '', link: '', image: null });
+      fetchProducts();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setUploadingProduct(false);
+    }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus produk ini?')) return;
+    const { error } = await supabase.from('shop_products').delete().eq('id', id);
+    if (error) toast.error('Gagal menghapus produk');
+    else { toast.success('Produk dihapus'); fetchProducts(); }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat dashboard...</div>;
@@ -524,9 +591,40 @@ export default function BioPage() {
             </div>
           )}
 
-          {/* --- TAB: SHOP (Percantik ala Linktree) --- */}
+          {/* --- TAB: SHOP (Percantik ala Linktree + FUNGSIONAL) --- */}
           {activeTab === 'shop' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6 relative">
+              {/* Modal Tambah Produk */}
+              {showProductModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                  <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
+                    <button onClick={() => setShowProductModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
+                    <h3 className="text-lg font-bold text-slate-800 mb-4">Tambah Produk Baru</h3>
+                    <div className="space-y-3">
+                      <input type="text" placeholder="Nama Produk" value={newProduct.title} onChange={(e) => setNewProduct({...newProduct, title: e.target.value})} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                      <input type="text" placeholder="Harga (misal: Rp 50.000)" value={newProduct.price} onChange={(e) => setNewProduct({...newProduct, price: e.target.value})} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                      <input type="text" placeholder="Link Produk (opsional)" value={newProduct.link} onChange={(e) => setNewProduct({...newProduct, link: e.target.value})} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                      <textarea placeholder="Deskripsi (opsional)" value={newProduct.description} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" rows={2} />
+                      
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => document.getElementById('product-image-input')?.click()}>
+                        <input id="product-image-input" type="file" accept="image/*" className="hidden" onChange={(e) => setNewProduct({...newProduct, image: e.target.files?.[0] || null})} />
+                        {newProduct.image ? (
+                          <div className="flex items-center justify-center gap-2 text-blue-600">
+                            <Upload size={16} /> <span className="text-sm">{newProduct.image.name}</span>
+                          </div>
+                        ) : (
+                          <div className="text-slate-400 text-sm">Upload Gambar Produk</div>
+                        )}
+                      </div>
+
+                      <button onClick={handleAddProduct} disabled={uploadingProduct} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex justify-center gap-2">
+                        {uploadingProduct ? <Loader2 className="animate-spin" /> : 'Simpan Produk'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2"><Store size={20} className="text-green-600" /><h3 className="text-lg font-bold text-slate-800">My Shop</h3></div>
                 <div className="flex gap-2 bg-slate-100 rounded-full p-1">
@@ -536,23 +634,31 @@ export default function BioPage() {
               </div>
               <p className="text-sm text-slate-500">Copy and paste links from anywhere to start selling.</p>
               
-              <button className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-colors shadow-sm">
+              <button onClick={() => setShowProductModal(true)} className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-colors shadow-sm">
                 <Plus size={20} /> Add
               </button>
 
               <div className="grid grid-cols-2 gap-4 mt-4">
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 relative group hover:shadow-md transition-all">
-                  <div className="w-full aspect-square bg-slate-200 rounded-lg mb-2 flex items-center justify-center text-slate-400"><Package size={32} /></div>
-                  <p className="text-sm font-medium text-slate-800">Summer Fridays Lip Oil</p>
-                  <p className="text-xs text-slate-500">$20</p>
-                  <button className="absolute top-2 right-2 text-slate-400 hover:text-red-500 bg-white rounded-full p-1 shadow-sm"><Trash2 size={14} /></button>
-                </div>
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 relative group hover:shadow-md transition-all">
-                  <div className="w-full aspect-square bg-slate-200 rounded-lg mb-2 flex items-center justify-center text-slate-400"><Package size={32} /></div>
-                  <p className="text-sm font-medium text-slate-800">K18 Hair Mask</p>
-                  <p className="text-xs text-slate-500">$45</p>
-                  <button className="absolute top-2 right-2 text-slate-400 hover:text-red-500 bg-white rounded-full p-1 shadow-sm"><Trash2 size={14} /></button>
-                </div>
+                {products.length > 0 ? (
+                  products.map((prod) => (
+                    <div key={prod.id} className="bg-slate-50 rounded-xl p-4 border border-slate-100 relative group hover:shadow-md transition-all">
+                      <div className="w-full aspect-square bg-slate-200 rounded-lg mb-2 flex items-center justify-center text-slate-400 overflow-hidden">
+                        {prod.image_url ? (
+                          <img src={prod.image_url} alt={prod.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <Package size={32} />
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-slate-800 truncate">{prod.title}</p>
+                      <p className="text-xs text-slate-500">{prod.price}</p>
+                      <button onClick={() => handleDeleteProduct(prod.id)} className="absolute top-2 right-2 text-slate-400 hover:text-red-500 bg-white rounded-full p-1 shadow-sm transition-colors"><Trash2 size={14} /></button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-2 py-8 text-center text-slate-400 text-sm">
+                    Belum ada produk. Klik "+ Add" untuk memulai.
+                  </div>
+                )}
               </div>
             </div>
           )}
