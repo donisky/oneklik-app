@@ -6,7 +6,8 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
   Crown, LogOut, FileText, FileCheck, User, Layout, Trash2, AlertTriangle, X, 
-  Menu, Home, Wand2, Store, Palette, Bell, ChevronRight
+  Menu, Home, Wand2, Store, Palette, Bell, ChevronRight,
+  Link as LinkIcon, QrCode // Tambahkan ikon baru
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -218,6 +219,18 @@ export default function Dashboard() {
             <Link href="/templates">
               <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
                 <Palette className="w-4 h-4" /> Templates
+              </div>
+            </Link>
+            {/* --- MENU BARU: SHORT LINK & QR --- */}
+            <Link href="/tools/url-shortener">
+              <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                <LinkIcon className="w-4 h-4" /> Short Link & QR
+              </div>
+            </Link>
+            {/* --- MENU BARU: FILE TO QR --- */}
+            <Link href="/tools/file-qr">
+              <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                <QrCode className="w-4 h-4" /> File to QR
               </div>
             </Link>
           </div>

@@ -59,6 +59,30 @@ const features = [
     icon2: (
       <path d="M8 8H16" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     )
+  },
+  {
+    title: 'URL Shortener & QR',
+    desc: 'Persingkat link dan dapatkan QR code otomatis. Custom link untuk premium.',
+    link: '/tools/url-shortener',
+    gradient: 'url(#shortener_gradient)',
+    icon: (
+      <path d="M14 4h-4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm-6 0h-4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    ),
+    icon2: (
+      <path d="M22 10v4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    )
+  },
+  {
+    title: 'File to QR Code',
+    desc: 'Upload file apapun dan dapatkan QR code untuk berbagi dengan mudah.',
+    link: '/tools/file-qr',
+    gradient: 'url(#fileqr_gradient)',
+    icon: (
+      <path d="M4 16l4.586-4.586a2 2 0 0 1 2.828 0L16 16m-2-2l1.586-1.586a2 2 0 0 1 2.828 0L20 14m-6-6h.01" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    ),
+    icon2: (
+      <path d="M8 20h8a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    )
   }
 ];
 
@@ -70,26 +94,47 @@ const extraFeatures = [
   { title: 'Keamanan Enkripsi', desc: 'Data Anda dilindungi dengan enkripsi end-to-end.', icon: ShieldCheck },
 ];
 
-// --- PRICING PLANS (DIUBAH SESUAI STRATEGI HARGA BARU) ---
+// --- PRICING PLANS ---
 const pricingPlans = [
   {
     name: 'Gratis',
     price: 'Rp 0',
-    features: ['1 Halaman Bio', 'Alat PDF Dasar', 'Generator CV Standar', 'Template Standar'],
+    features: [
+      '1 Halaman Bio',
+      'Alat PDF Dasar',
+      'Generator CV Standar',
+      'Template Standar',
+      'Short Link & QR Dasar'
+    ],
     cta: 'Mulai Gratis',
     popular: false
   },
   {
     name: 'Premium',
     price: 'Rp 49.000',
-    features: ['Bio Link Tanpa Batas', 'Alat PDF Canggih', '100+ Template CV Premium', 'Dukung Kustom Domain', 'Analitik Real-Time', 'Hapus Watermark', 'Dukungan Prioritas'],
+    features: [
+      'Bio Link Tanpa Batas',
+      'Alat PDF Canggih',
+      '100+ Template CV Premium',
+      'Dukung Kustom Domain',
+      'Analitik Real-Time',
+      'Hapus Watermark',
+      'Dukungan Prioritas',
+      'Custom Short Link & QR Design'
+    ],
     cta: 'Upgrade Sekarang',
     popular: true
   },
   {
     name: 'Enterprise',
     price: 'Custom',
-    features: ['Unlimited Bio', 'API Access', 'Dedicated Support', 'Private Cloud'],
+    features: [
+      'Unlimited Bio',
+      'API Access',
+      'Dedicated Support',
+      'Private Cloud',
+      'Bulk Short Link & QR Generation'
+    ],
     cta: 'Hubungi Sales',
     popular: false
   }
@@ -223,8 +268,11 @@ export default function Home() {
             <Link href="/templates" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
               <Crown size={16} className="text-yellow-500" /> Templates
             </Link>
-            <Link href="/tools/shortener" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
+            <Link href="/tools/url-shortener" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
               <LinkIcon size={16} /> Short Link
+            </Link>
+            <Link href="/tools/file-qr" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
+              <QrCode size={16} /> File QR
             </Link>
 
             {/* AUTH SECTION */}
@@ -262,7 +310,8 @@ export default function Home() {
             <Link href="/tools/pdf" className="block text-gray-600 hover:text-blue-600 py-2">Alat PDF</Link>
             <Link href="/tools/cv" className="block text-gray-600 hover:text-blue-600 py-2">Generator CV</Link>
             <Link href="/templates" className="block text-gray-600 hover:text-blue-600 py-2">Templates</Link>
-            <Link href="/tools/shortener" className="block text-gray-600 hover:text-blue-600 py-2">Short Link</Link>
+            <Link href="/tools/url-shortener" className="block text-gray-600 hover:text-blue-600 py-2">Short Link</Link>
+            <Link href="/tools/file-qr" className="block text-gray-600 hover:text-blue-600 py-2">File QR</Link>
             {session ? (
               <div className="border-t border-gray-200 pt-4 space-y-2">
                 <Link href="/dashboard" className="block text-center bg-blue-600 text-white px-4 py-3 rounded-full font-bold">Dashboard</Link>
@@ -293,7 +342,7 @@ export default function Home() {
               Kelola Semua <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Kebutuhan Digital</span> dalam Satu Platform
             </h1>
             <p className="text-xl text-slate-600 max-w-lg mx-auto md:mx-0 mb-10 leading-relaxed">
-              Bio Link, alat PDF profesional, dan pembuat CV instan. Dibangun untuk kreator, pebisnis, dan profesional modern.
+              Bio Link, alat PDF profesional, pembuat CV instan, short link, dan QR code. Dibangun untuk kreator, pebisnis, dan profesional modern.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
               {session ? (
@@ -434,6 +483,14 @@ export default function Home() {
                 <stop offset="0%" stopColor="#10b981"/>
                 <stop offset="100%" stopColor="#34d399"/>
               </linearGradient>
+              <linearGradient id="shortener_gradient" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#8b5cf6"/>
+                <stop offset="100%" stopColor="#3b82f6"/>
+              </linearGradient>
+              <linearGradient id="fileqr_gradient" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#ec4899"/>
+                <stop offset="100%" stopColor="#f43f5e"/>
+              </linearGradient>
             </defs>
           </svg>
         </section>
@@ -460,7 +517,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* --- BAGIAN PRICING / HARGA (SUDAH DIMODIFIKASI DENGAN LOGIKA PREMIUM) --- */}
+        {/* --- BAGIAN PRICING / HARGA --- */}
         <section className="py-24 md:py-32 max-w-6xl mx-auto px-6">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Harga yang <span className="text-blue-600">Transparan</span></h2>
@@ -491,7 +548,7 @@ export default function Home() {
                   ))}
                 </ul>
 
-                {/* --- LOGIKA TOMBOL YANG DIPERBARUI --- */}
+                {/* LOGIKA TOMBOL */}
                 {plan.name === 'Premium' ? (
                   userProfile?.is_premium ? (
                     <div className="block w-full text-center py-3 rounded-xl font-bold bg-green-100 text-green-700 cursor-default">
