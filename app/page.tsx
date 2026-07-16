@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, FileText, FileCheck, ArrowRight, ChevronDown, Menu, X, Crown,
   Lock, Zap, CheckCircle2, Globe, BarChart3, Share2, Download, Layers,
-  ShieldCheck, Cloud, Settings
+  ShieldCheck, Cloud, Settings, Link as LinkIcon, QrCode
 } from 'lucide-react';
 
 // --- ANIMATION VARIANTS ---
@@ -223,6 +223,9 @@ export default function Home() {
             <Link href="/templates" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
               <Crown size={16} className="text-yellow-500" /> Templates
             </Link>
+            <Link href="/tools/shortener" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
+              <LinkIcon size={16} /> Short Link
+            </Link>
 
             {/* AUTH SECTION */}
             {!authLoading && (
@@ -259,6 +262,7 @@ export default function Home() {
             <Link href="/tools/pdf" className="block text-gray-600 hover:text-blue-600 py-2">Alat PDF</Link>
             <Link href="/tools/cv" className="block text-gray-600 hover:text-blue-600 py-2">Generator CV</Link>
             <Link href="/templates" className="block text-gray-600 hover:text-blue-600 py-2">Templates</Link>
+            <Link href="/tools/shortener" className="block text-gray-600 hover:text-blue-600 py-2">Short Link</Link>
             {session ? (
               <div className="border-t border-gray-200 pt-4 space-y-2">
                 <Link href="/dashboard" className="block text-center bg-blue-600 text-white px-4 py-3 rounded-full font-bold">Dashboard</Link>
