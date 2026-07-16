@@ -81,17 +81,40 @@ export default function Dashboard() {
   // --- FETCH DATA USER ---
   useEffect(() => {
     const getData = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      if (session) {
-        let { data: userData } = await supabase.from('users').select('*').eq('id', session.user.id).single();
-        if (!userData) {
-          const { data: newUser } = await supabase.from('users').insert({ id: session.user.id, full_name: '', username: '' }).select().single();
-          userData = newUser;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        if (session) {
+          // Gunakan maybeSingle agar tidak error jika data belum ada
+          let { data: userData } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+          if (!userData) {
+            // Jika belum ada, buat data baru
+            const fallbackUsername = `user-${session.user.id.slice(0, 8)}`;
+            const { data: newUser } = await supabase
+              .from('users')
+              .insert({ 
+                id: session.user.id, 
+                full_name: '', 
+                username: fallbackUsername,
+                selected_template: '1'
+              })
+              .select()
+              .maybeSingle();
+            userData = newUser;
+          }
+          setUser(userData);
         }
-        setUser(userData);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching user:', err);
+        toast.error('Gagal memuat data user');
+        setLoading(false);
       }
-      setLoading(false);
     };
     getData();
   }, [supabase]);
