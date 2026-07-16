@@ -66,6 +66,18 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
               {link.title}
             </a>
           ))}
+          {/* Tambahan tombol Shop jika ada */}
+          {user?.shop_link && (
+            <a 
+              href={user.shop_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full py-2.5 px-3 rounded-xl font-medium transition-all hover:scale-105 flex items-center justify-center gap-2 shadow-sm text-xs"
+              style={{ backgroundColor: '#22c55e', color: '#ffffff' }}
+            >
+              🛍️ Shop
+            </a>
+          )}
           {(!links || links.length === 0) && (
             <p className="text-white/50 text-[10px] italic">Belum ada link.</p>
           )}
@@ -344,8 +356,9 @@ export default function BioPage() {
     }
   };
 
+  // --- PERBAIKAN: Gunakan window.location.origin untuk URL publik ---
   const handleCopyUrl = () => {
-    const url = `oneklik.id/${user?.username}`;
+    const url = `${window.location.origin}/${user?.username}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -708,7 +721,7 @@ export default function BioPage() {
                 {copied ? <CheckCircle2 size={14} className="text-green-600" /> : <Copy size={14} />}
                 {copied ? 'Disalin' : 'Salin'}
               </button>
-              <ShareDropdown url={`oneklik.id/${user?.username}`} />
+              <ShareDropdown url={`${window.location.origin}/${user?.username}`} />
             </div>
           </div>
           <div className="flex flex-col items-center">
