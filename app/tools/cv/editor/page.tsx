@@ -13,6 +13,7 @@ import {
 import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
+import toast, { Toaster } from 'react-hot-toast';
 
 // --- TAMBAHAN: Import Custom Hook AI ---
 import { useAIChat } from '@/app/hooks/useAIChat';
@@ -70,23 +71,23 @@ interface CVData {
 }
 
 // ==========================================
-// 2. KONFIGURASI TEMPLATE
+// 2. KONFIGURASI TEMPLATE (DENGAN INFORMASI PREMIUM)
 // ==========================================
 const TEMPLATES = [
-  { id: 'classic', name: 'Klasik' },
-  { id: 'modern', name: 'Modern' },
-  { id: 'professional', name: 'Profesional' },
-  { id: 'elegant', name: 'Elegan' },
-  { id: 'creative', name: 'Kreatif' },
-  { id: 'minimalist', name: 'Minimalis' },
-  { id: 'circular', name: 'Melingkar' },
-  { id: 'vertical', name: 'Vertikal' },
-  { id: 'horizontal', name: 'Horizontal' },
-  { id: 'casual', name: 'Kasual' },
-  { id: 'chrono', name: 'Kronologis' },
-  { id: 'luxury', name: 'Mewah' },
-  { id: 'metro', name: 'Metro' },
-  { id: 'simple', name: 'Sederhana' },
+  { id: 'classic', name: 'Klasik', isPremium: false },
+  { id: 'modern', name: 'Modern', isPremium: false },
+  { id: 'professional', name: 'Profesional', isPremium: true },
+  { id: 'elegant', name: 'Elegan', isPremium: true },
+  { id: 'creative', name: 'Kreatif', isPremium: true },
+  { id: 'minimalist', name: 'Minimalis', isPremium: false },
+  { id: 'circular', name: 'Melingkar', isPremium: true },
+  { id: 'vertical', name: 'Vertikal', isPremium: false },
+  { id: 'horizontal', name: 'Horizontal', isPremium: true },
+  { id: 'casual', name: 'Kasual', isPremium: false },
+  { id: 'chrono', name: 'Kronologis', isPremium: true },
+  { id: 'luxury', name: 'Mewah', isPremium: true },
+  { id: 'metro', name: 'Metro', isPremium: false },
+  { id: 'simple', name: 'Sederhana', isPremium: false },
 ];
 
 const defaultCVData: CVData = {
@@ -1303,6 +1304,7 @@ function EditorContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isPremiumUser, setIsPremiumUser] = useState(false);
 
   const supabase = createClientComponentClient();
 
@@ -1329,11 +1331,32 @@ function EditorContent() {
   }, [cvData]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
+      if (session) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('is_premium')
+          .eq('id', session.user.id)
+          .single();
+        setIsPremiumUser(userData?.is_premium || false);
+      }
       setLoading(false);
     });
   }, [supabase]);
+
+  // --- PROTEKSI PREMIUM SAAT PERTAMA KALI DIMUAT ---
+  useEffect(() => {
+    if (!loading && session) {
+      const templateInfo = TEMPLATES.find(t => t.id === selectedTemplate);
+      if (templateInfo?.isPremium && !isPremiumUser) {
+        toast.error('Template ini hanya untuk pengguna Premium. Silakan upgrade.');
+        setTimeout(() => {
+          router.push('/upgrade');
+        }, 1500);
+      }
+    }
+  }, [loading, session, selectedTemplate, isPremiumUser, router]);
 
   const handleSave = () => {
     setIsSaving(true);
@@ -1343,8 +1366,18 @@ function EditorContent() {
     }, 600);
   };
 
-  // --- UBAH UNDUH MENJADI PDF (METODE CLONING ANTI-POTONG) ---
+  // --- PROTEKSI DOWNLOAD ---
   const handleDownload = async () => {
+    // Cek jika template premium dan user tidak premium
+    const templateInfo = TEMPLATES.find(t => t.id === selectedTemplate);
+    if (templateInfo?.isPremium && !isPremiumUser) {
+      toast.error('Template premium tidak bisa diunduh. Silakan upgrade akun Anda.');
+      setTimeout(() => {
+        router.push('/upgrade');
+      }, 1500);
+      return;
+    }
+
     const originalElement = document.getElementById('cv-preview-container');
     if (!originalElement) return;
     try {
@@ -1392,8 +1425,18 @@ function EditorContent() {
     } catch (err) {
       console.error('PDF download error:', err);
       if (originalElement) originalElement.style.opacity = '1';
-      alert('Gagal mengunduh PDF. Cek console browser.');
+      toast.error('Gagal mengunduh PDF. Cek console browser.');
     }
+  };
+
+  // --- GANTI TEMPLATE DENGAN PROTEKSI ---
+  const handleTemplateChange = (newTemplateId: string) => {
+    const templateInfo = TEMPLATES.find(t => t.id === newTemplateId);
+    if (templateInfo?.isPremium && !isPremiumUser) {
+      toast.error('Template ini hanya untuk pengguna Premium. Silakan upgrade.');
+      return; // Jangan ganti template
+    }
+    setSelectedTemplate(newTemplateId);
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -1421,6 +1464,7 @@ function EditorContent() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden font-sans">
+      <Toaster position="top-center" />
       <header className="bg-[#1e1b4b] text-white p-4 flex justify-between items-center shadow-md shrink-0 z-10">
         <div className="flex items-center gap-4">
           <button onClick={() => router.push('/tools/cv')} className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
@@ -1432,7 +1476,11 @@ function EditorContent() {
         <div className="flex items-center gap-2">
           <div className="hidden md:flex items-center bg-white/10 rounded-lg px-3 py-1.5">
             <Palette size={16} className="mr-2 text-gray-300" />
-            <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value)} className="bg-transparent text-white text-sm border-none outline-none cursor-pointer">
+            <select 
+              value={selectedTemplate} 
+              onChange={(e) => handleTemplateChange(e.target.value)} 
+              className="bg-transparent text-white text-sm border-none outline-none cursor-pointer"
+            >
               {TEMPLATES.map((t) => (
                 <option key={t.id} value={t.id} className="text-black">{t.name}</option>
               ))}
@@ -1454,7 +1502,7 @@ function EditorContent() {
         <div className="md:hidden bg-white border-b border-gray-200 p-4 shadow-sm z-10">
           <div className="flex items-center gap-2">
             <Palette size={18} className="text-gray-500" />
-            <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value)} className="w-full border-gray-200 border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6d28d9]">
+            <select value={selectedTemplate} onChange={(e) => handleTemplateChange(e.target.value)} className="w-full border-gray-200 border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6d28d9]">
               {TEMPLATES.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}

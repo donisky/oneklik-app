@@ -6,6 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Crown, ArrowLeft } from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
 
 // --- DATA PROFIL PALSU (DUMMY) UNTUK PREVIEW TEMPLATE ---
 const dummyProfile = {
@@ -463,6 +464,49 @@ export default function CVTemplatesPage() {
     return cvTemplates;
   }, [filter]);
 
+  // --- Fungsi menangani klik template dengan proteksi premium ---
+  const handleSelectTemplate = async (templateId: string) => {
+    // 1. Cek session terlebih dahulu
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      // Belum login -> arahkan ke login
+      supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/upgrade?next=' + window.location.pathname
+        }
+      });
+      return;
+    }
+
+    // 2. Cari informasi template apakah premium
+    const templateInfo = cvTemplates.find(t => t.id === templateId);
+    if (!templateInfo) {
+      toast.error('Template tidak ditemukan.');
+      return;
+    }
+
+    // 3. Jika template premium, cek status premium user
+    if (templateInfo.isPremium) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('is_premium')
+        .eq('id', session.user.id)
+        .single();
+
+      if (!userData?.is_premium) {
+        toast.error('Template ini hanya untuk pengguna Premium. Silakan upgrade akun Anda.');
+        setTimeout(() => {
+          router.push('/upgrade');
+        }, 1500);
+        return;
+      }
+    }
+
+    // 4. Jika lolos semua (bisa gratis atau premium dengan status premium), arahkan ke editor
+    router.push(`/tools/cv/editor?template=${templateId}`);
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading...</div>;
   }
@@ -495,10 +539,6 @@ export default function CVTemplatesPage() {
   }
 
   // --- KONTEN CV (SUDAH LOGIN) ---
-  const handleSelectTemplate = (templateId: string) => {
-    router.push(`/tools/cv/editor?template=${templateId}`);
-  };
-
   const filterOptions: { value: FilterType; label: string }[] = [
     { value: 'all', label: 'Semua' },
     { value: 'free', label: 'Gratis' },
@@ -507,6 +547,7 @@ export default function CVTemplatesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-6">
+      <Toaster position="top-center" />
       <div className="max-w-6xl mx-auto">
         {/* Breadcrumb / Kembali ke Landing Page */}
         <Link href="/" className="inline-flex items-center text-gray-500 hover:text-blue-600 mb-6 transition-colors">

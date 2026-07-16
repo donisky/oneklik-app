@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { motion } from 'framer-motion';
 import { Lock, Crown, ArrowLeft, Instagram, Youtube, Music, Twitter, Linkedin, Globe } from 'lucide-react';
 import { templates } from '@/app/lib/templateData';
+import toast, { Toaster } from 'react-hot-toast';
 
 const SocialIcon = ({ name }: { name: string }) => {
   switch(name) {
@@ -21,92 +22,59 @@ const SocialIcon = ({ name }: { name: string }) => {
 
 export default function TemplatesPage() {
   const [selectedCategory, setSelectedCategory] = useState('Semua Template');
-  const [isPremium, setIsPremium] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const supabase = createClientComponentClient();
 
-  useEffect(() => {
-    const checkPremiumStatus = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        // Belum login, arahkan ke login page (atau biarkan login flow di handleSelectTemplate)
-        // Tapi untuk akses halaman ini, kita minta login dulu
-        router.push('/dashboard'); // atau redirect ke login
-        return;
-      }
+  const filteredTemplates = selectedCategory === 'Semua Template' 
+    ? templates 
+    : templates.filter(t => t.category === selectedCategory);
 
+  const handleSelectTemplate = async (template: typeof templates[0]) => {
+    // 1. Cek session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { 
+          redirectTo: window.location.origin + '/templates' 
+        }
+      });
+      return;
+    }
+
+    // 2. Jika template premium, cek status premium user
+    if (template.isPremium) {
       const { data: userData } = await supabase
         .from('users')
         .select('is_premium')
         .eq('id', session.user.id)
         .single();
 
-      setIsPremium(userData?.is_premium || false);
-      setLoading(false);
-
-      // Jika tidak premium, redirect ke halaman upgrade
       if (!userData?.is_premium) {
-        router.replace('/upgrade?next=/templates');
+        toast.error('Template ini hanya untuk pengguna Premium. Silakan upgrade akun Anda.');
+        setTimeout(() => {
+          router.push('/upgrade');
+        }, 1500);
+        return;
       }
-    };
-
-    checkPremiumStatus();
-  }, [router, supabase]);
-
-  const filteredTemplates = selectedCategory === 'Semua Template' 
-    ? templates 
-    : templates.filter(t => t.category === selectedCategory);
-
-  const handleSelectTemplate = async (id: number) => {
-    // Jika belum premium, seharusnya sudah di-redirect, tapi ini jaga-jaga
-    if (!isPremium) {
-      router.push('/upgrade?next=/templates');
-      return;
     }
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { 
-          redirectTo: window.location.origin + '/upgrade?next=/templates' 
-        }
-      });
-      return;
-    }
-
+    // 3. Simpan pilihan template
     const { error } = await supabase
       .from('users')
-      .update({ selected_template: id.toString() })
+      .update({ selected_template: template.id.toString() })
       .eq('id', session.user.id);
 
     if (!error) {
       router.push('/bio');
     } else {
-      alert('Gagal menyimpan template: ' + error.message);
+      toast.error('Gagal menyimpan template: ' + error.message);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Memeriksa status akun...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Jika isPremium null atau false (tapi seharusnya sudah redirect), tampilkan ini
-  if (isPremium === false) {
-    return null; // Redirect sudah dilakukan di useEffect
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      <Toaster position="top-center" />
       {/* SIDEBAR KATEGORI */}
       <aside className="w-64 bg-white border-r border-gray-200 min-h-screen hidden md:block pt-8 px-4">
         <Link href="/" className="text-2xl font-bold text-blue-600 mb-8 block px-2 hover:opacity-80">Oneklik.id</Link>
@@ -161,7 +129,7 @@ export default function TemplatesPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: index * 0.1 }}
               className="group relative w-full max-w-[340px] mx-auto cursor-pointer"
-              onClick={() => handleSelectTemplate(template.id)}
+              onClick={() => handleSelectTemplate(template)}
             >
               {/* --- MOCKUP IPHONE 17 (BEZEL & DYNAMIC ISLAND) --- */}
               <div className="relative aspect-[9/16] rounded-[3.5rem] border-[8px] border-[#1a1a1a] bg-black overflow-hidden shadow-2xl">
