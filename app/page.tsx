@@ -179,6 +179,7 @@ const footerData = {
   legal: [
     { label: 'Syarat & Ketentuan', href: '/terms' },
     { label: 'Kebijakan Privasi', href: '/privacy' },
+    { label: 'Kebijakan Pengembalian Dana', href: '/refund-policy' }, // <--- BARU DITAMBAHKAN
     { label: 'Pusat Kepercayaan', href: '/trust' },
     { label: 'Preferensi Kuki', href: '/cookies' },
   ],
