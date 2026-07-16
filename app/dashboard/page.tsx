@@ -10,6 +10,57 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+// --- Modal Notifikasi (Identik dengan yang ada di halaman Bio) ---
+const NotificationModal = ({ isOpen, onClose, notifications, loading, tab, setTab }: any) => {
+  if (!isOpen) return null;
+  
+  const filtered = notifications.filter((n: any) => {
+    if (tab === 'All') return true;
+    return n.type.toLowerCase() === tab.toLowerCase();
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
+        <h2 className="text-lg font-bold text-center text-slate-800 mb-6">Notifikasi</h2>
+        <div className="flex justify-center gap-2 mb-6">
+          {['All', 'Updates', 'Opportunities', 'Insights'].map((t) => (
+            <button 
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${tab === t ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-col items-center justify-center py-4 min-h-[200px]">
+          {loading ? (
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          ) : filtered.length > 0 ? (
+            <div className="w-full space-y-3">
+              {filtered.map((notif: any) => (
+                <div key={notif.id} className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <p className="font-medium text-slate-800 text-sm">{notif.title}</p>
+                  {notif.message && <p className="text-xs text-slate-500">{notif.message}</p>}
+                  <span className="text-[10px] text-slate-400 mt-1 block">{new Date(notif.created_at).toLocaleDateString()}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <Bell size={48} className="text-slate-200 mb-3" />
+              <p className="font-medium text-slate-600">Belum ada notifikasi</p>
+              <p className="text-xs text-slate-400">Pesan, fitur baru, dan insight akan muncul di sini.</p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function Dashboard() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -18,9 +69,16 @@ export default function Dashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // --- STATE NOTIFIKASI ---
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifTab, setNotifTab] = useState('All');
+
   const supabase = createClientComponentClient();
   const router = useRouter();
 
+  // --- FETCH DATA USER ---
   useEffect(() => {
     const getData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -37,6 +95,20 @@ export default function Dashboard() {
     };
     getData();
   }, [supabase]);
+
+  // --- FETCH NOTIFICATIONS ---
+  const fetchNotifications = async () => {
+    if (!session?.user?.id) return;
+    setNotifLoading(true);
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+    if (error) console.error('Error fetching notifications:', error);
+    else setNotifications(data || []);
+    setNotifLoading(false);
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -155,7 +227,10 @@ export default function Dashboard() {
               <h2 className="text-2xl font-bold text-slate-800">Selamat Datang, {user?.full_name || 'Pengguna'} 👋</h2>
               <p className="text-sm text-slate-500 mt-1">Kelola semua kebutuhan digital Anda dalam satu tempat.</p>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+            <button 
+              onClick={() => { setIsNotificationOpen(true); fetchNotifications(); }}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+            >
               <Bell className="w-4 h-4" /> Notifikasi
             </button>
           </div>
@@ -278,6 +353,16 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* --- NOTIFICATION MODAL --- */}
+      <NotificationModal 
+        isOpen={isNotificationOpen} 
+        onClose={() => setIsNotificationOpen(false)} 
+        notifications={notifications} 
+        loading={notifLoading} 
+        tab={notifTab} 
+        setTab={setNotifTab} 
+      />
     </div>
   );
 }
