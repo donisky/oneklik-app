@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, AlertTriangle, Send } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Send, Mail } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function ReportPage() {
@@ -42,6 +42,22 @@ export default function ReportPage() {
             <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900">Laporkan Masalah</h1>
           </div>
           <p className="text-slate-500 mb-6">Ada bug atau masalah di website kami? Laporkan kepada kami agar bisa segera diperbaiki.</p>
+
+          {/* --- TAMBAHAN: INTEGRASI EMAIL SUPPORT --- */}
+          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <a 
+              href="mailto:support@oneklik.my.id?subject=Laporan%20Masalah%20Oneklik.id"
+              className="flex items-center gap-3 text-red-600 hover:text-red-700 transition-colors"
+            >
+              <Mail size={18} />
+              <div>
+                <p className="font-medium">Hubungi Tim Support Langsung</p>
+                <p className="text-xs text-red-500">support@oneklik.my.id</p>
+              </div>
+            </a>
+          </div>
+          {/* -------------------------------------- */}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Email Anda</label>

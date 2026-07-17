@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Send } from 'lucide-react';
+import { ArrowLeft, Send, Mail } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function ContactPage() {
@@ -18,7 +18,7 @@ export default function ContactPage() {
       return;
     }
     setLoading(true);
-    // Simulasi pengiriman
+    // Simulasi pengiriman (nanti bisa diarahkan ke API email atau mailto)
     setTimeout(() => {
       toast.success('Pesan Anda telah terkirim! Kami akan segera menghubungi Anda.');
       setName('');
@@ -37,7 +37,39 @@ export default function ContactPage() {
         </Link>
         <div className="bg-white/80 backdrop-blur-sm p-8 md:p-12 rounded-3xl border border-slate-200 shadow-xl shadow-slate-100/50">
           <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-2">Hubungi Kami</h1>
-          <p className="text-slate-500 mb-6">Punya pertanyaan atau saran untuk Oneklik.id? Kami senang mendengarnya!</p>
+          <p className="text-slate-500 mb-6">Punya pertanyaan, kritik, atau saran untuk Oneklik.id? Kami senang mendengarnya!</p>
+
+          {/* --- TAMBAHAN: INTEGRASI EMAIL LANGSUNG --- */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <a 
+              href="mailto:info@oneklik.my.id?subject=Informasi%20Umum%20Oneklik.id"
+              className="group flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors"
+            >
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white">
+                <Mail size={18} />
+              </div>
+              <div>
+                <p className="font-medium text-slate-800 group-hover:text-blue-600 transition-colors">Info Umum</p>
+                <p className="text-xs text-slate-500">info@oneklik.my.id</p>
+              </div>
+            </a>
+
+            <a 
+              href="mailto:admin@oneklik.my.id?subject=Admin%20Oneklik.id"
+              className="group flex items-center gap-4 p-4 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors"
+            >
+              <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white">
+                <Mail size={18} />
+              </div>
+              <div>
+                <p className="font-medium text-slate-800 group-hover:text-purple-600 transition-colors">Urusan Admin / Kerjasama</p>
+                <p className="text-xs text-slate-500">admin@oneklik.my.id</p>
+              </div>
+            </a>
+          </div>
+          {/* -------------------------------------- */}
+
+          <p className="text-sm text-slate-400 mt-2 mb-4">Atau kirim pesan langsung melalui formulir di bawah ini:</p>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
