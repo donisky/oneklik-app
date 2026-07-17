@@ -18,10 +18,10 @@ export async function POST(req: Request) {
     `;
 
     const { data, error } = await resend.emails.send({
-      from: `Oneklik.id <onboarding@resend.dev>`, // Ganti nanti dengan domain Anda setelah diverifikasi di Resend
+      from: `Oneklik.id <onboarding@resend.dev>`, // Nanti ganti dengan domain Anda sendiri
       to: [to],
       subject: subject,
-      reply_to: email,
+      replyTo: email, // <--- PERBAIKAN DI SINI: reply_to menjadi replyTo
       html: emailContent,
     });
 
