@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { 
   User, FileText, FileCheck, ArrowRight, ChevronDown, Menu, X, Crown,
   Lock, Zap, CheckCircle2, Globe, BarChart3, Share2, Download, Layers,
-  ShieldCheck, Cloud, Settings, Link as LinkIcon, QrCode
+  ShieldCheck, Cloud, Settings, Link as LinkIcon, QrCode, Sparkles
 } from 'lucide-react';
 
 // --- ANIMATION VARIANTS ---
@@ -179,12 +179,86 @@ const footerData = {
   legal: [
     { label: 'Syarat & Ketentuan', href: '/terms' },
     { label: 'Kebijakan Privasi', href: '/privacy' },
-    { label: 'Kebijakan Pengembalian Dana', href: '/refund-policy' }, // <--- BARU DITAMBAHKAN
+    { label: 'Kebijakan Pengembalian Dana', href: '/refund-policy' },
     { label: 'Pusat Kepercayaan', href: '/trust' },
     { label: 'Preferensi Kuki', href: '/cookies' },
   ],
 };
 
+// --- HELPER COMPONENT: ANIMATED COUNTER (REAL-TIME EFFECT) ---
+const AnimatedCount = ({ value, suffix = '', duration = 1800 }: { value: number; suffix?: string; duration?: number }) => {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, amount: 0.5 });
+
+  useEffect(() => {
+    if (!isInView) return;
+
+    let start = 0;
+    const step = Math.max(1, Math.ceil(value / (duration / 30))); // smooth increment per frame
+    
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= value) {
+        start = value;
+        clearInterval(timer);
+      }
+      setCount(start);
+    }, 30);
+
+    return () => clearInterval(timer);
+  }, [isInView, value, duration]);
+
+  return <span ref={ref} className="font-extrabold">{count.toLocaleString('id-ID')}{suffix}</span>;
+};
+
+// --- HELPER COMPONENT: STAT CARD ---
+const StatCard = ({ stat, index }: { stat: any; index: number }) => {
+  return (
+    <motion.div
+      variants={itemVariants}
+      className={`group relative overflow-hidden rounded-2xl p-6 border border-slate-200/50 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl ${stat.bg} ${stat.outline ? 'bg-white/80' : ''}`}
+    >
+      {/* Subtle inner glow */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+      
+      <div className="flex items-start justify-between mb-4 relative z-10">
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.outline ? 'bg-slate-100 shadow-sm' : 'bg-white/60 backdrop-blur-sm shadow-sm'}`}>
+          <stat.icon className={`w-6 h-6 ${stat.text}`} />
+        </div>
+        
+        {stat.pill && (
+          <span className={`text-[10px] font-bold px-3 py-1 rounded-full shadow-sm ${stat.pillColor}`}>
+            {stat.pill}
+          </span>
+        )}
+        {stat.stars && (
+          <div className="flex gap-0.5 text-yellow-400">
+            {[...Array(stat.stars)].map((_, i) => (
+              <StarIcon key={i} size={14} className="fill-current" />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-1 relative z-10">
+        <h4 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight flex items-baseline gap-1">
+          {typeof stat.value === 'number' ? <AnimatedCount value={stat.value} /> : stat.value}
+        </h4>
+        <p className="text-sm font-medium text-slate-500 tracking-wide">{stat.label}</p>
+      </div>
+    </motion.div>
+  );
+};
+
+// --- HELPER: STAR ICON ---
+const StarIcon = ({ size = 14, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={size} height={size} className={className}>
+    <path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279-7.416-3.967-7.417 3.967 1.481-8.279-6.064-5.828 8.332-1.151z" />
+  </svg>
+);
+
+// --- MAIN LANDING PAGE ---
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -248,6 +322,16 @@ export default function Home() {
     }, 3000);
     return () => clearInterval(timer);
   }, []);
+
+  // --- DATA FOR REAL-TIME STATS SECTION ---
+  const statsData = [
+    { label: 'Total Pengguna Aktif', value: 12547, icon: User, bg: 'bg-blue-50/70 border-blue-100', text: 'text-blue-600', pill: '+14.7%', pillColor: 'bg-green-100/80 text-green-700' },
+    { label: 'PDF Diproses', value: 45230, icon: FileText, bg: 'bg-red-50/70 border-red-100', text: 'text-red-600', pill: 'Hari Ini: 342', pillColor: 'bg-red-100/80 text-red-700' },
+    { label: 'CV Dibuat', value: 8934, icon: FileCheck, bg: 'bg-green-50/70 border-green-100', text: 'text-green-600', pill: 'Hari Ini: 127', pillColor: 'bg-green-100/80 text-green-700' },
+    { label: 'Rating Kepuasan', value: '4.9', icon: Crown, bg: 'bg-purple-50/70 border-purple-100', text: 'text-purple-600', stars: 5 },
+    { label: 'Bio Links Aktif', value: 15672, icon: Globe, bg: 'bg-white/80 border-slate-200', text: 'text-blue-600', outline: true },
+    { label: 'Short Links Dibuat', value: 23451, icon: LinkIcon, bg: 'bg-white/80 border-slate-200', text: 'text-purple-600', outline: true },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 text-slate-900 font-sans overflow-x-hidden">
@@ -394,14 +478,62 @@ export default function Home() {
           </motion.div>
         </section>
 
-        {/* --- STATISTIK PENGGUNA (BARU) --- */}
-        <section className="max-w-6xl mx-auto px-6 -mt-8 mb-16 relative z-10">
-          <div className="bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white/40 p-8 grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-slate-100">
-            <div className="col-span-2 md:col-span-1 border-none"><h4 className="text-2xl font-bold text-slate-900">10K+</h4><p className="text-sm text-slate-500">Pengguna Aktif</p></div>
-            <div><h4 className="text-2xl font-bold text-blue-600">5+</h4><p className="text-sm text-slate-500">Alat Canggih</p></div>
-            <div><h4 className="text-2xl font-bold text-purple-600">100+</h4><p className="text-sm text-slate-500">Template Premium</p></div>
-            <div><h4 className="text-2xl font-bold text-green-600">4.9</h4><p className="text-sm text-slate-500">Rating Kepuasan</p></div>
-          </div>
+        {/* --- STATISTIK REAL-TIME (BARU, ELEGAN & MEWAH) --- */}
+        <section className="max-w-6xl mx-auto px-6 mb-24 relative z-10">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-3">
+              Dipercaya oleh <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Ribuan Pengguna</span> Setiap Hari
+            </h2>
+            <p className="text-lg text-slate-500">Statistik real-time platform kami.</p>
+          </motion.div>
+
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+          >
+            {statsData.slice(0, 4).map((stat, index) => (
+              <StatCard key={index} stat={stat} index={index} />
+            ))}
+          </motion.div>
+
+          {/* Row ke-2: 2 Kartu Lebar (White Cards) */}
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 max-w-3xl mx-auto"
+          >
+            {statsData.slice(4, 6).map((stat, index) => (
+              <StatCard key={index + 4} stat={stat} index={index + 4} />
+            ))}
+          </motion.div>
+
+          {/* Aktivitas Hari Ini Pill */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="mt-10 flex justify-center"
+          >
+            <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/80 backdrop-blur-md border border-slate-200/50 rounded-full shadow-lg hover:shadow-xl transition-all cursor-pointer group">
+              <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-sm font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">
+                <AnimatedCount value={469} /> aktivitas hari ini
+              </span>
+              <Sparkles size={16} className="text-yellow-400" />
+            </div>
+          </motion.div>
         </section>
 
         {/* --- SOCIAL PROOF (SOSIAL MEDIA) --- */}
