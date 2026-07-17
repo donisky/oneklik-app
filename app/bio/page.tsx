@@ -365,6 +365,26 @@ export default function BioPage() {
     }
   };
 
+  // --- HAPUS AVATAR (TAMBAHAN BARU) ---
+  const handleRemoveAvatar = async () => {
+    if (!session?.user?.id) return;
+    if (!confirm('Apakah Anda yakin ingin menghapus foto profil ini?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ avatar_url: null })
+        .eq('id', session.user.id);
+
+      if (error) throw new Error('Gagal menghapus foto: ' + error.message);
+
+      setUser((prev: any) => ({ ...prev, avatar_url: null }));
+      toast.success('Foto profil berhasil dihapus!');
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
   // --- CRUD LINK ---
   const handleAddLink = async () => {
     if (!newLinkTitle || !newLinkUrl) { toast.error('Judul dan URL wajib diisi!'); return; }
@@ -573,6 +593,17 @@ export default function BioPage() {
                         <a href="https://www.canva.com/create/profile-pictures/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700 transition-colors">
                           <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center text-[8px] text-white font-bold">C</div> Design with Canva
                         </a>
+                        
+                        {/* --- TAMBAHAN: HAPUS FOTO --- */}
+                        {user?.avatar_url && (
+                          <div 
+                            onClick={handleRemoveAvatar}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 cursor-pointer text-sm text-red-600 transition-colors"
+                          >
+                            <Trash2 size={18} />
+                            Hapus Foto
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
