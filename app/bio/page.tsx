@@ -12,7 +12,7 @@ import {
   Store, Palette, DollarSign, Users, BarChart3, X, Paintbrush,
   Facebook, Twitter, Linkedin, MessageCircle, Send,
   Image as ImageIcon, Video, Sparkles, ChevronRight, ShoppingBag, Package,
-  Upload, Loader2, Menu // <--- Tambahkan Menu
+  Upload, Loader2, Menu
 } from 'lucide-react';
 
 // --- Komponen Preview Mockup HP ---
@@ -203,7 +203,7 @@ export default function BioPage() {
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  // --- NEW: STATE UNTUK MOBILE MENU ---
+  // --- STATE UNTUK MOBILE MENU ---
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // --- NOTIFICATION STATE ---
@@ -330,14 +330,31 @@ export default function BioPage() {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `avatar-${session.user.id}-${Date.now()}.${fileExt}`;
-      // Ubah upsert menjadi true agar bisa menimpa file lama dengan nama yang sama
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { cacheControl: '3600', upsert: true });
-      if (uploadError) throw new Error('Gagal mengunggah file.');
+      
+      // Pastikan upsert true agar menimpa file lama dengan nama yang sama
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { cacheControl: '3600', upsert: true });
+
+      if (uploadError) {
+        console.error('Supabase Storage Error:', uploadError);
+        throw new Error(uploadError.message || 'Gagal mengunggah file. Cek RLS Storage bucket.');
+      }
+
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
       const publicUrl = urlData.publicUrl;
+      
+      // Update state user lokal
       setUser((prev: any) => ({ ...prev, avatar_url: publicUrl }));
-      const { error: updateError } = await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', session.user.id);
-      if (updateError) throw new Error('Gagal menyimpan URL avatar.');
+      
+      // Simpan langsung ke database
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ avatar_url: publicUrl })
+        .eq('id', session.user.id);
+
+      if (updateError) throw new Error(updateError.message || 'Gagal menyimpan URL avatar ke database.');
+
       toast.success('Foto profil berhasil diunggah!');
     } catch (error: any) {
       console.error('Upload error:', error);
@@ -363,12 +380,10 @@ export default function BioPage() {
     if (!error) { setLinks(links.filter(l => l.id !== id)); toast.success('Link berhasil dihapus!'); } else toast.error('Gagal menghapus link: ' + error.message);
   };
 
-  // --- Update handleCopyUrl ke domain oneklik.my.id ---
   const handleCopyUrl = () => {
-    const url = `https://oneklik.my.id/${user?.username}`;
+    const url = `${window.location.origin}/${user?.username}`;
     navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
     toast.success('Link URL berhasil disalin!');
   };
 
@@ -562,8 +577,18 @@ export default function BioPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0 space-y-2">
-                    <div><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nama Lengkap</label><input type="text" value={user?.full_name || ''} onChange={(e) => setUser({...user, full_name: e.target.value})} className="w-full border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 bg-transparent outline-none text-lg font-bold text-slate-800 transition-all p-1 -ml-1 placeholder:text-slate-300" placeholder="Nama Kamu" /></div>
-                    <div><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-2">Username</label><div className="flex items-center gap-1 -ml-1"><span className="text-sm text-slate-400 font-medium select-none">oneklik.id/</span><input type="text" value={user?.username || ''} onChange={(e) => setUser({...user, username: e.target.value})} className="flex-1 border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 bg-transparent outline-none text-base font-semibold text-slate-700 transition-all p-1 placeholder:text-slate-300" placeholder="username" /></div></div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nama Lengkap</label>
+                      <input type="text" value={user?.full_name || ''} onChange={(e) => setUser({...user, full_name: e.target.value})} className="w-full border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 bg-transparent outline-none text-lg font-bold text-slate-800 transition-all p-1 -ml-1 placeholder:text-slate-300" placeholder="Nama Kamu" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-2">Username</label>
+                      <div className="flex items-center gap-1 -ml-1">
+                        {/* --- PERBAIKAN DOMAIN DI SINI --- */}
+                        <span className="text-sm text-slate-400 font-medium select-none">oneklik.my.id/</span>
+                        <input type="text" value={user?.username || ''} onChange={(e) => setUser({...user, username: e.target.value})} className="flex-1 border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 bg-transparent outline-none text-base font-semibold text-slate-700 transition-all p-1 placeholder:text-slate-300" placeholder="username" />
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="mt-4 border-t border-slate-100 pt-4"><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bio</label><textarea value={user?.bio || ''} onChange={(e) => setUser({...user, bio: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-lg p-3 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent resize-none placeholder:text-slate-300 transition-all" rows={2} placeholder="Ceritakan sedikit tentang dirimu..." /></div>
@@ -811,16 +836,13 @@ export default function BioPage() {
       <aside className="flex flex-col w-full lg:w-[380px] bg-white border-t lg:border-t-0 lg:border-l border-slate-200 h-auto lg:h-screen p-6 flex-shrink-0 overflow-y-auto">
         <div className="flex-1 flex flex-col justify-center">
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between mb-8 gap-3 shadow-sm">
-            {/* --- UPDATE TAMPILAN URL MENJADI oneklik.my.id --- */}
-            <span className="text-sm text-slate-600 font-medium truncate px-2">
-              {user?.username ? `oneklik.my.id/${user.username}` : 'oneklik.my.id/username'}
-            </span>
+            <span className="text-sm text-slate-600 font-medium truncate px-2">{user?.username ? `oneklik.my.id/${user.username}` : 'oneklik.my.id/username'}</span>
             <div className="flex items-center gap-2 flex-shrink-0">
               <button onClick={handleCopyUrl} className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 p-2 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium">
                 {copied ? <CheckCircle2 size={14} className="text-green-600" /> : <Copy size={14} />}
                 {copied ? 'Disalin' : 'Salin'}
               </button>
-              <ShareDropdown url={`https://oneklik.my.id/${user?.username}`} />
+              <ShareDropdown url={`${window.location.origin}/${user?.username}`} />
             </div>
           </div>
           <div className="flex flex-col items-center">
