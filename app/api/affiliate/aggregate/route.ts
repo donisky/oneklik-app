@@ -1,19 +1,24 @@
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
+
+// Setup Supabase Admin (sama seperti di webhook)
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } }
+);
+
+// Ekspor ini AGAR dipaksa Dynamic (mencegah error build)
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const supabase = createRouteHandlerClient({ cookies }, {
-    supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY
-  });
-
   // Hitung total afiliasi
-  const { count: totalAffiliates } = await supabase
+  const { count: totalAffiliates } = await supabaseAdmin
     .from('affiliates')
     .select('*', { count: 'exact', head: true });
 
-  // Hitung total komisi bulan ini (gunakan date_trunc untuk PostgreSQL)
-  const { data: monthlyCommissions } = await supabase
+  // Hitung total komisi bulan ini
+  const { data: monthlyCommissions } = await supabaseAdmin
     .from('affiliate_conversions')
     .select('commission')
     .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
@@ -22,6 +27,6 @@ export async function GET() {
 
   return NextResponse.json({
     totalAffiliates: totalAffiliates || 0,
-    totalCommissionThisMonth
+    totalCommissionThisMonth: totalCommissionThisMonth
   });
 }
