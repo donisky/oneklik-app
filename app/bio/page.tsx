@@ -12,7 +12,7 @@ import {
   Store, Palette, DollarSign, Users, BarChart3, X, Paintbrush,
   Facebook, Twitter, Linkedin, MessageCircle, Send,
   Image as ImageIcon, Video, Sparkles, ChevronRight, ShoppingBag, Package,
-  Upload, Loader2
+  Upload, Loader2, Menu // <--- Tambahkan Menu
 } from 'lucide-react';
 
 // --- Komponen Preview Mockup HP ---
@@ -202,6 +202,9 @@ export default function BioPage() {
   const [copied, setCopied] = useState(false);
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // --- NEW: STATE UNTUK MOBILE MENU ---
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // --- NOTIFICATION STATE ---
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -444,15 +447,37 @@ export default function BioPage() {
   </div>;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col lg:flex-row overflow-hidden font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col lg:flex-row overflow-hidden">
       <Toaster position="top-center" />
 
-      {/* SIDEBAR */}
-      <aside className="w-full lg:w-[260px] bg-white border-r border-slate-200 flex flex-col h-screen flex-shrink-0 z-20">
+      {/* --- OVERLAY UNTUK MENUTUP SIDEBAR SAAT DI KLIK DI LUAR (HP) --- */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden" 
+          onClick={() => setMobileMenuOpen(false)} 
+        />
+      )}
+
+      {/* --- SIDEBAR DRAWER (RESPONSIF) --- */}
+      <aside 
+        className={`
+          fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 
+          transform transition-transform duration-300 ease-in-out 
+          lg:relative lg:translate-x-0 lg:w-[260px] lg:flex lg:flex-col lg:h-screen lg:flex-shrink-0
+          ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <Link href="/" className="text-2xl font-bold text-blue-600 tracking-tight">Oneklik<span className="text-blue-400">.id</span></Link>
           <Bell className="w-5 h-5 text-slate-400 hover:text-slate-700 cursor-pointer" onClick={() => { setIsNotificationOpen(true); fetchNotifications(); }} />
+          <button 
+            onClick={() => setMobileMenuOpen(false)} 
+            className="lg:hidden text-slate-600 hover:bg-slate-50 p-1 rounded-lg transition-colors"
+          >
+            <X size={20} />
+          </button>
         </div>
+        
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 custom-scrollbar">
           <div className="space-y-1">
             <div className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider"><span>Menu</span></div>
@@ -471,16 +496,27 @@ export default function BioPage() {
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
-      <main className="flex-1 h-screen overflow-y-auto p-6 lg:p-10 bg-[#F8FAFC]">
+      {/* --- MAIN CONTENT --- */}
+      <main className="flex-1 h-screen overflow-y-auto bg-[#F8FAFC] p-6 lg:p-10">
         <div className="max-w-2xl mx-auto">
+          {/* HEADER DENGAN TOMBOL HAMBURGER */}
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-bold text-slate-800">
-              {activeTab === 'links' && 'Links'}
-              {activeTab === 'design' && 'Design'}
-              {activeTab === 'shop' && 'My Shop'}
-              {activeTab === 'analytics' && 'Analytics'}
-            </h2>
+            <div className="flex items-center gap-3">
+              {/* --- TOMBOL HAMBURGER UNTUK MOBILE --- */}
+              <button 
+                onClick={() => setMobileMenuOpen(true)} 
+                className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <Menu size={24} />
+              </button>
+
+              <h2 className="text-2xl font-bold text-slate-800">
+                {activeTab === 'links' && 'Links'}
+                {activeTab === 'design' && 'Design'}
+                {activeTab === 'shop' && 'My Shop'}
+                {activeTab === 'analytics' && 'Analytics'}
+              </h2>
+            </div>
             <button onClick={handleSaveProfile} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold shadow-md shadow-blue-200 transition-all">
               {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
             </button>
@@ -550,7 +586,7 @@ export default function BioPage() {
             </>
           )}
 
-          {/* --- TAB: DESIGN (Fungsional dengan Modal) --- */}
+          {/* --- TAB: DESIGN --- */}
           {activeTab === 'design' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
               <div className="flex items-center justify-between mb-4">
@@ -585,7 +621,7 @@ export default function BioPage() {
                     <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><span className="text-sm font-bold">Aa</span></div><div><p className="font-medium text-slate-800 text-sm">Text</p><p className="text-xs text-slate-500">{user?.design_settings?.font || 'Link Sans'}</p></div></div>
                     <ChevronRight size={18} className="text-slate-400" />
                   </div>
-                  {/* Colors (Klik untuk membuka modal color picker atau custom) */}
+                  {/* Colors */}
                   <div onClick={() => setDesignModal('colors')} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
                     <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><div className="w-4 h-4 rounded-full bg-black border border-slate-300" /></div><div><p className="font-medium text-slate-800 text-sm">Colors</p><p className="text-xs text-slate-500">Edit</p></div></div>
                     <ChevronRight size={18} className="text-slate-400" />
@@ -615,10 +651,9 @@ export default function BioPage() {
             </div>
           )}
 
-          {/* --- TAB: SHOP (Percantik ala Linktree + FUNGSIONAL) --- */}
+          {/* --- TAB: SHOP --- */}
           {activeTab === 'shop' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6 relative">
-              {/* Modal Tambah Produk */}
               {showProductModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                   <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
@@ -687,7 +722,7 @@ export default function BioPage() {
             </div>
           )}
 
-          {/* --- TAB: ANALYTICS (BARU) --- */}
+          {/* --- TAB: ANALYTICS --- */}
           {activeTab === 'analytics' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
               <div className="flex items-center justify-between mb-4">
@@ -710,7 +745,6 @@ export default function BioPage() {
                 </div>
               ) : (
                 <>
-                  {/* Statistik Utama */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
                       <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Kunjungan</p>
@@ -735,7 +769,6 @@ export default function BioPage() {
                     </div>
                   </div>
 
-                  {/* Tabel Aktivitas Terbaru */}
                   <div className="border-t border-slate-100 pt-4">
                     <h4 className="text-sm font-semibold text-slate-700 mb-3">Aktivitas Terbaru (10)</h4>
                     <div className="space-y-2">
@@ -765,7 +798,7 @@ export default function BioPage() {
         </div>
       </main>
 
-      {/* PREVIEW SIDE (Kanan) - DIPERBAIKI UNTUK RESPONSIF */}
+      {/* PREVIEW SIDE (Kanan) */}
       <aside className="flex flex-col w-full lg:w-[380px] bg-white border-t lg:border-t-0 lg:border-l border-slate-200 h-auto lg:h-screen p-6 flex-shrink-0 overflow-y-auto">
         <div className="flex-1 flex flex-col justify-center">
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between mb-8 gap-3 shadow-sm">

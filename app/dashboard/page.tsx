@@ -180,7 +180,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col lg:flex-row overflow-hidden font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col lg:flex-row overflow-hidden">
       <Toaster position="top-center" />
 
       {/* --- OVERLAY UNTUK MENUTUP SIDEBAR SAAT DI KLIK DI LUAR (HP) --- */}
@@ -196,7 +196,7 @@ export default function Dashboard() {
         className={`
           fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 
           transform transition-transform duration-300 ease-in-out 
-          lg:relative lg:translate-x-0 lg:w-[260px] lg:flex lg:z-auto
+          lg:relative lg:translate-x-0 lg:w-[260px] lg:flex lg:flex-col lg:h-screen lg:flex-shrink-0
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
@@ -273,7 +273,7 @@ export default function Dashboard() {
       </aside>
 
       {/* --- KONTEN UTAMA --- */}
-      <main className="flex-1 h-screen overflow-y-auto p-6 lg:p-10 bg-[#F8FAFC]">
+      <main className="flex-1 h-screen overflow-y-auto bg-[#F8FAFC] p-6 lg:p-10">
         <div className="max-w-4xl mx-auto">
           {/* Header Konten */}
           <div className="flex items-center justify-between mb-8">
