@@ -10,6 +10,7 @@ import { Upload, CheckCircle2, ArrowLeft, Crown, Loader2, Download } from 'lucid
 export default function FileQRPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isPremium, setIsPremium] = useState(false);
+  const [customSlug, setCustomSlug] = useState('');
   const [design, setDesign] = useState({ fgColor: '#000000', bgColor: '#ffffff', logo: null });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ shortUrl: string; fileUrl: string } | null>(null);
@@ -19,6 +20,10 @@ export default function FileQRPage() {
 
   const handleUpload = async () => {
     if (!file) { toast.error('Pilih file!'); return; }
+    if (isPremium && !customSlug) {
+      toast.error('Custom slug wajib diisi untuk Premium!');
+      return;
+    }
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -27,6 +32,7 @@ export default function FileQRPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('isPremium', String(isPremium));
+      if (isPremium) formData.append('customSlug', customSlug);
       formData.append('design', JSON.stringify(design));
 
       const res = await fetch('/api/file-qr', { method: 'POST', body: formData });
@@ -67,19 +73,33 @@ export default function FileQRPage() {
             <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) setFile(e.target.files[0]); }} />
           </div>
 
+          {/* Premium Toggle */}
           <div className="flex items-center gap-3 mt-4">
             <input type="checkbox" checked={isPremium} onChange={(e) => setIsPremium(e.target.checked)} id="premium-toggle" className="w-4 h-4 text-purple-600" />
-            <label htmlFor="premium-toggle" className="text-sm flex items-center gap-1"><Crown size={14} className="text-yellow-500" /> Premium: Custom QR color</label>
+            <label htmlFor="premium-toggle" className="text-sm flex items-center gap-1"><Crown size={14} className="text-yellow-500" /> Premium: Custom slug & QR color</label>
           </div>
 
+          {/* Premium Options */}
           {isPremium && (
-            <div className="mt-2">
-              <label className="text-xs text-gray-500">Warna QR</label>
-              <input type="color" value={design.fgColor} onChange={(e) => setDesign({ ...design, fgColor: e.target.value })} className="w-8 h-8 p-1 border rounded ml-2" />
+            <div className="mt-3 space-y-3 border-t pt-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Custom Slug</label>
+                <input
+                  type="text"
+                  value={customSlug}
+                  onChange={(e) => setCustomSlug(e.target.value)}
+                  placeholder="myfile"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Warna QR</label>
+                <input type="color" value={design.fgColor} onChange={(e) => setDesign({ ...design, fgColor: e.target.value })} className="w-8 h-8 p-1 border rounded ml-2" />
+              </div>
             </div>
           )}
 
-          <button onClick={handleUpload} disabled={loading || !file} className="w-full mt-4 bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 flex justify-center gap-2">
+          <button onClick={handleUpload} disabled={loading || !file} className="w-full mt-4 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 flex justify-center gap-2">
             {loading ? <Loader2 className="animate-spin" /> : 'Upload & Generate QR'}
           </button>
         </div>
