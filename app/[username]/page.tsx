@@ -35,8 +35,12 @@ const PublicBioPreview = ({ user, links }: { user: any; links: any[] }) => {
   };
 
   return (
-    <div className="relative mx-auto w-full max-w-[360px] aspect-[9/16] rounded-[2.5rem] border-[6px] border-[#1a1a1a] bg-black overflow-hidden shadow-2xl">
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-full z-20 shadow-lg" />
+    // --- PERUBAHAN UTAMA DI SINI: MENGGUNAKAN RESPONSIVE CLASS ---
+    <div className="relative mx-auto w-full max-w-full min-h-screen md:max-w-[360px] md:aspect-[9/16] md:rounded-[2.5rem] md:border-[6px] md:border-[#1a1a1a] md:shadow-2xl bg-black overflow-hidden">
+      
+      {/* Dynamic Island - Hanya muncul di Desktop (md:block) */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-full z-20 shadow-lg hidden md:block" />
+      
       <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${template.bgImage})`, backgroundColor: bgColor, backgroundBlendMode: 'overlay' }} />
       <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/70" />
       
@@ -76,6 +80,11 @@ const PublicBioPreview = ({ user, links }: { user: any; links: any[] }) => {
           <p className="text-[9px] text-white/60">Powered by <span className="text-blue-400 font-semibold">Oneklik.id</span></p>
         </div>
       </div>
+
+      {/* Tombol Sisi Mockup - Hanya muncul di Desktop (md:block) */}
+      <div className="absolute top-[20%] -left-1 w-1.5 h-8 bg-slate-700 rounded-l-full hidden md:block" />
+      <div className="absolute top-[30%] -left-1 w-1.5 h-12 bg-slate-700 rounded-l-full hidden md:block" />
+      <div className="absolute top-[20%] -right-1 w-1.5 h-12 bg-slate-700 rounded-r-full hidden md:block" />
     </div>
   );
 };
@@ -131,7 +140,7 @@ export default function PublicProfilePage({ params }: { params: { username: stri
   if (!user) return notFound();
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 md:p-0">
       <PublicBioPreview user={user} links={links} />
     </div>
   );

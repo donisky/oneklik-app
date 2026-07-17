@@ -7,7 +7,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { 
   Crown, LogOut, FileText, FileCheck, User, Layout, Trash2, AlertTriangle, X, 
   Menu, Home, Wand2, Store, Palette, Bell, ChevronRight,
-  Link as LinkIcon, QrCode // Tambahkan ikon baru
+  Link as LinkIcon, QrCode
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -183,12 +183,30 @@ export default function Dashboard() {
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col lg:flex-row overflow-hidden font-sans">
       <Toaster position="top-center" />
 
-      {/* --- SIDEBAR NAVIGASI --- */}
-      <aside className="w-full lg:w-[260px] bg-white border-r border-slate-200 flex flex-col h-screen flex-shrink-0 z-20">
+      {/* --- OVERLAY UNTUK MENUTUP SIDEBAR SAAT DI KLIK DI LUAR (HP) --- */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden" 
+          onClick={() => setMobileMenuOpen(false)} 
+        />
+      )}
+
+      {/* --- SIDEBAR NAVIGASI (RESPONSIF DRAWER) --- */}
+      <aside 
+        className={`
+          fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 
+          transform transition-transform duration-300 ease-in-out 
+          lg:relative lg:translate-x-0 lg:w-[260px] lg:flex lg:z-auto
+          ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <Link href="/" className="text-2xl font-bold text-blue-600 tracking-tight">Oneklik<span className="text-blue-400">.id</span></Link>
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden text-slate-600">
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          <button 
+            onClick={() => setMobileMenuOpen(false)} 
+            className="lg:hidden text-slate-600 hover:bg-slate-50 p-1 rounded-lg transition-colors"
+          >
+            <X size={20} />
           </button>
         </div>
         
@@ -259,9 +277,18 @@ export default function Dashboard() {
         <div className="max-w-4xl mx-auto">
           {/* Header Konten */}
           <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800">Selamat Datang, {user?.full_name || 'Pengguna'} 👋</h2>
-              <p className="text-sm text-slate-500 mt-1">Kelola semua kebutuhan digital Anda dalam satu tempat.</p>
+            <div className="flex items-center gap-3">
+              {/* --- TOMBOL HAMBURGER UNTUK MEMBUKA SIDEBAR DI HP --- */}
+              <button 
+                onClick={() => setMobileMenuOpen(true)} 
+                className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <Menu size={24} />
+              </button>
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">Selamat Datang, {user?.full_name || 'Pengguna'} 👋</h2>
+                <p className="text-sm text-slate-500 mt-1">Kelola semua kebutuhan digital Anda dalam satu tempat.</p>
+              </div>
             </div>
             <button 
               onClick={() => { setIsNotificationOpen(true); fetchNotifications(); }}
