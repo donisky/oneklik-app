@@ -330,7 +330,8 @@ export default function BioPage() {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `avatar-${session.user.id}-${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { cacheControl: '3600', upsert: false });
+      // Ubah upsert menjadi true agar bisa menimpa file lama dengan nama yang sama
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { cacheControl: '3600', upsert: true });
       if (uploadError) throw new Error('Gagal mengunggah file.');
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
       const publicUrl = urlData.publicUrl;
@@ -338,7 +339,13 @@ export default function BioPage() {
       const { error: updateError } = await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', session.user.id);
       if (updateError) throw new Error('Gagal menyimpan URL avatar.');
       toast.success('Foto profil berhasil diunggah!');
-    } catch (error: any) { toast.error('Gagal mengunggah foto: ' + error.message); } finally { setUploadingAvatar(false); setIsAvatarMenuOpen(false); }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error('Gagal mengunggah foto: ' + error.message);
+    } finally {
+      setUploadingAvatar(false);
+      setIsAvatarMenuOpen(false);
+    }
   };
 
   // --- CRUD LINK ---
@@ -356,10 +363,12 @@ export default function BioPage() {
     if (!error) { setLinks(links.filter(l => l.id !== id)); toast.success('Link berhasil dihapus!'); } else toast.error('Gagal menghapus link: ' + error.message);
   };
 
+  // --- Update handleCopyUrl ke domain oneklik.my.id ---
   const handleCopyUrl = () => {
-    const url = `${window.location.origin}/${user?.username}`;
+    const url = `https://oneklik.my.id/${user?.username}`;
     navigator.clipboard.writeText(url);
-    setCopied(true); setTimeout(() => setCopied(false), 2000);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
     toast.success('Link URL berhasil disalin!');
   };
 
@@ -802,13 +811,16 @@ export default function BioPage() {
       <aside className="flex flex-col w-full lg:w-[380px] bg-white border-t lg:border-t-0 lg:border-l border-slate-200 h-auto lg:h-screen p-6 flex-shrink-0 overflow-y-auto">
         <div className="flex-1 flex flex-col justify-center">
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between mb-8 gap-3 shadow-sm">
-            <span className="text-sm text-slate-600 font-medium truncate px-2">{user?.username ? `oneklik.id/${user.username}` : 'oneklik.id/username'}</span>
+            {/* --- UPDATE TAMPILAN URL MENJADI oneklik.my.id --- */}
+            <span className="text-sm text-slate-600 font-medium truncate px-2">
+              {user?.username ? `oneklik.my.id/${user.username}` : 'oneklik.my.id/username'}
+            </span>
             <div className="flex items-center gap-2 flex-shrink-0">
               <button onClick={handleCopyUrl} className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 p-2 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium">
                 {copied ? <CheckCircle2 size={14} className="text-green-600" /> : <Copy size={14} />}
                 {copied ? 'Disalin' : 'Salin'}
               </button>
-              <ShareDropdown url={`${window.location.origin}/${user?.username}`} />
+              <ShareDropdown url={`https://oneklik.my.id/${user?.username}`} />
             </div>
           </div>
           <div className="flex flex-col items-center">
