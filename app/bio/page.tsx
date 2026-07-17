@@ -365,7 +365,7 @@ export default function BioPage() {
     }
   };
 
-  // --- HAPUS AVATAR (TAMBAHAN BARU) ---
+  // --- HAPUS AVATAR ---
   const handleRemoveAvatar = async () => {
     if (!session?.user?.id) return;
     if (!confirm('Apakah Anda yakin ingin menghapus foto profil ini?')) return;
@@ -382,6 +382,8 @@ export default function BioPage() {
       toast.success('Foto profil berhasil dihapus!');
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setIsAvatarMenuOpen(false);
     }
   };
 
@@ -569,15 +571,23 @@ export default function BioPage() {
           {/* --- TAB: LINKS --- */}
           {activeTab === 'links' && (
             <>
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+              {/* 
+                PERBAIKAN: 
+                - Menghapus "overflow-hidden" dari card ini agar dropdown avatar (Upload/Canva/Hapus Foto) 
+                  tidak lagi terpotong/tenggelam di bawah elemen lain.
+                - Menambahkan "rounded-t-xl" langsung ke gradient bar di bawah ini supaya sudutnya
+                  tetap rapi tanpa mengandalkan overflow-hidden pada parent.
+              */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4 relative">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-t-xl" />
                 <div className="mt-2 flex items-center gap-4">
                   <div className="relative">
                     <button onClick={() => setIsAvatarMenuOpen(!isAvatarMenuOpen)} className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 shadow-md shadow-blue-200 hover:opacity-90 transition-opacity overflow-hidden focus:outline-none">
                       {user?.avatar_url ? <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" /> : user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?'}
                     </button>
                     {isAvatarMenuOpen && (
-                      <div className="absolute z-50 top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 space-y-0.5">
+                      // PERBAIKAN: z-index dinaikkan ke z-[60] agar selalu tampil paling atas di kartu ini
+                      <div className="absolute z-[60] top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 space-y-0.5">
                         <label className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700 transition-colors">
                           <ImageIcon size={18} className="text-slate-500" /> Upload image or GIF
                           <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
@@ -594,7 +604,7 @@ export default function BioPage() {
                           <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center text-[8px] text-white font-bold">C</div> Design with Canva
                         </a>
                         
-                        {/* --- TAMBAHAN: HAPUS FOTO --- */}
+                        {/* --- HAPUS FOTO --- */}
                         {user?.avatar_url && (
                           <div 
                             onClick={handleRemoveAvatar}
