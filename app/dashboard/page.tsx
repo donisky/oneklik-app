@@ -7,11 +7,11 @@ import toast, { Toaster } from 'react-hot-toast';
 import { 
   Crown, LogOut, FileText, FileCheck, User, Layout, Trash2, AlertTriangle, X, 
   Menu, Home, Wand2, Store, Palette, Bell, ChevronRight,
-  Link as LinkIcon, QrCode
+  Link as LinkIcon, QrCode, Gift, TrendingUp // Tambahkan Gift & TrendingUp
 } from 'lucide-react';
 import Link from 'next/link';
 
-// --- Modal Notifikasi (Identik dengan yang ada di halaman Bio) ---
+// --- Modal Notifikasi ---
 const NotificationModal = ({ isOpen, onClose, notifications, loading, tab, setTab }: any) => {
   if (!isOpen) return null;
   
@@ -86,7 +86,6 @@ export default function Dashboard() {
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         if (session) {
-          // Gunakan maybeSingle agar tidak error jika data belum ada
           let { data: userData } = await supabase
             .from('users')
             .select('*')
@@ -94,7 +93,6 @@ export default function Dashboard() {
             .maybeSingle();
 
           if (!userData) {
-            // Jika belum ada, buat data baru
             const fallbackUsername = `user-${session.user.id.slice(0, 8)}`;
             const { data: newUser } = await supabase
               .from('users')
@@ -191,7 +189,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* --- SIDEBAR NAVIGASI (RESPONSIF DRAWER) --- */}
+      {/* --- SIDEBAR NAVIGASI --- */}
       <aside 
         className={`
           fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 
@@ -239,16 +237,20 @@ export default function Dashboard() {
                 <Palette className="w-4 h-4" /> Templates
               </div>
             </Link>
-            {/* --- MENU BARU: SHORT LINK & QR --- */}
             <Link href="/tools/url-shortener">
               <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
                 <LinkIcon className="w-4 h-4" /> Short Link & QR
               </div>
             </Link>
-            {/* --- MENU BARU: FILE TO QR --- */}
             <Link href="/tools/file-qr">
               <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
                 <QrCode className="w-4 h-4" /> File to QR
+              </div>
+            </Link>
+            {/* --- MENU BARU: AFFILIATE --- */}
+            <Link href="/affiliate">
+              <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                <Gift className="w-4 h-4" /> Program Afiliasi
               </div>
             </Link>
           </div>
@@ -278,7 +280,6 @@ export default function Dashboard() {
           {/* Header Konten */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              {/* --- TOMBOL HAMBURGER UNTUK MEMBUKA SIDEBAR DI HP --- */}
               <button 
                 onClick={() => setMobileMenuOpen(true)} 
                 className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
@@ -351,6 +352,15 @@ export default function Dashboard() {
               </div>
               <h3 className="font-medium text-slate-800">Galeri Template Premium</h3>
               <p className="text-sm text-slate-500 mt-1">Pilih dan kustomisasi 100+ template eksklusif.</p>
+            </Link>
+
+            {/* --- KARTU BARU: PROGRAM AFILIASI --- */}
+            <Link href="/affiliate" className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-orange-300 transition-all flex flex-col items-start">
+              <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                <TrendingUp size={24} />
+              </div>
+              <h3 className="font-medium text-slate-800">Program Afiliasi</h3>
+              <p className="text-sm text-slate-500 mt-1">Dapatkan komisi 20% dengan membagikan link Oneklik.id.</p>
             </Link>
           </div>
 
