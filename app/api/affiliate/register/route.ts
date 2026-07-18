@@ -1,22 +1,23 @@
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
-// Jika Anda menggunakan Resend untuk kirim email:
-// import { resend } from '@/lib/resend';
+
+// Ganti createRouteHandlerClient dengan Admin Client (melewati RLS)
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } }
+);
 
 export async function POST(req: Request) {
   try {
     const { email } = await req.json();
-    if (!email) return NextResponse.json({ error: 'Email wajib diisi' }, { status: 400 });
+    if (!email) {
+      return NextResponse.json({ error: 'Email wajib diisi' }, { status: 400 });
+    }
 
-    // Koneksi Supabase (Service Role - bypass RLS)
-    const supabase = createRouteHandlerClient({ cookies }, { 
-      supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY 
-    });
-
-    // Cek apakah email sudah terdaftar
-    const { data: existing } = await supabase
+    // Cek apakah email sudah terdaftar (menggunakan admin client)
+    const { data: existing } = await supabaseAdmin
       .from('affiliates')
       .select('*')
       .eq('email', email)
@@ -27,10 +28,10 @@ export async function POST(req: Request) {
     }
 
     // Generate referral code unik
-    let referralCode = randomBytes(4).toString('hex'); // contoh: "a1b2c3d4"
+    let referralCode = randomBytes(4).toString('hex');
     let isUnique = false;
     while (!isUnique) {
-      const { data: check } = await supabase
+      const { data: check } = await supabaseAdmin
         .from('affiliates')
         .select('id')
         .eq('referral_code', referralCode)
@@ -39,20 +40,22 @@ export async function POST(req: Request) {
       else referralCode = randomBytes(4).toString('hex');
     }
 
-    // Insert ke database
-    const { data, error } = await supabase
+    // Insert ke database (RLS tidak akan memblokir karena kita pakai Service Role Key)
+    const { data, error } = await supabaseAdmin
       .from('affiliates')
       .insert({ email, referral_code: referralCode })
       .select()
       .single();
 
-    if (error) throw error;
-
-    // (Opsional) Kirim email pemberitahuan via Resend
-    // await resend.emails.send({ ... });
+    if (error) {
+      console.error('❌ Gagal insert affiliate:', error);
+      throw error;
+    }
 
     return NextResponse.json({ isNew: true, ...data });
+
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('❌ Register error:', error);
+    return NextResponse.json({ error: error.message || 'Terjadi kesalahan server' }, { status: 500 });
   }
 }
