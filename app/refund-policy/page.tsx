@@ -35,7 +35,7 @@ export default function RefundPolicyPage() {
             <h2 className="text-xl font-bold text-slate-800 mt-6 mb-3">3. Prosedur Pengajuan</h2>
             <p>Untuk mengajukan pengembalian dana, silakan hubungi tim dukungan kami melalui:</p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
-              <li>Email: <span className="text-blue-600">support@oneklik.id</span></li>
+              <li>Email: <span className="text-blue-600">support@oneklik.my.id</span></li>
               <li>Formulir kontak di halaman <Link href="/contact" className="text-blue-600 hover:underline">Hubungi Kami</Link></li>
             </ul>
             <p className="mt-2">Sertakan bukti transaksi (struk pembayaran) dan alasan pengajuan refund Anda.</p>
