@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import BlogContent from './client';
 
-// --- DATA BLOG YANG SAMA (6 ARTIKEL) DENGAN KONTEN MINIMAL 500 KATA ---
+// --- DATA BLOG YANG SAMA (6 ARTIKEL) DENGAN KONTEN 500+ KATA & SVG ---
 const BLOG_POSTS = [
   {
     slug: 'cara-membuat-bio-link-profesional',
@@ -65,8 +65,9 @@ const BLOG_POSTS = [
     date: '8 Juli 2026',
     category: 'CV Generator',
     readTime: '6 menit',
-    image: 'https://images.unsplash.com/photo-1586281380349-632531f7c7f2?w=800&h=800&fit=crop&auto=format',
-    fallback: 'https://placehold.co/800x800/0B2E24/E8B448?text=Oneklik.id',
+    // --- GANTI DENGAN SVG CV ---
+    image: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800' width='800' height='800'><rect width='800' height='800' fill='%230B2E24' /><circle cx='400' cy='400' r='300' fill='%23E8B448' opacity='0.08' /><rect x='250' y='220' width='300' height='360' rx='24' fill='%23FAF8F3' /><rect x='280' y='270' width='100' height='14' rx='4' fill='%230B2E24' opacity='0.1' /><rect x='280' y='300' width='180' height='14' rx='4' fill='%230B2E24' opacity='0.1' /><rect x='280' y='330' width='140' height='14' rx='4' fill='%230B2E24' opacity='0.1' /><rect x='280' y='375' width='200' height='80' rx='12' fill='%23E8B448' opacity='0.15' /><text x='380' y='415' font-family='Arial, sans-serif' font-size='46' font-weight='900' fill='%230B2E24' text-anchor='middle'>14</text><text x='380' y='442' font-family='Arial, sans-serif' font-size='16' font-weight='bold' fill='%230B2E24' text-anchor='middle' opacity='0.7'>Template Premium</text><rect x='280' y='480' width='160' height='14' rx='4' fill='%230B2E24' opacity='0.1' /><rect x='280' y='510' width='120' height='14' rx='4' fill='%230B2E24' opacity='0.1' /><rect x='280' y='540' width='140' height='14' rx='4' fill='%230B2E24' opacity='0.1' /><text x='400' y='640' font-family='Arial, sans-serif' font-size='26' font-weight='bold' fill='%23E8B448' text-anchor='middle'>Oneklik.id</text></svg>",
+    fallback: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800' width='800' height='800'><rect width='800' height='800' fill='%230B2E24' /><circle cx='400' cy='400' r='300' fill='%23E8B448' opacity='0.08' /><rect x='250' y='220' width='300' height='360' rx='24' fill='%23FAF8F3' /><rect x='280' y='270' width='100' height='14' rx='4' fill='%230B2E24' opacity='0.1' /><rect x='280' y='300' width='180' height='14' rx='4' fill='%230B2E24' opacity='0.1' /><rect x='280' y='330' width='140' height='14' rx='4' fill='%230B2E24' opacity='0.1' /><rect x='280' y='375' width='200' height='80' rx='12' fill='%23E8B448' opacity='0.15' /><text x='380' y='415' font-family='Arial, sans-serif' font-size='46' font-weight='900' fill='%230B2E24' text-anchor='middle'>14</text><text x='380' y='442' font-family='Arial, sans-serif' font-size='16' font-weight='bold' fill='%230B2E24' text-anchor='middle' opacity='0.7'>Template Premium</text><rect x='280' y='480' width='160' height='14' rx='4' fill='%230B2E24' opacity='0.1' /><rect x='280' y='510' width='120' height='14' rx='4' fill='%230B2E24' opacity='0.1' /><rect x='280' y='540' width='140' height='14' rx='4' fill='%230B2E24' opacity='0.1' /><text x='400' y='640' font-family='Arial, sans-serif' font-size='26' font-weight='bold' fill='%23E8B448' text-anchor='middle'>Oneklik.id</text></svg>",
     author: 'Tim Oneklik',
     content: `
       <h2>Mengapa CV Digital Lebih Unggul dari CV Konvensional?</h2>
@@ -124,8 +125,9 @@ const BLOG_POSTS = [
     date: '1 Juli 2026',
     category: 'QR Code',
     readTime: '4 menit',
-    image: 'https://images.unsplash.com/photo-1595079676339-0c8d5845fda4?w=800&h=800&fit=crop&auto=format',
-    fallback: 'https://placehold.co/800x800/0B2E24/E8B448?text=Oneklik.id',
+    // --- GANTI DENGAN SVG QR ---
+    image: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800' width='800' height='800'><rect width='800' height='800' fill='%230B2E24' /><circle cx='400' cy='400' r='300' fill='%23E8B448' opacity='0.08' /><rect x='180' y='300' width='100' height='140' rx='16' fill='%23FAF8F3' /><rect x='200' y='330' width='60' height='10' rx='3' fill='%230B2E24' opacity='0.15' /><rect x='200' y='350' width='60' height='10' rx='3' fill='%230B2E24' opacity='0.15' /><rect x='200' y='370' width='60' height='10' rx='3' fill='%230B2E24' opacity='0.15' /><rect x='200' y='390' width='40' height='10' rx='3' fill='%230B2E24' opacity='0.15' /><path d='M 310 360 L 350 360 L 350 350 L 390 370 L 350 390 L 350 380 L 310 380' fill='none' stroke='%23E8B448' stroke-width='10' stroke-linejoin='round' stroke-linecap='round' /><rect x='410' y='290' width='160' height='160' rx='16' fill='%23FAF8F3' /><rect x='430' y='310' width='35' height='35' rx='4' fill='%230B2E24' /><rect x='480' y='310' width='35' height='35' rx='4' fill='%230B2E24' /><rect x='430' y='360' width='35' height='35' rx='4' fill='%230B2E24' /><rect x='480' y='360' width='35' height='35' rx='4' fill='%230B2E24' /><rect x='430' y='410' width='35' height='20' rx='4' fill='%230B2E24' /><rect x='480' y='410' width='35' height='20' rx='4' fill='%230B2E24' /><line x1='400' y1='490' x2='580' y2='490' stroke='%23E8B448' stroke-width='5' stroke-dasharray='12 8' /><text x='400' y='640' font-family='Arial, sans-serif' font-size='26' font-weight='bold' fill='%23E8B448' text-anchor='middle'>Oneklik.id</text></svg>",
+    fallback: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800' width='800' height='800'><rect width='800' height='800' fill='%230B2E24' /><circle cx='400' cy='400' r='300' fill='%23E8B448' opacity='0.08' /><rect x='180' y='300' width='100' height='140' rx='16' fill='%23FAF8F3' /><rect x='200' y='330' width='60' height='10' rx='3' fill='%230B2E24' opacity='0.15' /><rect x='200' y='350' width='60' height='10' rx='3' fill='%230B2E24' opacity='0.15' /><rect x='200' y='370' width='60' height='10' rx='3' fill='%230B2E24' opacity='0.15' /><rect x='200' y='390' width='40' height='10' rx='3' fill='%230B2E24' opacity='0.15' /><path d='M 310 360 L 350 360 L 350 350 L 390 370 L 350 390 L 350 380 L 310 380' fill='none' stroke='%23E8B448' stroke-width='10' stroke-linejoin='round' stroke-linecap='round' /><rect x='410' y='290' width='160' height='160' rx='16' fill='%23FAF8F3' /><rect x='430' y='310' width='35' height='35' rx='4' fill='%230B2E24' /><rect x='480' y='310' width='35' height='35' rx='4' fill='%230B2E24' /><rect x='430' y='360' width='35' height='35' rx='4' fill='%230B2E24' /><rect x='480' y='360' width='35' height='35' rx='4' fill='%230B2E24' /><rect x='430' y='410' width='35' height='20' rx='4' fill='%230B2E24' /><rect x='480' y='410' width='35' height='20' rx='4' fill='%230B2E24' /><line x1='400' y1='490' x2='580' y2='490' stroke='%23E8B448' stroke-width='5' stroke-dasharray='12 8' /><text x='400' y='640' font-family='Arial, sans-serif' font-size='26' font-weight='bold' fill='%23E8B448' text-anchor='middle'>Oneklik.id</text></svg>",
     author: 'Tim Oneklik',
     content: `
       <h2>File to QR: Solusi Praktis Berbagi Dokumen di Era Digital</h2>
@@ -179,7 +181,6 @@ const BLOG_POSTS = [
   }
 ];
 
-// FUNGSI UNTUK MENGERANGKAN 6 ARTIKEL SAAT BUILD
 export async function generateStaticParams() {
   return BLOG_POSTS.map((post) => ({
     slug: post.slug,
