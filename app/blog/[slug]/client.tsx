@@ -21,7 +21,6 @@ export default function BlogContent({ post }: { post: any }) {
           <h1 className="text-3xl md:text-5xl font-serif font-bold text-[#0B2E24] mb-4 leading-tight">{post.title}</h1>
         </div>
         <div className="mb-10 rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-md">
-          {/* Client Component memperbolehkan event handler onError */}
           <img 
             src={post.image} 
             alt={post.title} 
@@ -33,7 +32,7 @@ export default function BlogContent({ post }: { post: any }) {
           <div dangerouslySetInnerHTML={{ __html: post.content }} />
         </article>
         <div className="border-t border-slate-200 pt-10 flex justify-between items-center bg-white p-6 rounded-2xl border">
-          <div><p className="text-sm font-medium text-slate-800">Tertarik mencoba fitur ini?</p><p className="text-xs text-slate-500">Kunjungi dashboard Oneklik.</p></div>
+          <div><p className="text-sm font-medium text-slate-800">Tertarik mencoba fitur ini?</p><p className="text-xs text-slate-500">Kunjungi dashboard Oneklik dan mulai tingkatkan produktivitas Anda.</p></div>
           <Link href="/dashboard" className="px-6 py-2.5 bg-[#0B2E24] hover:bg-[#0B2E24]/90 text-white font-bold rounded-xl text-sm flex items-center gap-2">
             Buka Dashboard <ChevronRight size={16} />
           </Link>
