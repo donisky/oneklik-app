@@ -291,7 +291,7 @@ export default function AffiliatePage() {
           <h2 className="font-serif text-3xl font-bold text-white mb-3 relative z-10">Siap Membangun Pendapatan Pasif?</h2>
           <p className="text-white/60 mb-6 relative z-10">Gabung dengan ribuan afiliasi lainnya. Mulai bagikan link Anda sekarang juga!</p>
           <button
-            onClick={() => document.querySelector('input[type="email"]')?.focus()} // Scroll ke form di hero
+            onClick={() => (document.querySelector('input[type="email"]') as HTMLInputElement)?.focus()} // Sudah diperbaiki
             className="relative z-10 px-8 py-3 bg-[#E8B448] hover:bg-[#d4a83b] text-[#0B2E24] font-bold rounded-xl transition-all shadow-lg shadow-[#E8B448]/30"
           >
             Gabung Sekarang
