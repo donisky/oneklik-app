@@ -9,8 +9,9 @@ import toast, { Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Upload, Copy, CheckCircle2, ArrowLeft, Download, 
-  Crown, Loader2, Globe, Palette
+  Crown, Loader2, Globe, Palette, Lock, Sparkles, UserCircle
 } from 'lucide-react';
+import Link from 'next/link';
 
 const BASE_URL = 'https://oneklik.my.id';
 
@@ -26,33 +27,29 @@ export default function FileQrPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // State untuk Auth & User
+  const [session, setSession] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   const supabase = createClientComponentClient();
   const router = useRouter();
 
-  // --- 1. CEK AUTENTIKASI & DATA USER SAAT HALAMAN DIBUKA ---
+  // --- 1. CEK AUTENTIKASI & DATA USER ---
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
         
-        if (!session) {
-          // Belum login -> Redirect ke login, lalu balik lagi ke halaman ini
-          router.push(`/login?redirectTo=${encodeURIComponent(window.location.pathname)}`);
-          return;
+        if (session) {
+          // Ambil data user dari tabel 'users' (untuk cek status premium)
+          const { data: userData } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          setUser(userData);
         }
-
-        // Sudah login -> Ambil data user dari tabel 'users'
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (error) throw error;
-        setUser(userData);
       } catch (error) {
         console.error('Error fetching user:', error);
         toast.error('Gagal memuat data user');
@@ -62,9 +59,18 @@ export default function FileQrPage() {
     };
 
     checkAuth();
-  }, [router, supabase]);
+  }, [supabase]);
 
-  // --- 2. LOGIKA SAAT MEN CENTANG FITUR PREMIUM ---
+  // --- 2. FUNGSI LOGIN (SAMA SEPERTI DI ALAT LAINNYA) ---
+  const handleLogin = () => {
+    const redirectTo = `${window.location.origin}/upgrade?next=${encodeURIComponent(window.location.pathname)}`;
+    supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo }
+    });
+  };
+
+  // --- 3. LOGIKA SAAT MEN CENTANG FITUR PREMIUM ---
   const handlePremiumToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
     const isChecked = e.target.checked;
     
@@ -88,8 +94,7 @@ export default function FileQrPage() {
     setLoading(true);
     setResult(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { toast.error('Login dulu'); router.push('/login'); return; }
+      if (!session) { toast.error('Login dulu'); return; }
 
       const formData = new FormData();
       formData.append('file', file);
@@ -136,9 +141,45 @@ export default function FileQrPage() {
   };
 
   if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat autentikasi...</div>;
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+          <p className="text-sm text-slate-400 font-medium">Memuat alat File to QR...</p>
+        </div>
+      </div>
+    );
   }
 
+  // --- 4. GUARD PAGE (JIKA BELUM LOGIN) ---
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50 flex flex-col items-center justify-center p-6">
+        <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 text-slate-500 hover:text-purple-600 transition-colors font-medium text-sm">
+          <ArrowLeft size={18} /> Kembali ke Beranda
+        </Link>
+        
+        <div className="bg-white/80 backdrop-blur-md p-10 rounded-3xl shadow-2xl shadow-purple-100/50 text-center max-w-md border border-slate-100 w-full">
+          <div className="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm">
+            <Lock size={28} />
+          </div>
+          <h1 className="text-2xl font-extrabold text-slate-900 mb-2">Akses Terkunci</h1>
+          <p className="text-slate-500 mb-6 text-sm leading-relaxed">
+            Login untuk membuka kunci alat File to QR Code. <br /> Setelah login, Anda akan dialihkan ke halaman pemilihan paket untuk memulai.
+          </p>
+          <button 
+            onClick={handleLogin}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-purple-200"
+          >
+            Login dengan Google
+          </button>
+          <p className="mt-4 text-[10px] text-slate-400">Data Anda aman & dilindungi enkripsi.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // --- 5. KONTEN UTAMA (SUDAH LOGIN) ---
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50 flex flex-col">
       <Toaster position="top-center" />
@@ -154,7 +195,19 @@ export default function FileQrPage() {
               File to QR Code
             </h1>
           </div>
-          <div className="w-20"></div>
+          
+          {/* Status Akun di Header (Mirip PDF Tools & Shortener) */}
+          <div className="hidden sm:flex items-center gap-3 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
+            <div className="w-7 h-7 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold text-xs border border-purple-200">
+              {user?.full_name ? user.full_name.charAt(0).toUpperCase() : (session.user.email?.charAt(0).toUpperCase() || 'U')}
+            </div>
+            <span className="text-xs font-medium text-slate-700 hidden lg:block">
+              {user?.full_name || session.user.email?.split('@')[0]}
+            </span>
+            <span className={`ml-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${user?.is_premium ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-500'}`}>
+              {user?.is_premium ? 'Premium' : 'Gratis'}
+            </span>
+          </div>
         </div>
       </header>
 
