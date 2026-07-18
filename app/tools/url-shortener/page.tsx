@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { QRCodeSVG } from 'qrcode.react';
@@ -14,35 +14,80 @@ import {
 
 const BASE_URL = 'https://oneklik.my.id';
 
-// Daftar Template Warna untuk Visualisasi
-const COLOR_TEMPLATES = [
-  { label: 'Brand Oneklik', fg: '#0B2E24', bg: '#FAF8F3' },
-  { label: 'Emas Premium', fg: '#E8B448', bg: '#FFFFFF' },
-  { label: 'Modern Biru', fg: '#2563EB', bg: '#F8FAFC' },
-  { label: 'Elegant Ungu', fg: '#7C3AED', bg: '#F5F3FF' }
-];
-
-export default function UrlShortenerPage() {
+export default function ToolsUrlShortenerPage() {
   const [inputUrl, setInputUrl] = useState('');
   const [isPremium, setIsPremium] = useState(false);
   const [customSlug, setCustomSlug] = useState('');
-  // Set default ke Brand Oneklik
   const [design, setDesign] = useState({ fgColor: '#0B2E24', bgColor: '#FAF8F3' });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ shortUrl: string; shortCode: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
+  
+  // State untuk Auth & User
+  const [user, setUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   const supabase = createClientComponentClient();
   const router = useRouter();
 
+  // --- 1. CEK AUTENTIKASI & DATA USER SAAT HALAMAN DIBUKA ---
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          // Belum login -> Redirect ke login, lalu balik lagi ke halaman ini
+          router.push(`/login?redirectTo=${encodeURIComponent(window.location.pathname)}`);
+          return;
+        }
+
+        // Sudah login -> Ambil data user dari tabel 'users'
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error) throw error;
+        setUser(userData);
+      } catch (error) {
+        console.error('Error fetching user:', error);
+        toast.error('Gagal memuat data user');
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [router, supabase]);
+
+  // --- 2. LOGIKA SAAT MEN CENTANG FITUR PREMIUM ---
+  const handlePremiumToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isChecked = e.target.checked;
+    
+    if (isChecked) {
+      // Cek status premium dari database
+      if (!user || !user.is_premium) {
+        toast.error('Fitur Premium memerlukan akun Premium. Anda akan diarahkan ke halaman upgrade.');
+        // Redirect ke upgrade, dengan parameter redirect kembali ke halaman alat ini
+        router.push(`/upgrade?redirectTo=${encodeURIComponent(window.location.pathname)}`);
+        setIsPremium(false); // Batalkan centang karena dia free
+        return;
+      }
+      // Jika user memang premium, izinkan
+      setIsPremium(true);
+    } else {
+      setIsPremium(false);
+    }
+  };
+
+  // --- SISA FUNGSI ---
   const handleCreate = async () => {
     if (!inputUrl.trim()) { toast.error('Masukkan URL!'); return; }
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { toast.error('Login dulu'); router.push('/upgrade'); return; }
-
       const res = await fetch('/api/shorten', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,9 +123,13 @@ export default function UrlShortenerPage() {
       link.click();
       toast.success('QR Code berhasil di-download!');
     } catch {
-      toast.error('Gagal mendownload QR. Pastikan library html-to-image terinstall.');
+      toast.error('Gagal mendownload QR.');
     }
   };
+
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat autentikasi...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col">
@@ -127,7 +176,7 @@ export default function UrlShortenerPage() {
                 <input
                   type="checkbox"
                   checked={isPremium}
-                  onChange={(e) => setIsPremium(e.target.checked)}
+                  onChange={handlePremiumToggle}
                   id="premium-toggle"
                   className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                 />
@@ -181,8 +230,6 @@ export default function UrlShortenerPage() {
         <AnimatePresence>
           {result && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
-              
-              {/* Card Hasil Utama dengan Ref untuk Download */}
               <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 flex flex-col md:flex-row gap-6 items-center relative overflow-hidden">
                 <div className="flex-1 space-y-3 w-full">
                   <div className="flex items-center gap-2 text-green-600"><CheckCircle2 size={18} /> Berhasil!</div>
@@ -205,7 +252,7 @@ export default function UrlShortenerPage() {
                 </div>
               </div>
 
-              {/* 🎨 VISUALISASI TEMPLATE INTERAKTIF (SEKARANG BISA DIKLIK!) */}
+              {/* Visualisasi Template (Hanya untuk Premium) */}
               {isPremium && (
                 <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6">
                   <div className="flex items-center gap-2 mb-6">
@@ -213,31 +260,21 @@ export default function UrlShortenerPage() {
                     <h3 className="font-bold text-slate-800">Pilih Template Warna QR</h3>
                     <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Klik untuk mengganti warna</span>
                   </div>
-                  
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {COLOR_TEMPLATES.map((style, idx) => {
-                      const isSelected = design.fgColor === style.fg && design.bgColor === style.bg;
-                      return (
-                        <div 
-                          key={idx} 
-                          onClick={() => setDesign({ fgColor: style.fg, bgColor: style.bg })}
-                          className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all cursor-pointer hover:shadow-md ${
-                            isSelected ? 'border-slate-900 shadow-lg bg-slate-50' : 'border-slate-200 bg-white'
-                          }`}
-                        >
-                          <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
-                            <QRCodeSVG value={result.shortUrl} size={100} fgColor={style.fg} bgColor={style.bg} />
-                          </div>
-                          <p className={`text-xs font-medium mt-2 ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>
-                            {isSelected ? '✓ ' : ''}{style.label}
-                          </p>
+                    {[
+                      { label: 'Brand Oneklik', fg: '#0B2E24', bg: '#FAF8F3' },
+                      { label: 'Emas Premium', fg: '#E8B448', bg: '#FFFFFF' },
+                      { label: 'Modern Biru', fg: '#2563EB', bg: '#F8FAFC' },
+                      { label: 'Elegant Ungu', fg: '#7C3AED', bg: '#F5F3FF' }
+                    ].map((style, idx) => (
+                      <div key={idx} onClick={() => setDesign({ fgColor: style.fg, bgColor: style.bg })} className="flex flex-col items-center p-4 rounded-xl border-2 transition-all cursor-pointer hover:shadow-md bg-white border-slate-200">
+                        <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
+                          <QRCodeSVG value={result.shortUrl} size={100} fgColor={style.fg} bgColor={style.bg} />
                         </div>
-                      );
-                    })}
+                        <p className="text-xs font-medium text-slate-600 mt-2">{style.label}</p>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-[11px] text-gray-400 mt-4 text-center">
-                    * Klik salah satu template di atas. QR Code utama dan file download akan otomatis berubah warna sesuai template pilihan Anda!
-                  </p>
                 </div>
               )}
             </motion.div>
