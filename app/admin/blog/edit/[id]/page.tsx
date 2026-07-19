@@ -96,7 +96,7 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
-        <Link href="/admin/blog" className="flex items-center gap-2 text-slate-500 hover:text-[#0B2E24] transition-colors">
+        <Link href="/admin/blog" className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors">
           <ArrowLeft size={18} /> Kembali ke Daftar Artikel
         </Link>
       </div>
@@ -110,7 +110,7 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-[#0B2E24] outline-none"
+              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
             />
           </div>
           <div>
@@ -121,7 +121,7 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
               required
-              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-[#0B2E24] outline-none"
+              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
             />
           </div>
           <div>
@@ -129,7 +129,7 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
             <input
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-[#0B2E24] outline-none"
+              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
             />
           </div>
           <div>
@@ -137,7 +137,7 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
             <input
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-[#0B2E24] outline-none"
+              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
             />
           </div>
           <div>
@@ -146,7 +146,7 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
               value={excerpt}
               onChange={(e) => setExcerpt(e.target.value)}
               rows={2}
-              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-[#0B2E24] outline-none"
+              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
             />
           </div>
           <div>
@@ -155,13 +155,13 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={12}
-              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-[#0B2E24] outline-none font-mono text-sm"
+              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none font-mono text-sm"
             />
           </div>
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-3 bg-[#0B2E24] text-white font-bold rounded-lg hover:bg-[#0B2E24]/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 className="animate-spin" size={18} /> : 'Simpan Perubahan'}
           </button>

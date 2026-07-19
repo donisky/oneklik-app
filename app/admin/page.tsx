@@ -15,7 +15,7 @@ import {
 import toast from 'react-hot-toast';
 
 // --- WARNA UNTUK PIE CHART ---
-const COLORS = ['#0B2E24', '#E8B448', '#2563EB', '#7C3AED', '#EC4899'];
+const COLORS = ['#2563EB', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'];
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -202,9 +202,9 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAF8F3] flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-14 h-14 border-4 border-[#0B2E24] border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-14 h-14 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-slate-500 font-medium">Memuat Panel Admin...</p>
         </div>
       </div>
@@ -212,14 +212,14 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F3] flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col">
       {/* --- TOPBAR ADMIN --- */}
       <header className="sticky top-0 z-30 w-full bg-white border-b border-slate-200 px-4 md:px-8 py-4 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-4">
-          <button onClick={() => router.push('/')} className="text-2xl font-extrabold text-[#0B2E24] tracking-tight">
-            Oneklik<span className="text-[#E8B448]">.id</span>
+          <button onClick={() => router.push('/')} className="text-2xl font-extrabold text-blue-600 tracking-tight">
+            Oneklik<span className="text-blue-400">.id</span>
           </button>
-          <span className="hidden md:inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-semibold">
+          <span className="hidden md:inline-flex items-center gap-1.5 bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-semibold">
             <LayoutDashboard size={14} /> Panel Admin
           </span>
         </div>
@@ -230,7 +230,7 @@ export default function AdminDashboard() {
             <input 
               type="text" 
               placeholder="Cari data..." 
-              className="pl-9 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-[#0B2E24] w-48 transition-all"
+              className="pl-9 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-600 w-48 transition-all"
             />
           </div>
           <button className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
@@ -239,7 +239,7 @@ export default function AdminDashboard() {
           </button>
           <div className="w-px h-6 bg-slate-200 hidden sm:block"></div>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-[#0B2E24] text-white rounded-full flex items-center justify-center font-bold text-sm border-2 border-white shadow-sm">
+            <div className="w-9 h-9 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm border-2 border-white shadow-sm">
               {adminName.charAt(0).toUpperCase()}
             </div>
             <div className="hidden sm:block text-sm">
@@ -258,7 +258,7 @@ export default function AdminDashboard() {
         <aside className="w-full md:w-64 bg-white border-r border-slate-200 p-4 flex-shrink-0 md:h-auto border-b md:border-b-0">
           <nav className="space-y-1">
             <div className="px-2 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Utama</div>
-            <Link href="/admin" className="flex items-center gap-3 px-4 py-2.5 bg-[#0B2E24]/5 text-[#0B2E24] rounded-xl text-sm font-semibold">
+            <Link href="/admin" className="flex items-center gap-3 px-4 py-2.5 bg-blue-50/50 text-blue-600 rounded-xl text-sm font-semibold">
               <Home size={18} /> Dashboard
             </Link>
             <div className="px-2 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-6">Manajemen</div>
@@ -283,7 +283,7 @@ export default function AdminDashboard() {
               <div>
                 <h1 className="text-3xl font-extrabold text-slate-900">Dashboard Admin</h1>
                 <p className="text-slate-500 mt-1 text-sm flex items-center gap-2">
-                  <Sparkles size={14} className="text-yellow-500" /> Pantau pertumbuhan Oneklik.id secara real-time.
+                  <Sparkles size={14} className="text-blue-500" /> Pantau pertumbuhan Oneklik.id secara real-time.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3 w-full sm:w-auto">
@@ -296,14 +296,14 @@ export default function AdminDashboard() {
                   {refreshing ? 'Memuat...' : 'Refresh Data'}
                 </button>
                 <Link href="/admin/blog/new">
-                  <button className="flex items-center gap-2 justify-center px-5 py-2.5 bg-[#0B2E24] text-white rounded-xl font-semibold hover:bg-[#0B2E24]/90 transition-colors shadow-md shadow-[#0B2E24]/20 text-sm w-full sm:w-auto">
+                  <button className="flex items-center gap-2 justify-center px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-md shadow-blue-200/50 text-sm w-full sm:w-auto">
                     <Plus size={18} /> Artikel Baru
                   </button>
                 </Link>
                 <button
                   onClick={generateInsight}
                   disabled={loadingInsight}
-                  className="flex items-center gap-2 justify-center px-5 py-2.5 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors shadow-md shadow-purple-200 text-sm w-full sm:w-auto disabled:opacity-50"
+                  className="flex items-center gap-2 justify-center px-5 py-2.5 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors shadow-md shadow-purple-200/50 text-sm w-full sm:w-auto disabled:opacity-50"
                 >
                   <Sparkles size={18} className={loadingInsight ? 'animate-spin' : ''} />
                   {loadingInsight ? 'Analisis...' : 'Insight AI'}
@@ -357,7 +357,7 @@ export default function AdminDashboard() {
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-lg font-bold text-slate-800">Trafik Mingguan</h2>
                   <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <div className="w-3 h-3 rounded-full bg-[#0B2E24]"></div>
+                    <div className="w-3 h-3 rounded-full bg-blue-600"></div>
                     <span>Pengunjung</span>
                   </div>
                 </div>
@@ -369,9 +369,9 @@ export default function AdminDashboard() {
                       <YAxis axisLine={false} tickLine={false} tick={{fill: '#94A3B8', fontSize: 12}} />
                       <Tooltip 
                         contentStyle={{borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'}}
-                        itemStyle={{color: '#0B2E24', fontWeight: 'bold'}} 
+                        itemStyle={{color: '#2563EB', fontWeight: 'bold'}} 
                       />
-                      <Line type="monotone" dataKey="views" stroke="#0B2E24" strokeWidth={3} dot={{fill: '#0B2E24', r: 4}} activeDot={{r: 6}} />
+                      <Line type="monotone" dataKey="views" stroke="#2563EB" strokeWidth={3} dot={{fill: '#2563EB', r: 4}} activeDot={{r: 6}} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -501,19 +501,19 @@ export default function AdminDashboard() {
               </div>
 
               {/* Widget Insight AI */}
-              <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 p-6 rounded-2xl shadow-sm">
+              <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 p-6 rounded-2xl shadow-sm">
                 <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="text-purple-600" size={20} />
+                  <Sparkles className="text-blue-600" size={20} />
                   <h3 className="font-bold text-slate-800">Saran AI</h3>
                 </div>
                 {insight ? (
-                  <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-white/60 p-4 rounded-xl border border-purple-100 shadow-inner">
+                  <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-white/60 p-4 rounded-xl border border-blue-100 shadow-inner">
                     {insight}
                   </div>
                 ) : (
                   <div className="text-sm text-slate-400 text-center py-8">
-                    <Sparkles className="mx-auto w-12 h-12 text-purple-300 mb-2" />
-                    <p>Klik tombol <span className="font-medium text-purple-600">"Insight AI"</span> di atas untuk mendapatkan saran konten berdasarkan data trafik.</p>
+                    <Sparkles className="mx-auto w-12 h-12 text-blue-300 mb-2" />
+                    <p>Klik tombol <span className="font-medium text-blue-600">"Insight AI"</span> di atas untuk mendapatkan saran konten berdasarkan data trafik.</p>
                   </div>
                 )}
               </div>

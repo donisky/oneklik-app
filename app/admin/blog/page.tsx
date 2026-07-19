@@ -73,7 +73,7 @@ const FilterBar = ({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari judul atau slug artikel..."
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#0B2E24] outline-none bg-slate-50/50 focus:bg-white transition-colors"
+            className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-600 outline-none bg-slate-50/50 focus:bg-white transition-colors"
           />
         </div>
         
@@ -81,7 +81,7 @@ const FilterBar = ({
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#0B2E24] outline-none bg-white min-w-[120px]"
+            className="border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-600 outline-none bg-white min-w-[120px]"
           >
             {categories.map((cat: string) => (
               <option key={cat} value={cat}>{cat}</option>
@@ -91,7 +91,7 @@ const FilterBar = ({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#0B2E24] outline-none bg-white min-w-[100px]"
+            className="border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-600 outline-none bg-white min-w-[100px]"
           >
             <option value="all">Semua Status</option>
             <option value="published">Published</option>
@@ -101,7 +101,7 @@ const FilterBar = ({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#0B2E24] outline-none bg-white min-w-[120px]"
+            className="border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-600 outline-none bg-white min-w-[120px]"
           >
             <option value="newest">Terbaru</option>
             <option value="oldest">Terlama</option>
@@ -114,14 +114,14 @@ const FilterBar = ({
           <div className="flex bg-slate-100 rounded-xl p-1">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-white shadow-sm text-[#0B2E24]' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`p-1.5 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
               title="Tampilan Grid"
             >
               <LayoutGrid size={18} />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-white shadow-sm text-[#0B2E24]' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`p-1.5 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
               title="Tampilan List"
             >
               <List size={18} />
@@ -129,7 +129,7 @@ const FilterBar = ({
           </div>
           <button
             onClick={onReset}
-            className="px-3 py-2 text-sm text-slate-500 hover:text-[#0B2E24] transition-colors"
+            className="px-3 py-2 text-sm text-slate-500 hover:text-blue-600 transition-colors"
           >
             Reset
           </button>
@@ -163,8 +163,8 @@ const PostCard = ({ post, onDelete, isDeleting }: { post: Post, onDelete: (id: s
         {post.image_url ? (
           <img src={post.image_url} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#0B2E24]/5 to-[#E8B448]/5">
-            <FileText className="w-12 h-12 text-slate-300" />
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100">
+            <FileText className="w-12 h-12 text-blue-400" />
           </div>
         )}
         <div className="absolute top-3 right-3 flex gap-1">
@@ -181,7 +181,7 @@ const PostCard = ({ post, onDelete, isDeleting }: { post: Post, onDelete: (id: s
       <div className="p-5">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
-            <h3 className="font-bold text-slate-800 line-clamp-2 group-hover:text-[#0B2E24] transition-colors">
+            <h3 className="font-bold text-slate-800 line-clamp-2 group-hover:text-blue-600 transition-colors">
               {post.title}
             </h3>
             <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
@@ -239,7 +239,7 @@ const PostRow = ({ post, onDelete, isDeleting, selected, toggleSelect }: { post:
           type="checkbox"
           checked={selected}
           onChange={() => toggleSelect(post.id)}
-          className="w-4 h-4 text-[#0B2E24] rounded border-slate-300 focus:ring-[#0B2E24]"
+          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-600"
         />
       </td>
       <td className="px-4 py-4">
@@ -480,7 +480,7 @@ export default function AdminBlogList() {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900">Manajemen Artikel</h1>
           <p className="text-slate-500 text-sm mt-1 flex items-center gap-2">
-            <Zap size={14} className="text-yellow-500" /> Kelola dan publikasikan konten blog Oneklik.id
+            <Zap size={14} className="text-blue-500" /> Kelola dan publikasikan konten blog Oneklik.id
           </p>
         </div>
         <div className="flex gap-3 flex-wrap">
@@ -491,7 +491,7 @@ export default function AdminBlogList() {
             <Download size={18} /> Ekspor CSV
           </button>
           <Link href="/admin/blog/new">
-            <button className="flex items-center gap-2 px-5 py-2.5 bg-[#0B2E24] text-white rounded-xl hover:bg-[#0B2E24]/90 transition-colors shadow-md shadow-[#0B2E24]/20 text-sm font-semibold">
+            <button className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-200/50 text-sm font-semibold">
               <Plus size={18} /> Tulis Artikel Baru
             </button>
           </Link>
@@ -543,7 +543,7 @@ export default function AdminBlogList() {
       {loading ? (
         <div className="bg-white p-12 rounded-2xl shadow-sm border border-slate-200 flex justify-center items-center">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-12 h-12 border-4 border-[#0B2E24] border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
             <p className="text-slate-500">Memuat data artikel...</p>
           </div>
         </div>
@@ -557,7 +557,7 @@ export default function AdminBlogList() {
             Mulai publikasikan artikel pertama Anda untuk menjangkau lebih banyak audiens.
           </p>
           <Link href="/admin/blog/new">
-            <button className="mt-6 px-6 py-3 bg-[#0B2E24] text-white rounded-xl hover:bg-[#0B2E24]/90 transition-colors font-semibold">
+            <button className="mt-6 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold">
               Tulis Artikel Sekarang
             </button>
           </Link>
@@ -588,7 +588,7 @@ export default function AdminBlogList() {
                           type="checkbox"
                           checked={selectedPosts.length === displayPosts.length && displayPosts.length > 0}
                           onChange={toggleSelectAll}
-                          className="w-4 h-4 text-[#0B2E24] rounded border-slate-300 focus:ring-[#0B2E24]"
+                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-600"
                         />
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Judul</th>
@@ -643,7 +643,7 @@ export default function AdminBlogList() {
                     onClick={() => handlePageChange(pageNum)}
                     className={`px-3 py-1.5 border border-slate-200 rounded-lg text-sm transition-colors ${
                       currentPage === pageNum
-                        ? 'bg-[#0B2E24] text-white border-[#0B2E24]'
+                        ? 'bg-blue-600 text-white border-blue-600'
                         : 'text-slate-600 hover:bg-slate-50'
                     }`}
                   >
