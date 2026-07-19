@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Upload } from 'lucide-react';
 import Link from 'next/link';
 
 export default function EditBlogPost({ params }: { params: { id: string } }) {
@@ -17,6 +17,7 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [originalSlug, setOriginalSlug] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const supabase = createClientComponentClient();
   const router = useRouter();
@@ -48,22 +49,65 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
     fetchPost();
   }, [params.id, router, supabase]);
 
-  // Simpan perubahan
+  // --- FUNGSI UPLOAD GAMBAR ---
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `blog-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('blog_images')
+        .upload(fileName, file);
+
+      if (uploadError) throw new Error(uploadError.message);
+
+      const { data: urlData } = supabase.storage.from('blog_images').getPublicUrl(fileName);
+      setImageUrl(urlData.publicUrl);
+      toast.success('Gambar berhasil diupload!');
+    } catch (err: any) {
+      toast.error('Gagal upload gambar: ' + err.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // --- LOGIKA SIMPAN PERUBAHAN (DENGAN CEK SLUG DUPLIKAT) ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
-    // Jika slug berubah, cek apakah slug baru sudah dipakai
-    if (slug !== originalSlug) {
+    let finalSlug = slug.trim();
+
+    // Jika slug berubah, cek apakah slug baru sudah dipakai oleh artikel lain (selain artikel ini)
+    if (finalSlug !== originalSlug) {
       const { data: existing } = await supabase
         .from('blog_posts')
         .select('id')
-        .eq('slug', slug)
+        .eq('slug', finalSlug)
+        .neq('id', params.id) // Jangan cek artikel yang sedang diedit
         .maybeSingle();
-      if (existing && existing.id !== params.id) {
-        toast.error('Slug sudah digunakan oleh artikel lain. Silakan ganti.');
-        setSaving(false);
-        return;
+
+      if (existing) {
+        // Jika slug sudah dipakai, tambahkan angka increment
+        let suffix = 1;
+        let tempSlug = finalSlug;
+        while (true) {
+          tempSlug = `${finalSlug}-${suffix}`;
+          const { data: check } = await supabase
+            .from('blog_posts')
+            .select('id')
+            .eq('slug', tempSlug)
+            .neq('id', params.id)
+            .maybeSingle();
+          if (!check) break;
+          suffix++;
+        }
+        finalSlug = tempSlug;
+        toast.success(`Slug "${slug}" sudah dipakai, otomatis diubah menjadi "${finalSlug}"`);
       }
     }
 
@@ -71,7 +115,7 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
       .from('blog_posts')
       .update({
         title,
-        slug,
+        slug: finalSlug,
         category,
         excerpt,
         content,
@@ -132,14 +176,38 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
               className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
             />
           </div>
+
+          {/* --- BAGIAN UPLOAD GAMBAR --- */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">URL Gambar Utama</label>
-            <input
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
-            />
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://example.com/gambar.jpg"
+                className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
+              />
+              <div className="relative flex-shrink-0">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  onChange={handleImageUpload}
+                  disabled={uploadingImage}
+                />
+                <button
+                  type="button"
+                  disabled={uploadingImage}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  {uploadingImage ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
+                  {uploadingImage ? 'Uploading...' : 'Upload'}
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">Upload gambar dari komputer, atau masukkan URL gambar eksternal.</p>
           </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Deskripsi Singkat (Excerpt)</label>
             <textarea
