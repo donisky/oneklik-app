@@ -7,6 +7,7 @@ import { useState } from 'react';
 
 export default function LoginContent() {
   const searchParams = useSearchParams();
+  // Pastikan default redirect ke /admin
   const redirectTo = searchParams.get('redirectTo') || '/admin';
   const [loading, setLoading] = useState(false);
   const supabase = createClientComponentClient();
