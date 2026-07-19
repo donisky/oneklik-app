@@ -1,16 +1,14 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import toast from 'react-hot-toast';
 import {
-  Plus, Search, Filter, Edit, Trash2, ExternalLink, Eye,
+  Plus, Search, Edit, Trash2, ExternalLink, Eye,
   Calendar, Tag, ChevronLeft, ChevronRight, Download,
-  SortAsc, SortDesc, Loader2, FileText, Clock, Globe, X,
-  LayoutGrid, List, CheckCircle, AlertCircle, PieChart, Zap,
-  TrendingUp, Users, Crown, RefreshCw
+  Loader2, FileText, Clock, X, LayoutGrid, List, CheckCircle, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -34,7 +32,7 @@ type Post = {
 };
 
 // --- KOMPONEN STATISTIK CARD ---
-const StatCard = ({ icon: Icon, label, value, sub, color }: any) => (
+const StatCard = ({ icon: Icon, label, value, sub, color }: { icon: any, label: string, value: string | number, sub?: string, color: string }) => (
   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden hover:shadow-md transition-shadow">
     <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl -mr-8 -mt-8 ${color}`}></div>
     <div className="relative z-10">
@@ -56,7 +54,16 @@ const FilterBar = ({
   sortBy, setSortBy,
   viewMode, setViewMode,
   onReset, categories, totalResults
-}: any) => {
+}: {
+  search: string, setSearch: (v: string) => void,
+  categoryFilter: string, setCategoryFilter: (v: string) => void,
+  statusFilter: string, setStatusFilter: (v: string) => void,
+  sortBy: string, setSortBy: (v: string) => void,
+  viewMode: 'grid' | 'list', setViewMode: (v: 'grid' | 'list') => void,
+  onReset: () => void,
+  categories: string[],
+  totalResults: number
+}) => {
   return (
     <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
       <div className="flex flex-wrap gap-3 items-center">
@@ -76,7 +83,7 @@ const FilterBar = ({
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#0B2E24] outline-none bg-white min-w-[120px]"
           >
-            {categories.map(cat => (
+            {categories.map((cat: string) => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
@@ -216,7 +223,7 @@ const PostCard = ({ post, onDelete, isDeleting }: { post: Post, onDelete: (id: s
 };
 
 // --- KOMPONEN ROW ARTIKEL (Mode List) ---
-const PostRow = ({ post, onDelete, isDeleting, selected, toggleSelect }: any) => {
+const PostRow = ({ post, onDelete, isDeleting, selected, toggleSelect }: { post: Post, onDelete: (id: string, title: string) => void, isDeleting: boolean, selected: boolean, toggleSelect: (id: string) => void }) => {
   const statusColor = post.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700';
   
   return (
@@ -305,29 +312,21 @@ export default function AdminBlogList() {
   const categories = ['All', 'Bio Link', 'Short Link', 'QR Code', 'CV Generator', 'PDF Tools', 'Afiliasi', 'Oneklik'];
 
   // --- FETCH DATA ---
-  const fetchPosts = async (page = 1) => {
+  const fetchPosts = useCallback(async (page = 1) => {
     setLoading(true);
     try {
       let query = supabase
         .from('blog_posts')
         .select('*', { count: 'exact' });
 
-      // Filter Category
       if (categoryFilter !== 'All') {
         query = query.eq('category', categoryFilter);
       }
 
-      // Filter Status (berdasarkan logika: jika published_at <= sekarang -> published)
-      // Kita akan gunakan field status yang mungkin belum ada, atau kita asumsikan semua published
-      // Untuk demo, kita gunakan published_at sebagai acuan status. Tapi karena kita belum punya kolom status,
-      // saya akan menambahkan logika status di frontend berdasarkan tanggal.
-      
-      // Search
       if (search.trim()) {
         query = query.ilike('title', `%${search}%`);
       }
 
-      // Sorting
       if (sortBy === 'newest') {
         query = query.order('published_at', { ascending: false });
       } else if (sortBy === 'oldest') {
@@ -338,7 +337,6 @@ export default function AdminBlogList() {
         query = query.order('title', { ascending: true });
       }
 
-      // Pagination
       const from = (page - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
       query = query.range(from, to);
@@ -347,7 +345,6 @@ export default function AdminBlogList() {
 
       if (error) throw error;
 
-      // Process data: tambahkan status (draft jika published_at > now, else published)
       const now = new Date();
       const processed = (data || []).map((p: any) => ({
         ...p,
@@ -359,7 +356,6 @@ export default function AdminBlogList() {
       setTotalPages(Math.ceil((count || 0) / ITEMS_PER_PAGE));
       setCurrentPage(page);
 
-      // Hitung statistik
       const pub = processed.filter((p: any) => p.status === 'published').length;
       const drf = processed.filter((p: any) => p.status === 'draft').length;
       const views = processed.reduce((acc: number, p: any) => acc + (p.view_count || 0), 0);
@@ -371,32 +367,32 @@ export default function AdminBlogList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [categoryFilter, search, sortBy, supabase]);
 
   useEffect(() => {
     fetchPosts(1);
-  }, [categoryFilter, statusFilter, sortBy, search]);
+  }, [fetchPosts]);
 
   // --- RESET FILTER ---
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setSearch('');
     setCategoryFilter('All');
     setStatusFilter('all');
     setSortBy('newest');
     setCurrentPage(1);
     fetchPosts(1);
-  };
+  }, [fetchPosts]);
 
   // --- PAGE CHANGE ---
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     if (page >= 1 && page <= totalPages) {
       fetchPosts(page);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  };
+  }, [fetchPosts, totalPages]);
 
   // --- DELETE SINGLE ---
-  const handleDelete = async (id: string, title: string) => {
+  const handleDelete = useCallback(async (id: string, title: string) => {
     if (!confirm(`Apakah Anda yakin ingin menghapus artikel "${title}"?`)) return;
     setDeleting(true);
     const { error } = await supabase.from('blog_posts').delete().eq('id', id);
@@ -407,10 +403,10 @@ export default function AdminBlogList() {
       fetchPosts(currentPage);
     }
     setDeleting(false);
-  };
+  }, [fetchPosts, currentPage, supabase]);
 
   // --- BULK DELETE ---
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = useCallback(async () => {
     if (selectedPosts.length === 0) return;
     if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedPosts.length} artikel?`)) return;
     setDeleting(true);
@@ -426,25 +422,25 @@ export default function AdminBlogList() {
       fetchPosts(currentPage);
     }
     setDeleting(false);
-  };
+  }, [selectedPosts, fetchPosts, currentPage, supabase]);
 
   // --- SELECT ALL ---
-  const toggleSelectAll = () => {
+  const toggleSelectAll = useCallback(() => {
     if (selectedPosts.length === posts.length) {
       setSelectedPosts([]);
     } else {
       setSelectedPosts(posts.map(p => p.id));
     }
-  };
+  }, [selectedPosts, posts]);
 
-  const toggleSelect = (id: string) => {
+  const toggleSelect = useCallback((id: string) => {
     setSelectedPosts(prev =>
       prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
     );
-  };
+  }, []);
 
   // --- EXPORT CSV ---
-  const exportCSV = () => {
+  const exportCSV = useCallback(() => {
     if (posts.length === 0) {
       toast.error('Tidak ada data untuk diekspor');
       return;
@@ -465,17 +461,17 @@ export default function AdminBlogList() {
     link.download = `artikel-oneklik-${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     toast.success('Data berhasil diekspor!');
-  };
+  }, [posts]);
 
   // --- COMPUTED ---
-  // Filter status (hanya untuk frontend jika belum ada filter di query)
   const filteredPosts = posts.filter(p => {
     if (statusFilter === 'all') return true;
     return p.status === statusFilter;
   });
 
   const totalFiltered = filteredPosts.length;
-  const displayPosts = filteredPosts.slice(0, ITEMS_PER_PAGE); // sebenarnya sudah di-paginate di query, tapi untuk keamanan kita gunakan posts langsung
+  // Karena pagination sudah dilakukan di query, kita gunakan posts yang sudah terpotong
+  const displayPosts = filteredPosts; // sebenarnya sudah dipaginasi, tapi kita tetap pakai filteredPosts agar status filter berlaku
 
   return (
     <div className="space-y-6 pb-12">
@@ -504,10 +500,10 @@ export default function AdminBlogList() {
 
       {/* --- STATISTIK CARD --- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={FileText} label="Total Artikel" value={totalPosts} sub={`${stats.published} Published`} color="bg-blue-50/50 text-blue-600" />
-        <StatCard icon={CheckCircle} label="Published" value={stats.published} color="bg-green-50/50 text-green-600" />
-        <StatCard icon={Clock} label="Draft" value={stats.draft} color="bg-yellow-50/50 text-yellow-600" />
-        <StatCard icon={Eye} label="Total Tayangan" value={stats.totalViews.toLocaleString()} color="bg-purple-50/50 text-purple-600" />
+        <StatCard key="total" icon={FileText} label="Total Artikel" value={totalPosts} sub={`${stats.published} Published`} color="bg-blue-50/50 text-blue-600" />
+        <StatCard key="published" icon={CheckCircle} label="Published" value={stats.published} color="bg-green-50/50 text-green-600" />
+        <StatCard key="draft" icon={Clock} label="Draft" value={stats.draft} color="bg-yellow-50/50 text-yellow-600" />
+        <StatCard key="views" icon={Eye} label="Total Tayangan" value={stats.totalViews.toLocaleString()} color="bg-purple-50/50 text-purple-600" />
       </div>
 
       {/* --- FILTER BAR --- */}
