@@ -9,7 +9,7 @@ export async function middleware(req: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession();
   const url = req.nextUrl.clone();
 
-  // Proteksi HANYA untuk halaman /admin
+  // Hanya proteksi halaman /admin
   if (url.pathname.startsWith('/admin')) {
     // 1. Jika belum login
     if (!session) {
@@ -25,15 +25,13 @@ export async function middleware(req: NextRequest) {
       .eq('id', session.user.id)
       .maybeSingle();
 
-    // 3. Jika bukan admin, paksa logout (hapus cookie) dan lempar ke login
+    // 3. Jika bukan admin, arahkan ke dashboard user biasa (bukan landing page!)
     if (!userData || userData.role !== 'admin') {
-      await supabase.auth.signOut(); // Ini akan menghapus cookie usang!
-      url.pathname = '/login';
-      url.searchParams.set('error', 'Anda bukan admin. Silakan login ulang.');
+      url.pathname = '/dashboard';
       return NextResponse.redirect(url);
     }
 
-    // 4. Jika admin, izinkan akses
+    // 4. Jika admin, izinkan
     return res;
   }
 
@@ -41,5 +39,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'], // HANYA melindungi path yang dimulai dengan /admin
+  matcher: ['/admin/:path*'], // HANYA halaman yang dimulai dengan /admin
 };

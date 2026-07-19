@@ -7,7 +7,7 @@ import { useState } from 'react';
 
 export default function LoginContent() {
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/admin'; // Default ke admin
+  const redirectTo = searchParams.get('redirectTo') || '/admin';
   const [loading, setLoading] = useState(false);
   const supabase = createClientComponentClient();
 
