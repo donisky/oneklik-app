@@ -175,7 +175,7 @@ const BLOG_POSTS = [
       </ul>
 
       <h2>Desain Modern dan Mobile-First</h2>
-      <p>Tidak hanya kaya fitur, semua halaman di Oneklik.id didesain dengan standar UI/UX tertinggi. Kami mengusung tema warna hijau tua dan emas khas kami yang memberikan kesan premium, profesional, dan terpercaya. Selain itu, semua halaman responsif di perangkat mobile, sehingga audiens Anda tetap bisa mengakses bio link atau CV Anda dengan nyaman dari smartphone.</p>
+      <p>Tidak hanya kaya fitur, semua halaman di Oneklik.id didesain dengan standar UI/UX tertinggi. Kami mengusung tema warna biru, ungu dan putih khas kami yang memberikan kesan premium, profesional, dan terpercaya. Selain itu, semua halaman responsif di perangkat mobile, sehingga audiens Anda tetap bisa mengakses bio link atau CV Anda dengan nyaman dari smartphone.</p>
       <p>Jangan buang waktu lagi untuk berpindah-pindah platform. Satu akun, satu ekosistem, dan satu langkah menuju produktivitas tanpa batas.</p>
     `
   }
