@@ -1,58 +1,51 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FileEdit, BarChart3, Settings, LogOut } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-const menuItems = [
-  { name: 'Dashboard', icon: LayoutDashboard, href: '/admin' },
-  { name: 'Tambah Artikel', icon: FileEdit, href: '/admin/blog/new' },
-  { name: 'Daftar Artikel', icon: BarChart3, href: '/admin/blog' },
-  { name: 'Pengaturan', icon: Settings, href: '/admin/settings' },
-];
-
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const supabase = createClientComponentClient();
+export default function AdminDashboard() {
   const router = useRouter();
+  const supabase = createClientComponentClient();
+  const [loading, setLoading] = useState(true);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
-  };
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login?redirectTo=/admin');
+        return;
+      }
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      // Jika bukan admin, paksa logout dan redirect ke login
+      if (!userData || userData.role !== 'admin') {
+        await supabase.auth.signOut();
+        router.push('/login?redirectTo=/admin');
+        return;
+      }
+
+      setLoading(false);
+    };
+    checkAdmin();
+  }, [router, supabase]);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-600">Memverifikasi akses admin...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-slate-200 p-6 hidden md:flex flex-col fixed h-full z-10">
-        <Link href="/" className="text-2xl font-bold text-[#0B2E24] mb-8 block">
-          Oneklik<span className="text-[#E8B448]">.Admin</span>
-        </Link>
-        <nav className="flex-1 space-y-2">
-          {menuItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-                pathname === item.href ? 'bg-[#0B2E24] text-white' : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <item.icon size={18} />
-              {item.name}
-            </Link>
-          ))}
-        </nav>
-        <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl text-sm font-medium">
-          <LogOut size={18} /> Keluar Admin
-        </button>
-      </aside>
-
-      {/* Konten Utama */}
-      <main className="flex-1 md:ml-64 p-6 md:p-10">
-        {children}
-      </main>
+    <div className="p-10">
+      <h1 className="text-4xl font-bold text-[#0B2E24]">Dashboard Admin</h1>
+      <p className="text-slate-500 mt-2">Selamat datang di panel kontrol Oneklik.id.</p>
+      <div className="mt-6 grid grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-2xl shadow border border-slate-200">Statistik Pengunjung: 0</div>
+        <div className="bg-white p-6 rounded-2xl shadow border border-slate-200">Total Artikel: 0</div>
+        <div className="bg-white p-6 rounded-2xl shadow border border-slate-200">Sistem: Online</div>
+      </div>
     </div>
   );
 }

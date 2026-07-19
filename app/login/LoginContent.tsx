@@ -3,13 +3,16 @@
 import { useSearchParams } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Lock } from 'lucide-react';
+import { useState } from 'react';
 
 export default function LoginContent() {
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/admin';
+  const redirectTo = searchParams.get('redirectTo') || '/admin'; // Default ke admin
+  const [loading, setLoading] = useState(false);
   const supabase = createClientComponentClient();
 
   const handleLogin = async () => {
+    setLoading(true);
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}${redirectTo}` },
@@ -24,8 +27,12 @@ export default function LoginContent() {
         </div>
         <h1 className="text-2xl font-bold text-slate-900 mb-2">Akses Admin</h1>
         <p className="text-slate-500 mb-6 text-sm">Silakan login menggunakan akun Google Anda yang terdaftar sebagai Admin.</p>
-        <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-200">
-          Login dengan Google
+        <button 
+          onClick={handleLogin} 
+          disabled={loading}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-200 disabled:opacity-50"
+        >
+          {loading ? 'Memproses...' : 'Login dengan Google'}
         </button>
       </div>
     </div>
