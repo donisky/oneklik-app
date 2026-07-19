@@ -54,16 +54,7 @@ const FilterBar = ({
   sortBy, setSortBy,
   viewMode, setViewMode,
   onReset, categories, totalResults
-}: {
-  search: string, setSearch: (v: string) => void,
-  categoryFilter: string, setCategoryFilter: (v: string) => void,
-  statusFilter: string, setStatusFilter: (v: string) => void,
-  sortBy: string, setSortBy: (v: string) => void,
-  viewMode: 'grid' | 'list', setViewMode: (v: 'grid' | 'list') => void,
-  onReset: () => void,
-  categories: string[],
-  totalResults: number
-}) => {
+}: any) => {
   return (
     <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
       <div className="flex flex-wrap gap-3 items-center">
@@ -148,7 +139,7 @@ const FilterBar = ({
 };
 
 // --- KOMPONEN CARD ARTIKEL (Mode Grid) ---
-const PostCard = ({ post, onDelete, isDeleting }: { post: Post, onDelete: (id: string, title: string) => void, isDeleting: boolean }) => {
+const PostCard = ({ post, onDelete, isDeleting }: any) => {
   const statusColor = post.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700';
   
   return (
@@ -223,7 +214,7 @@ const PostCard = ({ post, onDelete, isDeleting }: { post: Post, onDelete: (id: s
 };
 
 // --- KOMPONEN ROW ARTIKEL (Mode List) ---
-const PostRow = ({ post, onDelete, isDeleting, selected, toggleSelect }: { post: Post, onDelete: (id: string, title: string) => void, isDeleting: boolean, selected: boolean, toggleSelect: (id: string) => void }) => {
+const PostRow = ({ post, onDelete, isDeleting, selected, toggleSelect }: any) => {
   const statusColor = post.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700';
   
   return (
@@ -292,7 +283,7 @@ const PostRow = ({ post, onDelete, isDeleting, selected, toggleSelect }: { post:
 
 export default function AdminBlogList() {
   // --- STATE ---
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [search, setSearch] = useState('');
@@ -463,19 +454,9 @@ export default function AdminBlogList() {
     toast.success('Data berhasil diekspor!');
   }, [posts]);
 
-  // --- COMPUTED ---
-  const filteredPosts = posts.filter(p => {
-    if (statusFilter === 'all') return true;
-    return p.status === statusFilter;
-  });
-
-  const totalFiltered = filteredPosts.length;
-  // Karena pagination sudah dilakukan di query, kita gunakan posts yang sudah terpotong
-  const displayPosts = filteredPosts; // sebenarnya sudah dipaginasi, tapi kita tetap pakai filteredPosts agar status filter berlaku
-
   return (
     <div className="space-y-6 pb-12">
-      {/* --- HEADER --- */}
+      {/* HEADER */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900">Manajemen Artikel</h1>
@@ -498,7 +479,7 @@ export default function AdminBlogList() {
         </div>
       </div>
 
-      {/* --- STATISTIK CARD --- */}
+      {/* STATISTIK CARD */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard key="total" icon={FileText} label="Total Artikel" value={totalPosts} sub={`${stats.published} Published`} color="bg-blue-50/50 text-blue-600" />
         <StatCard key="published" icon={CheckCircle} label="Published" value={stats.published} color="bg-green-50/50 text-green-600" />
@@ -506,7 +487,7 @@ export default function AdminBlogList() {
         <StatCard key="views" icon={Eye} label="Total Tayangan" value={stats.totalViews.toLocaleString()} color="bg-purple-50/50 text-purple-600" />
       </div>
 
-      {/* --- FILTER BAR --- */}
+      {/* FILTER BAR */}
       <FilterBar 
         search={search} setSearch={setSearch}
         categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter}
@@ -515,10 +496,10 @@ export default function AdminBlogList() {
         viewMode={viewMode} setViewMode={setViewMode}
         onReset={handleReset}
         categories={categories}
-        totalResults={totalFiltered}
+        totalResults={stats.published + stats.draft}
       />
 
-      {/* --- BULK ACTIONS --- */}
+      {/* BULK ACTIONS */}
       {selectedPosts.length > 0 && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
@@ -539,7 +520,7 @@ export default function AdminBlogList() {
         </motion.div>
       )}
 
-      {/* --- KONTEN UTAMA (Grid / List) --- */}
+      {/* KONTEN UTAMA */}
       {loading ? (
         <div className="bg-white p-12 rounded-2xl shadow-sm border border-slate-200 flex justify-center items-center">
           <div className="flex flex-col items-center gap-3">
@@ -547,7 +528,7 @@ export default function AdminBlogList() {
             <p className="text-slate-500">Memuat data artikel...</p>
           </div>
         </div>
-      ) : displayPosts.length === 0 ? (
+      ) : posts.length === 0 ? (
         <div className="bg-white p-16 rounded-2xl shadow-sm border border-slate-200 text-center">
           <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <FileText className="w-10 h-10 text-slate-400" />
@@ -567,7 +548,7 @@ export default function AdminBlogList() {
           {viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               <AnimatePresence>
-                {displayPosts.map((post) => (
+                {posts.map((post) => (
                   <PostCard 
                     key={post.id} 
                     post={post} 
@@ -586,7 +567,7 @@ export default function AdminBlogList() {
                       <th className="px-4 py-3 text-left w-12">
                         <input
                           type="checkbox"
-                          checked={selectedPosts.length === displayPosts.length && displayPosts.length > 0}
+                          checked={selectedPosts.length === posts.length && posts.length > 0}
                           onChange={toggleSelectAll}
                           className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-600"
                         />
@@ -601,7 +582,7 @@ export default function AdminBlogList() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     <AnimatePresence>
-                      {displayPosts.map((post) => (
+                      {posts.map((post) => (
                         <PostRow 
                           key={post.id}
                           post={post}
@@ -618,10 +599,10 @@ export default function AdminBlogList() {
             </div>
           )}
 
-          {/* --- PAGINATION --- */}
+          {/* PAGINATION */}
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
             <p className="text-sm text-slate-500 order-2 sm:order-1">
-              Menampilkan {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalFiltered)} - {Math.min(currentPage * ITEMS_PER_PAGE, totalFiltered)} dari {totalFiltered} artikel
+              Menampilkan {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalPosts)} - {Math.min(currentPage * ITEMS_PER_PAGE, totalPosts)} dari {totalPosts} artikel
             </p>
             <div className="flex gap-1 order-1 sm:order-2">
               <button
