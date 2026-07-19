@@ -9,52 +9,34 @@ export async function middleware(req: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession();
   const url = req.nextUrl.clone();
 
-  // Hanya proteksi halaman /admin
+  // Proteksi hanya halaman admin
   if (url.pathname.startsWith('/admin')) {
-    // 1. Jika belum login, arahkan ke halaman login
+    // 1. Belum login
     if (!session) {
       url.pathname = '/login';
       url.searchParams.set('redirectTo', req.nextUrl.pathname);
       return NextResponse.redirect(url);
     }
 
-    // 2. Jika sudah login, ambil data user dari tabel public.users
-    // Gunakan maybeSingle agar tidak error jika data belum ada
+    // 2. Ambil data user terbaru dari database (bukan dari cookie)
     const { data: userData } = await supabase
       .from('users')
       .select('role')
       .eq('id', session.user.id)
       .maybeSingle();
 
-    let role = userData?.role;
-
-    // 3. Jika user belum ada di public.users, buat data baru sekarang
-    if (!userData) {
-      // GANTI EMAIL INI DENGAN EMAIL YANG ANDA PAKAI UNTUK LOGIN!
-      const ADMIN_EMAIL = 'admin.oneklik.id@gmail.com'; 
-
-      const isAdmin = session.user.email === ADMIN_EMAIL;
-
-      // Insert data user ke tabel users
-      await supabase.from('users').insert({
-        id: session.user.id,
-        email: session.user.email,
-        full_name: session.user.user_metadata?.full_name || 'Admin User',
-        role: isAdmin ? 'admin' : 'user',
-        is_premium: false
-      });
-
-      // Tentukan role berdasarkan hasil insert
-      role = isAdmin ? 'admin' : 'user';
-    }
-
-    // 4. Jika role bukan admin, arahkan ke beranda
-    if (role !== 'admin') {
-      url.pathname = '/';
+    // 3. Jika role-nya bukan admin (atau data user hilang), lakukan Force Logout & Redirect
+    if (!userData || userData.role !== 'admin') {
+      // Hapus session di cookie browser agar cookie yang salah hilang!
+      await supabase.auth.signOut();
+      
+      // Kembalikan ke halaman login
+      url.pathname = '/login';
+      url.searchParams.set('error', 'Sesi tidak valid. Silakan login ulang.');
       return NextResponse.redirect(url);
     }
 
-    // 5. Jika admin, izinkan akses
+    // 4. Jika admin, izinkan akses
     return res;
   }
 
