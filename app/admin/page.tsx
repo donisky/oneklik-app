@@ -1,162 +1,164 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, BarChart, Bar
+  PieChart, Pie, Cell
 } from 'recharts';
 import {
   Sparkles, TrendingUp, FileText, Users, Plus, Edit, Trash2, ExternalLink,
-  LayoutDashboard, Eye, UserCircle, Crown, Zap, ChevronDown, Bell, Search,
-  LogOut, Menu, Home
+  LayoutDashboard, Eye, Crown, Zap, Bell, Search, LogOut, Home, RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-// --- DATA DUMMY UNTUK DEMO (Jika tabel Supabase Anda masih kosong) ---
-// Data ini akan terganti otomatis saat Anda mengisi database
-const DUMMY_CHART_DATA = [
-  { name: 'Sen', views: 120 }, { name: 'Sel', views: 210 }, { name: 'Rab', views: 80 },
-  { name: 'Kam', views: 160 }, { name: 'Jum', views: 240 }, { name: 'Sab', views: 320 },
-  { name: 'Min', views: 180 }
-];
-const DUMMY_PIE_DATA = [
-  { name: 'Bio Link', value: 400 },
-  { name: 'Shortener', value: 300 },
-  { name: 'CV Generator', value: 300 },
-  { name: 'PDF Tools', value: 200 },
-];
-const DUMMY_TOP_PAGES = [
-  { page: '/bio', visits: 1240 },
-  { page: '/tools/url-shortener', visits: 980 },
-  { page: '/tools/cv', visits: 850 },
-  { page: '/blog', visits: 620 },
-];
-const DUMMY_USERS = [
-  { id: '1', email: 'user1@gmail.com', full_name: 'Andi Pratama', is_premium: true, joined: '2026-07-15' },
-  { id: '2', email: 'user2@yahoo.com', full_name: 'Siti Rahma', is_premium: false, joined: '2026-07-14' },
-  { id: '3', email: 'user3@outlook.com', full_name: 'Budi Santoso', is_premium: false, joined: '2026-07-13' },
-];
-const DUMMY_POSTS = [
-  { id: '1', title: 'Cara Membuat Bio Link Profesional', slug: 'cara-membuat-bio-link', category: 'Bio Link', published_at: '2026-07-12' },
-  { id: '2', title: 'Mengenal Fitur Short Link & QR Code', slug: 'mengenal-short-link-qr', category: 'Short Link', published_at: '2026-07-10' },
-];
 
 // --- WARNA UNTUK PIE CHART ---
 const COLORS = ['#0B2E24', '#E8B448', '#2563EB', '#7C3AED', '#EC4899'];
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
-    visitors: 0, totalPosts: 0, growth: 0, totalUsers: 0, premiumUsers: 0
+    visitors: 0,
+    totalPosts: 0,
+    growth: 0,
+    totalUsers: 0,
+    premiumUsers: 0,
   });
-  const [chartData, setChartData] = useState<any[]>(DUMMY_CHART_DATA);
-  const [pieData, setPieData] = useState<any[]>(DUMMY_PIE_DATA);
-  const [topPages, setTopPages] = useState<any[]>(DUMMY_TOP_PAGES);
-  const [recentPosts, setRecentPosts] = useState<any[]>(DUMMY_POSTS);
-  const [recentUsers, setRecentUsers] = useState<any[]>(DUMMY_USERS);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [pieData, setPieData] = useState<any[]>([]);
+  const [topPages, setTopPages] = useState<any[]>([]);
+  const [recentPosts, setRecentPosts] = useState<any[]>([]);
+  const [recentUsers, setRecentUsers] = useState<any[]>([]);
   const [insight, setInsight] = useState('');
   const [loadingInsight, setLoadingInsight] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [session, setSession] = useState<any>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [adminName, setAdminName] = useState('Admin Oneklik');
 
   const supabase = createClientComponentClient();
   const router = useRouter();
 
-  // --- 1. AMBIL DATA DARI SUPABASE (Real Data) ---
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-        
-        // Ambil nama admin dari tabel users
-        if (session) {
-          const { data: userData } = await supabase
-            .from('users')
-            .select('full_name')
-            .eq('id', session.user.id)
-            .single();
-          if (userData?.full_name) setAdminName(userData.full_name);
-        }
-
-        // a. Total artikel blog
-        const { count: postCount } = await supabase
-          .from('blog_posts')
-          .select('*', { count: 'exact', head: true });
-
-        // b. Total pengunjung minggu ini
-        const today = new Date();
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay());
-        const { data: viewsData } = await supabase
-          .from('page_views')
-          .select('view_count, date')
-          .gte('date', startOfWeek.toISOString().split('T')[0]);
-
-        const totalViews = viewsData?.reduce((acc, curr) => acc + (curr.view_count || 0), 0) || 0;
-
-        // c. Total Users & Premium Users
-        const { count: userCount } = await supabase
+  // --- FUNGSI FETCH DATA ---
+  const fetchData = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      // 1. Ambil session & nama admin
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: userData } = await supabase
           .from('users')
-          .select('*', { count: 'exact', head: true });
-        const { count: premiumCount } = await supabase
-          .from('users')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_premium', true);
-
-        // d. Data chart (7 hari terakhir)
-        const sevenDaysAgo = new Date(today);
-        sevenDaysAgo.setDate(today.getDate() - 6);
-        const { data: chartRaw } = await supabase
-          .from('page_views')
-          .select('date, view_count')
-          .gte('date', sevenDaysAgo.toISOString().split('T')[0])
-          .order('date', { ascending: true });
-
-        const grouped: { [key: string]: number } = {};
-        chartRaw?.forEach((item) => {
-          const d = new Date(item.date).toLocaleDateString('id-ID', { weekday: 'short' });
-          grouped[d] = (grouped[d] || 0) + (item.view_count || 0);
-        });
-        const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-        const finalChart = dayNames.map((day) => {
-          const existing = grouped[day];
-          return { name: day, views: existing || 0 };
-        });
-
-        // e. Artikel terbaru (5 terakhir)
-        const { data: posts } = await supabase
-          .from('blog_posts')
-          .select('id, title, slug, published_at, category')
-          .order('published_at', { ascending: false })
-          .limit(5);
-
-        // Update state jika data real tersedia, jika kosong tetap pakai dummy
-        setStats({
-          visitors: totalViews,
-          totalPosts: postCount || 0,
-          growth: 15.2, // Growth dummy untuk demo
-          totalUsers: userCount || 0,
-          premiumUsers: premiumCount || 0,
-        });
-        if(finalChart.some(d => d.views > 0)) setChartData(finalChart);
-        if(posts && posts.length > 0) setRecentPosts(posts);
-        // (Data dummy lainnya tetap dipakai untuk demo)
-
-      } catch (error) {
-        console.error('Error fetching admin data:', error);
-      } finally {
-        setLoading(false);
+          .select('full_name')
+          .eq('id', session.user.id)
+          .single();
+        if (userData?.full_name) setAdminName(userData.full_name);
       }
-    };
 
-    fetchData();
+      // 2. Query data statistik
+      // Total Artikel
+      const { count: postCount } = await supabase
+        .from('blog_posts')
+        .select('*', { count: 'exact', head: true });
+
+      // Total Users & Premium Users
+      const { count: userCount } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
+      const { count: premiumCount } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_premium', true);
+
+      // Total views minggu ini (dari page_views)
+      const today = new Date();
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay());
+      const { data: viewsData } = await supabase
+        .from('page_views')
+        .select('view_count, date')
+        .gte('date', startOfWeek.toISOString().split('T')[0]);
+
+      const totalViews = viewsData?.reduce((acc, curr) => acc + (curr.view_count || 0), 0) || 0;
+
+      // Growth (perbandingan minggu ini vs minggu lalu) - sementara dummy
+      const growth = 15.2;
+
+      // Data chart (7 hari terakhir)
+      const sevenDaysAgo = new Date(today);
+      sevenDaysAgo.setDate(today.getDate() - 6);
+      const { data: chartRaw } = await supabase
+        .from('page_views')
+        .select('date, view_count')
+        .gte('date', sevenDaysAgo.toISOString().split('T')[0])
+        .order('date', { ascending: true });
+
+      const grouped: { [key: string]: number } = {};
+      chartRaw?.forEach((item) => {
+        const d = new Date(item.date).toLocaleDateString('id-ID', { weekday: 'short' });
+        grouped[d] = (grouped[d] || 0) + (item.view_count || 0);
+      });
+      const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+      const finalChart = dayNames.map((day) => ({ name: day, views: grouped[day] || 0 }));
+
+      // Pie data (distribusi alat) - bisa diambil dari tabel page_views dengan filter path, atau dummy
+      const dummyPie = [
+        { name: 'Bio Link', value: 400 },
+        { name: 'Shortener', value: 300 },
+        { name: 'CV Generator', value: 300 },
+        { name: 'PDF Tools', value: 200 },
+      ];
+
+      // Top Pages - bisa query dari page_views
+      const { data: topPagesData } = await supabase
+        .from('page_views')
+        .select('page_path, view_count')
+        .order('view_count', { ascending: false })
+        .limit(4);
+
+      const topPages = topPagesData?.map((p) => ({ page: p.page_path, visits: p.view_count })) || [];
+
+      // Artikel terbaru (5 terakhir)
+      const { data: posts } = await supabase
+        .from('blog_posts')
+        .select('id, title, slug, published_at, category')
+        .order('published_at', { ascending: false })
+        .limit(5);
+
+      // User terbaru (5 terakhir)
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, email, full_name, is_premium, created_at')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // Update state
+      setStats({
+        visitors: totalViews,
+        totalPosts: postCount || 0,
+        growth,
+        totalUsers: userCount || 0,
+        premiumUsers: premiumCount || 0,
+      });
+      setChartData(finalChart);
+      setPieData(dummyPie);
+      setTopPages(topPages.length > 0 ? topPages : [{ page: '/', visits: 0 }]);
+      setRecentPosts(posts || []);
+      setRecentUsers(users || []);
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
+      toast.error('Gagal memuat data dashboard');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [supabase]);
 
-  // --- 2. GENERATE INSIGHT AI (Dengan Data Asli) ---
+  // --- LOAD AWAL ---
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // --- 2. GENERATE INSIGHT AI ---
   const generateInsight = async () => {
     setLoadingInsight(true);
     try {
@@ -187,8 +189,7 @@ export default function AdminDashboard() {
       toast.error('Gagal menghapus artikel: ' + error.message);
     } else {
       toast.success('Artikel berhasil dihapus');
-      setRecentPosts((prev) => prev.filter((p) => p.id !== id));
-      setStats((prev) => ({ ...prev, totalPosts: prev.totalPosts - 1 }));
+      fetchData();
     }
   };
 
@@ -252,7 +253,7 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      {/* --- SIDEBAR NAVIGASI (Admint) --- */}
+      {/* --- SIDEBAR NAVIGASI --- */}
       <div className="flex flex-1 flex-col md:flex-row">
         <aside className="w-full md:w-64 bg-white border-r border-slate-200 p-4 flex-shrink-0 md:h-auto border-b md:border-b-0">
           <nav className="space-y-1">
@@ -286,6 +287,14 @@ export default function AdminDashboard() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+                <button
+                  onClick={fetchData}
+                  disabled={refreshing}
+                  className="flex items-center gap-2 justify-center px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors shadow-sm text-sm disabled:opacity-50"
+                >
+                  <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+                  {refreshing ? 'Memuat...' : 'Refresh Data'}
+                </button>
                 <Link href="/admin/blog/new">
                   <button className="flex items-center gap-2 justify-center px-5 py-2.5 bg-[#0B2E24] text-white rounded-xl font-semibold hover:bg-[#0B2E24]/90 transition-colors shadow-md shadow-[#0B2E24]/20 text-sm w-full sm:w-auto">
                     <Plus size={18} /> Artikel Baru
@@ -403,15 +412,19 @@ export default function AdminDashboard() {
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h2 className="text-lg font-bold text-slate-800 mb-4">Halaman Terpopuler</h2>
                 <div className="space-y-3">
-                  {topPages.map((page, idx) => (
-                    <div key={idx} className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                        <span className="text-[10px] text-slate-400 font-mono w-5">#{idx+1}</span>
-                        {page.page}
-                      </span>
-                      <span className="text-sm font-bold text-slate-900">{page.visits.toLocaleString()}</span>
-                    </div>
-                  ))}
+                  {topPages.length === 0 ? (
+                    <p className="text-slate-400 text-sm">Belum ada data kunjungan.</p>
+                  ) : (
+                    topPages.map((page, idx) => (
+                      <div key={idx} className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                          <span className="text-[10px] text-slate-400 font-mono w-5">#{idx+1}</span>
+                          {page.page}
+                        </span>
+                        <span className="text-sm font-bold text-slate-900">{page.visits.toLocaleString()}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -419,24 +432,28 @@ export default function AdminDashboard() {
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h2 className="text-lg font-bold text-slate-800 mb-4">User Terbaru</h2>
                 <div className="space-y-3">
-                  {recentUsers.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
-                          {user.full_name.charAt(0).toUpperCase()}
+                  {recentUsers.length === 0 ? (
+                    <p className="text-slate-400 text-sm">Belum ada user yang terdaftar.</p>
+                  ) : (
+                    recentUsers.map((user) => (
+                      <div key={user.id} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
+                            {user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="text-sm font-medium text-slate-800 truncate max-w-[120px]">{user.full_name || 'Pengguna'}</p>
+                            <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+                          </div>
                         </div>
-                        <div className="overflow-hidden">
-                          <p className="text-sm font-medium text-slate-800 truncate max-w-[120px]">{user.full_name}</p>
-                          <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${user.is_premium ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-500'}`}>
+                            {user.is_premium ? 'Premium' : 'Free'}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${user.is_premium ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-500'}`}>
-                          {user.is_premium ? 'Premium' : 'Free'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             </div>
