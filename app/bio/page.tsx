@@ -15,13 +15,19 @@ import {
   Upload, Loader2, Menu
 } from 'lucide-react';
 
-// --- Komponen Preview Mockup HP ---
+// --- Komponen Preview Mockup HP (SUDAH DIUPGRADE!) ---
 const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
   const template = templates.find(t => t.id === parseInt(user?.selected_template || '1', 10)) || templates[0];
   const design = user?.design_settings || {};
+  
+  // Warna & Font dari user / template
   const bgColor = design.theme === 'air' ? '#dbeafe' : user?.theme_bg || template?.colors?.bg || '#f3f4f6';
   const buttonColor = user?.theme_primary || (template as any)?.colors?.primary || '#3b82f6';
   const textColor = user?.theme_secondary || template?.colors?.text || '#ffffff';
+  
+  const fontFamily = design.font === 'serif' ? 'serif' : design.font === 'mono' ? 'monospace' : 'sans-serif';
+  const btnStyle = design.buttons || 'fill'; // fill, outline, ghost
+  const showStickers = design.stickers === 'decorate' || design.stickers === 'fun';
   
   const getIcon = (title: string) => {
     const t = title.toLowerCase();
@@ -32,37 +38,81 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
     return <span className="text-lg">🔗</span>;
   };
 
+  // Helper untuk gaya tombol (Fill, Outline, Ghost)
+  const getButtonStyles = (baseColor: string, defaultText: string) => {
+    if (btnStyle === 'outline') {
+      return { backgroundColor: 'transparent', color: baseColor, border: `2px solid ${baseColor}` };
+    }
+    if (btnStyle === 'ghost') {
+      return { backgroundColor: 'transparent', color: baseColor };
+    }
+    // Fill (default)
+    return { backgroundColor: baseColor, color: defaultText };
+  };
+
   return (
-    <div className="relative mx-auto w-full max-w-[300px] aspect-[9/16] rounded-[2.5rem] border-[6px] border-[#1a1a1a] bg-black overflow-hidden shadow-2xl">
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-full z-20 shadow-lg" />
-      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${template.bgImage})`, backgroundColor: bgColor, backgroundBlendMode: 'overlay' }} />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/70" />
+    <div className="relative mx-auto w-full max-w-[300px] aspect-[9/16] rounded-[3.5rem] border-[8px] border-[#1a1a1a] bg-black overflow-hidden shadow-2xl shadow-slate-400/20 group">
+      {/* Dynamic Island */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-20 shadow-lg" />
       
-      <div className="relative z-10 h-full flex flex-col items-center pt-10 px-4 text-center">
-        <div className="w-14 h-14 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg border-2 border-white/40 mb-3">
+      {/* Background Layer */}
+      <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" 
+           style={{ backgroundImage: `url(${template.bgImage})`, backgroundColor: bgColor, backgroundBlendMode: 'overlay' }} />
+      
+      {/* Gradient Overlay - Memastikan teks putih tetap terbaca */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/40 to-black/80" />
+      
+      {/* Side Buttons Mockup */}
+      <div className="absolute top-[20%] -left-1 w-1.5 h-8 bg-gray-700 rounded-l-full" />
+      <div className="absolute top-[30%] -left-1 w-1.5 h-12 bg-gray-700 rounded-l-full" />
+      <div className="absolute top-[20%] -right-1 w-1.5 h-12 bg-gray-700 rounded-r-full" />
+      
+      {/* Konten Bio */}
+      <div className="relative z-10 h-full flex flex-col items-center pt-10 px-4 text-center" style={{ fontFamily }}>
+        {/* Avatar */}
+        <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg border-2 border-white/40 mb-3">
           {user?.avatar_url ? (
             <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover rounded-full" />
           ) : (
             user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?'
           )}
         </div>
-        <h3 className="font-bold text-lg text-white drop-shadow-md">{user?.full_name || 'Nama Kamu'}</h3>
-        <p className="text-[10px] mb-4 text-white/80">@{user?.username || 'username'}</p>
         
+        {/* Nama & Username */}
+        <h3 className="font-bold text-lg text-white drop-shadow-md">{user?.full_name || 'Nama Kamu'}</h3>
+        <p className="text-[10px] mb-4 text-white/80 drop-shadow">@{user?.username || 'username'}</p>
+        
+        {/* Link Button Dinamis */}
         <div className="w-full space-y-2.5 px-2">
-          {links && links.map((link) => (
-            <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className="block w-full py-2.5 px-3 rounded-xl font-medium transition-all hover:scale-105 flex items-center justify-center gap-2 shadow-sm text-xs" style={{ backgroundColor: buttonColor, color: textColor }}>
-              {getIcon(link.title)}
-              {link.title}
-            </a>
-          ))}
+          {links && links.map((link) => {
+            const btnStyleObj = getButtonStyles(buttonColor, textColor);
+            return (
+              <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" 
+                 className="block w-full py-2.5 px-3 rounded-xl font-medium transition-all hover:scale-105 flex items-center justify-center gap-2 shadow-sm text-xs"
+                 style={btnStyleObj}>
+                {getIcon(link.title)}
+                {link.title}
+              </a>
+            );
+          })}
+          
+          {/* Tombol Shop Kustom */}
           {user?.shop_link && (
-            <a href={user.shop_link} target="_blank" rel="noopener noreferrer" className="block w-full py-2.5 px-3 rounded-xl font-medium transition-all hover:scale-105 flex items-center justify-center gap-2 shadow-sm text-xs" style={{ backgroundColor: '#22c55e', color: '#ffffff' }}>
+            <a href={user.shop_link} target="_blank" rel="noopener noreferrer"
+               className="block w-full py-2.5 px-3 rounded-xl font-medium transition-all hover:scale-105 flex items-center justify-center gap-2 shadow-sm text-xs"
+               style={getButtonStyles('#22c55e', '#ffffff')}>
               🛍️ Shop
             </a>
           )}
         </div>
-        <div className="mt-4 pt-3 border-t border-white/20 w-full px-6">
+
+        {/* Sticker Decoration */}
+        {showStickers && (
+          <div className="absolute top-4 left-4 text-2xl animate-pulse">✨</div>
+        )}
+        
+        {/* Footer */}
+        <div className="mt-auto pb-6 w-full px-6">
           <p className="text-[9px] text-white/60">Powered by <span className="text-blue-400 font-semibold">Oneklik.id</span></p>
         </div>
       </div>
@@ -331,7 +381,6 @@ export default function BioPage() {
       const fileExt = file.name.split('.').pop();
       const fileName = `avatar-${session.user.id}-${Date.now()}.${fileExt}`;
       
-      // Pastikan upsert true agar menimpa file lama dengan nama yang sama
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, { cacheControl: '3600', upsert: true });
@@ -344,10 +393,8 @@ export default function BioPage() {
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
       const publicUrl = urlData.publicUrl;
       
-      // Update state user lokal
       setUser((prev: any) => ({ ...prev, avatar_url: publicUrl }));
       
-      // Simpan langsung ke database
       const { error: updateError } = await supabase
         .from('users')
         .update({ avatar_url: publicUrl })
@@ -571,13 +618,6 @@ export default function BioPage() {
           {/* --- TAB: LINKS --- */}
           {activeTab === 'links' && (
             <>
-              {/* 
-                PERBAIKAN: 
-                - Menghapus "overflow-hidden" dari card ini agar dropdown avatar (Upload/Canva/Hapus Foto) 
-                  tidak lagi terpotong/tenggelam di bawah elemen lain.
-                - Menambahkan "rounded-t-xl" langsung ke gradient bar di bawah ini supaya sudutnya
-                  tetap rapi tanpa mengandalkan overflow-hidden pada parent.
-              */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4 relative">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-t-xl" />
                 <div className="mt-2 flex items-center gap-4">
@@ -586,7 +626,6 @@ export default function BioPage() {
                       {user?.avatar_url ? <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" /> : user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?'}
                     </button>
                     {isAvatarMenuOpen && (
-                      // PERBAIKAN: z-index dinaikkan ke z-[60] agar selalu tampil paling atas di kartu ini
                       <div className="absolute z-[60] top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 space-y-0.5">
                         <label className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700 transition-colors">
                           <ImageIcon size={18} className="text-slate-500" /> Upload image or GIF
@@ -604,7 +643,6 @@ export default function BioPage() {
                           <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center text-[8px] text-white font-bold">C</div> Design with Canva
                         </a>
                         
-                        {/* --- HAPUS FOTO --- */}
                         {user?.avatar_url && (
                           <div 
                             onClick={handleRemoveAvatar}
@@ -625,7 +663,6 @@ export default function BioPage() {
                     <div>
                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-2">Username</label>
                       <div className="flex items-center gap-1 -ml-1">
-                        {/* --- PERBAIKAN DOMAIN DI SINI --- */}
                         <span className="text-sm text-slate-400 font-medium select-none">oneklik.my.id/</span>
                         <input type="text" value={user?.username || ''} onChange={(e) => setUser({...user, username: e.target.value})} className="flex-1 border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 bg-transparent outline-none text-base font-semibold text-slate-700 transition-all p-1 placeholder:text-slate-300" placeholder="username" />
                       </div>
@@ -888,7 +925,7 @@ export default function BioPage() {
           </div>
           <div className="flex flex-col items-center">
              <BioPreview user={user} links={links} />
-             <div className="mt-4 text-center text-[10px] text-slate-400">*Warna & Tema sesuai dengan pengaturan database Anda.</div>
+             <div className="mt-4 text-center text-[10px] text-slate-400">*Mockup menyesuaikan Template & Desain yang dipilih.</div>
           </div>
         </div>
       </aside>
