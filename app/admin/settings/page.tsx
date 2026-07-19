@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import toast from 'react-hot-toast';
-import { Save, Loader2, Settings } from 'lucide-react';
+import { Save, Loader2, Settings, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminSettingsPage() {
@@ -17,44 +17,54 @@ export default function AdminSettingsPage() {
   const supabase = createClientComponentClient();
   const router = useRouter();
 
+  // Ambil data pengaturan dari Supabase
   useEffect(() => {
     const fetchSettings = async () => {
-      const { data, error } = await supabase
-        .from('settings')
-        .select('key, value');
-      if (error) {
-        toast.error('Gagal memuat pengaturan');
-        return;
+      try {
+        const { data, error } = await supabase
+          .from('settings')
+          .select('key, value');
+        
+        if (error) throw error;
+
+        // Konversi array menjadi object untuk mudah diakses
+        const map: Record<string, string> = {};
+        data?.forEach(item => map[item.key] = item.value);
+        setTitle(map.site_title || '');
+        setDescription(map.site_description || '');
+        setKeywords(map.site_keywords || '');
+      } catch (error: any) {
+        toast.error('Gagal memuat pengaturan: ' + error.message);
+      } finally {
+        setLoading(false);
       }
-      const map: Record<string, string> = {};
-      data?.forEach(item => map[item.key] = item.value);
-      setTitle(map.site_title || '');
-      setDescription(map.site_description || '');
-      setKeywords(map.site_keywords || '');
-      setLoading(false);
     };
     fetchSettings();
   }, [supabase]);
 
+  // Simpan pengaturan
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const updates = [
-      { key: 'site_title', value: title },
-      { key: 'site_description', value: description },
-      { key: 'site_keywords', value: keywords },
-    ];
-    // Upsert data
-    const { error } = await supabase
-      .from('settings')
-      .upsert(updates, { onConflict: 'key' });
+    try {
+      const updates = [
+        { key: 'site_title', value: title },
+        { key: 'site_description', value: description },
+        { key: 'site_keywords', value: keywords },
+      ];
+      
+      // Upsert data ke tabel settings
+      const { error } = await supabase
+        .from('settings')
+        .upsert(updates, { onConflict: 'key' });
 
-    if (error) {
-      toast.error('Gagal menyimpan: ' + error.message);
-    } else {
+      if (error) throw error;
       toast.success('Pengaturan berhasil disimpan!');
+    } catch (error: any) {
+      toast.error('Gagal menyimpan: ' + error.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   if (loading) {
@@ -63,9 +73,15 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Settings className="text-blue-600" size={24} />
-        <h1 className="text-3xl font-extrabold text-slate-900">Pengaturan Sistem</h1>
+      {/* Header dengan tombol kembali */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Settings className="text-blue-600" size={24} />
+          <h1 className="text-3xl font-extrabold text-slate-900">Pengaturan Sistem</h1>
+        </div>
+        <Link href="/admin" className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors">
+          <ArrowLeft size={18} /> Kembali ke Dashboard
+        </Link>
       </div>
 
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
