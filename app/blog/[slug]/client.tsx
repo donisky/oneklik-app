@@ -7,47 +7,48 @@ export default function BlogContent({ post }: { post: any }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-8 px-6 font-sans">
       <div className="max-w-3xl mx-auto">
-        {/* Navigasi Kembali */}
         <Link href="/blog" className="inline-flex items-center gap-2 text-slate-500 hover:text-blue-600 mb-8 transition-colors">
           <ArrowLeft size={18} /> Kembali ke Blog
         </Link>
 
-        {/* Header Artikel */}
         <div className="mb-8">
           <div className="flex items-center gap-3 text-xs font-medium text-slate-500 uppercase tracking-wider mb-4">
             <span className="bg-blue-100 text-blue-600 px-3 py-1 rounded-full">{post.category}</span>
             <div className="w-px h-3 bg-slate-300"></div>
-            <span className="flex items-center gap-1"><Calendar size={12} /> {post.date}</span>
+            <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(post.published_at).toLocaleDateString('id-ID')}</span>
             <span className="w-px h-3 bg-slate-300"></span>
-            <span className="flex items-center gap-1"><Clock size={12} /> {post.readTime}</span>
+            <span className="flex items-center gap-1"><Clock size={12} /> {post.readTime || '3 menit'}</span>
           </div>
           <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-4 leading-tight">
             {post.title}
           </h1>
           <div className="flex items-center gap-3 text-sm text-slate-500 border-t border-slate-200 pt-4">
             <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-              {post.author.charAt(0)}
+              {post.author ? post.author.charAt(0) : 'O'}
             </div>
-            <span>Oleh <span className="text-slate-800 font-medium">{post.author}</span></span>
+            <span>Oleh <span className="text-slate-800 font-medium">{post.author || 'Tim Oneklik'}</span></span>
           </div>
         </div>
 
-        {/* Gambar Utama */}
         <div className="mb-10 rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-md">
-          <img 
-            src={post.image} 
-            alt={post.title} 
-            className="w-full h-auto object-cover" 
-            onError={(e) => (e.target as HTMLImageElement).src = post.fallback} 
-          />
+          {post.image_url ? (
+            <img 
+              src={post.image_url} 
+              alt={post.title} 
+              className="w-full h-auto object-cover" 
+            />
+          ) : (
+            <div className="w-full aspect-[16/9] bg-slate-100 flex items-center justify-center text-slate-400">
+              <span className="text-sm font-medium">Tidak ada gambar</span>
+            </div>
+          )}
         </div>
 
-        {/* Konten Artikel */}
         <article className="prose prose-slate max-w-none prose-headings:font-sans prose-headings:text-blue-600 prose-a:text-blue-500 prose-strong:text-slate-900 mb-12">
+          {/* Karena konten disimpan dalam format HTML di Supabase, kita gunakan dangerouslySetInnerHTML */}
           <div dangerouslySetInnerHTML={{ __html: post.content }} />
         </article>
 
-        {/* CTA Bottom */}
         <div className="border-t border-slate-200 pt-10 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border">
           <div>
             <p className="text-sm font-medium text-slate-800">Tertarik mencoba fitur ini?</p>
