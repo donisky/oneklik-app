@@ -7,16 +7,17 @@ export async function POST(req: Request) {
     const { userId, pagePath } = await req.json();
     const supabase = createRouteHandlerClient({ cookies });
 
-    // 1. Catat ke tabel analytics_events (untuk keperluan lain)
-    await supabase.from('analytics_events').insert({
-      user_id: userId,
-      event_type: 'profile_view',
-    });
+    // Catat ke tabel analytics_events (jika masih digunakan)
+    if (userId) {
+      await supabase.from('analytics_events').insert({
+        user_id: userId,
+        event_type: 'profile_view',
+      });
+    }
 
-    // 2. Catat ke tabel page_views (untuk dashboard admin)
+    // Catat ke tabel page_views (untuk dashboard admin)
     if (pagePath) {
       const today = new Date().toISOString().split('T')[0];
-      // Cek apakah sudah ada data untuk halaman ini hari ini
       const { data: existing } = await supabase
         .from('page_views')
         .select('id, view_count')

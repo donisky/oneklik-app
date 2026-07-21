@@ -3,16 +3,15 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import dynamic from 'next/dynamic';
 import { Analytics } from '@vercel/analytics/react';
+import PageViewTracker from "./components/PageViewTracker"; // <-- Import komponen baru
 
 const inter = Inter({ subsets: ["latin"] });
 
-// --- LAZY LOADING UNTUK WIDGET AI (Agar tidak memperlambat LCP halaman utama) ---
 const AIChatWidget = dynamic(
   () => import("./components/AIChatWidget"),
   { ssr: false }
 );
 
-// --- OPTIMASI SEO GLOBAL ---
 export const metadata: Metadata = {
   metadataBase: new URL('https://oneklik.my.id'),
   title: {
@@ -50,12 +49,11 @@ export const metadata: Metadata = {
   },
 };
 
-// --- OPTIMASI VIEWPORT (Responsif & Mobile) ---
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
-  themeColor: '#2563EB', // Diubah menjadi biru sesuai brand terbaru Anda
+  themeColor: '#2563EB',
 };
 
 export default function RootLayout({
@@ -64,7 +62,6 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className={inter.className}>
-        {/* --- STRUKTUR DATA SCHEMA UNTUK SEO (Rich Snippets) --- */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -88,11 +85,14 @@ export default function RootLayout({
 
         {children}
         
-        {/* Chatbot akan muncul di pojok kanan bawah setiap halaman */}
+        {/* Chatbot akan muncul di pojok kanan bawah */}
         <AIChatWidget />
         
-        {/* --- VERCEL ANALYTICS (Untuk melacak page views real-time pengunjung) --- */}
+        {/* Vercel Analytics (opsional, untuk data tambahan) */}
         <Analytics />
+        
+        {/* Pelacakan global untuk semua halaman */}
+        <PageViewTracker />
       </body>
     </html>
   );
