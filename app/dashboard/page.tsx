@@ -11,51 +11,46 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-// --- Modal Notifikasi Upgrade (dengan badge & action) ---
-const NotificationModal = ({ isOpen, onClose, notifications, loading, unreadCount, markAllAsRead }: any) => {
+// --- Modal Notifikasi (Dengan Logic Real Data) ---
+const NotificationModal = ({ isOpen, onClose, notifications, loading, unreadCount, onMarkAllRead }: any) => {
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    if (unreadCount > 0 && onMarkAllRead) onMarkAllRead();
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative max-h-[80vh] flex flex-col">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700">
-          <X size={24} />
-        </button>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <Bell size={20} className="text-blue-600" /> Notifikasi
-          </h2>
-          {unreadCount > 0 && (
-            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
-              {unreadCount} baru
-            </span>
-          )}
+        <button onClick={handleClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
+        <div className="flex items-center gap-2 mb-4">
+          <Bell size={20} className="text-blue-600" />
+          <h2 className="text-lg font-bold text-slate-800">Notifikasi</h2>
+          <span className="ml-auto text-xs bg-slate-100 px-2 py-0.5 rounded-full text-slate-600">
+            {unreadCount} belum dibaca
+          </span>
         </div>
         
-        <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+        <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
           {loading ? (
             <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mt-4" />
           ) : notifications.length > 0 ? (
             notifications.map((notif: any) => (
-              <div 
-                key={notif.id} 
-                className={`p-3 rounded-lg border transition-colors cursor-pointer hover:shadow-md ${notif.is_read ? 'bg-white border-slate-100' : 'bg-blue-50 border-blue-200'}`}
-                onClick={() => {
-                  if (notif.action_url) {
-                    window.location.href = notif.action_url;
-                  }
-                }}
-              >
-                <p className="font-medium text-slate-800 text-sm">{notif.title}</p>
+              <div key={notif.id} className={`p-3 rounded-lg border transition-colors ${notif.is_read ? 'bg-white border-slate-100' : 'bg-blue-50 border-blue-200'}`}>
+                <div className="flex items-start justify-between">
+                  <p className="font-medium text-slate-800 text-sm">{notif.title}</p>
+                  {!notif.is_read && <span className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0 mt-1" />}
+                </div>
                 <p className="text-xs text-slate-500 mt-0.5">{notif.message}</p>
+                {notif.action_url && (
+                  <Link href={notif.action_url} className="text-xs text-blue-600 font-medium mt-1 inline-block hover:underline">
+                    Lihat Detail →
+                  </Link>
+                )}
                 <span className="text-[10px] text-slate-400 mt-1 block">
                   {new Date(notif.created_at).toLocaleString('id-ID')}
                 </span>
-                {notif.action_url && (
-                  <div className="mt-2 text-xs text-blue-600 font-medium hover:underline">
-                    Lihat detail →
-                  </div>
-                )}
               </div>
             ))
           ) : (
@@ -66,10 +61,7 @@ const NotificationModal = ({ isOpen, onClose, notifications, loading, unreadCoun
           )}
         </div>
         
-        <button 
-          onClick={() => { markAllAsRead(); onClose(); }} 
-          className="mt-4 w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium transition-colors"
-        >
+        <button onClick={handleClose} className="mt-4 w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium transition-colors">
           Tutup
         </button>
       </div>
@@ -85,16 +77,16 @@ export default function Dashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // --- STATE NOTIFIKASI (User) ---
+  // --- STATE NOTIFIKASI ---
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [notifLoading, setNotifLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notifLoading, setNotifLoading] = useState(false);
 
   const supabase = createClientComponentClient();
   const router = useRouter();
 
-  // --- FETCH DATA USER ---
+  // --- FETCH DATA USER & HANDLE WELCOME EMAIL ---
   useEffect(() => {
     const getData = async () => {
       try {
@@ -111,17 +103,31 @@ export default function Dashboard() {
             const fallbackUsername = `user-${session.user.id.slice(0, 8)}`;
             const { data: newUser } = await supabase
               .from('users')
-              .insert({ 
-                id: session.user.id, 
-                full_name: '', 
-                username: fallbackUsername,
-                selected_template: '1'
-              })
+              .insert({ id: session.user.id, full_name: '', username: fallbackUsername, selected_template: '1' })
               .select()
               .maybeSingle();
             userData = newUser;
           }
           setUser(userData);
+
+          // --- LOGIKA EMAIL SAMBUTAN UNTUK USER BARU ---
+          if (userData && !userData.welcome_email_sent) {
+            try {
+              await fetch('/api/send-welcome-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  userId: userData.id, 
+                  email: session.user.email, 
+                  full_name: userData.full_name 
+                })
+              });
+              // Set lokal agar tidak terpicu lagi di session ini
+              setUser((prev: any) => ({ ...prev, welcome_email_sent: true }));
+            } catch (err) {
+              console.error('Gagal mengirim email sambutan:', err);
+            }
+          }
         }
         setLoading(false);
       } catch (err) {
@@ -133,7 +139,7 @@ export default function Dashboard() {
     getData();
   }, [supabase]);
 
-  // --- FETCH NOTIFICATIONS (Hanya milik user) ---
+  // --- FETCH NOTIFICATIONS (User Only) ---
   const fetchNotifications = useCallback(async () => {
     if (!session?.user?.id) return;
     setNotifLoading(true);
@@ -143,19 +149,46 @@ export default function Dashboard() {
       .eq('recipient_type', 'user')
       .eq('recipient_id', session.user.id)
       .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching notifications:', error);
-      toast.error('Gagal memuat notifikasi');
-    } else {
+
+    if (error) console.error('Error fetching notifications:', error);
+    else {
       setNotifications(data || []);
       setUnreadCount(data?.filter((n: any) => !n.is_read).length || 0);
     }
     setNotifLoading(false);
-  }, [session?.user?.id, supabase]);
+  }, [supabase, session]);
 
-  // --- MARK ALL AS READ (Saat modal ditutup) ---
-  const markAllAsRead = useCallback(async () => {
+  // --- SUPABASE REALTIME SUBSCRIPTION UNTUK USER ---
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    fetchNotifications();
+
+    const channel = supabase
+      .channel('user-notifications')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'notifications',
+          filter: `recipient_type=eq.user AND recipient_id=eq.${session.user.id}`
+        },
+        (payload) => {
+          setNotifications((prev) => [payload.new, ...prev]);
+          setUnreadCount((prev) => prev + 1);
+          toast.success(`🔔 ${payload.new.title}`, { duration: 4000 });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, session, fetchNotifications]);
+
+  // --- MARK ALL NOTIFICATIONS AS READ ---
+  const markAllAsRead = async () => {
     if (unreadCount === 0 || !session?.user?.id) return;
     const ids = notifications.filter((n) => !n.is_read).map((n) => n.id);
     const { error } = await supabase
@@ -167,7 +200,7 @@ export default function Dashboard() {
       setUnreadCount(0);
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     }
-  }, [unreadCount, notifications, session?.user?.id, supabase]);
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -186,17 +219,11 @@ export default function Dashboard() {
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Gagal menghapus akun');
-      }
+      if (!response.ok) throw new Error(data.error || 'Gagal menghapus akun');
 
       toast.success('Akun berhasil dihapus. Terima kasih telah menggunakan Oneklik.id!');
       await supabase.auth.signOut();
-      setTimeout(() => {
-        router.push('/');
-      }, 1500);
-      
+      setTimeout(() => router.push('/'), 1500);
     } catch (error: any) {
       toast.error(error.message || 'Terjadi kesalahan saat menghapus akun');
     } finally {
@@ -329,14 +356,14 @@ export default function Dashboard() {
               </div>
             </div>
             
-            {/* --- NOTIFICATION BELL DENGAN BADGE (Untuk User) --- */}
+            {/* --- TOMBOL NOTIFIKASI DENGAN BADGE MERAH --- */}
             <button 
-              onClick={() => { setIsNotificationOpen(true); fetchNotifications(); }}
-              className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors"
+              onClick={() => { setIsNotificationOpen(true); }}
+              className="relative p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
-                <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-pulse">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -471,14 +498,14 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* --- NOTIFICATION MODAL (Untuk User) --- */}
+      {/* --- NOTIFICATION MODAL --- */}
       <NotificationModal 
         isOpen={isNotificationOpen} 
-        onClose={() => { setIsNotificationOpen(false); markAllAsRead(); }}
+        onClose={() => setIsNotificationOpen(false)} 
         notifications={notifications} 
         loading={notifLoading} 
         unreadCount={unreadCount}
-        markAllAsRead={markAllAsRead}
+        onMarkAllRead={markAllAsRead}
       />
     </div>
   );
