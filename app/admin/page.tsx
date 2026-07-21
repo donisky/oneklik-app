@@ -20,6 +20,7 @@ const COLORS = ['#2563EB', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'];
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
     visitors: 0,
+    todayVisitors: 0,
     totalPosts: 0,
     growth: 0,
     totalUsers: 0,
@@ -69,18 +70,30 @@ export default function AdminDashboard() {
         .select('*', { count: 'exact', head: true })
         .eq('is_premium', true);
 
-      // Total views minggu ini (dari page_views)
+      // --- DATA VIEWS ---
       const today = new Date();
+      // Set waktu ke 00:00:00 untuk menghindari masalah zona waktu
+      const todayStr = today.toISOString().split('T')[0];
       const startOfWeek = new Date(today);
-      startOfWeek.setDate(today.getDate() - today.getDay());
+      startOfWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)); // Senin
+      const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
+
+      // Total views minggu ini
       const { data: viewsData } = await supabase
         .from('page_views')
         .select('view_count, date')
-        .gte('date', startOfWeek.toISOString().split('T')[0]);
+        .gte('date', startOfWeekStr);
 
       const totalViews = viewsData?.reduce((acc, curr) => acc + (curr.view_count || 0), 0) || 0;
 
-      // Growth (perbandingan minggu ini vs minggu lalu) - sementara dummy
+      // Views hari ini
+      const { data: todayViews } = await supabase
+        .from('page_views')
+        .select('view_count')
+        .eq('date', todayStr);
+      const todayVisitors = todayViews?.reduce((acc, curr) => acc + (curr.view_count || 0), 0) || 0;
+
+      // Growth (dummy, bisa dihitung dari minggu lalu jika mau)
       const growth = 15.2;
 
       // Data chart (7 hari terakhir)
@@ -134,6 +147,7 @@ export default function AdminDashboard() {
       // Update state
       setStats({
         visitors: totalViews,
+        todayVisitors: todayVisitors,
         totalPosts: postCount || 0,
         growth,
         totalUsers: userCount || 0,
@@ -323,6 +337,15 @@ export default function AdminDashboard() {
               </div>
 
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full blur-2xl -mr-8 -mt-8"></div>
+                <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-3 relative z-10">
+                  <Users size={20} />
+                </div>
+                <p className="text-3xl font-bold text-slate-900 relative z-10">{stats.todayVisitors.toLocaleString()}</p>
+                <p className="text-sm text-slate-500 relative z-10">Pengunjung Hari Ini</p>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-full blur-2xl -mr-8 -mt-8"></div>
                 <div className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center mb-3 relative z-10">
                   <FileText size={20} />
@@ -338,15 +361,6 @@ export default function AdminDashboard() {
                 </div>
                 <p className="text-3xl font-bold text-slate-900 relative z-10">{stats.premiumUsers}</p>
                 <p className="text-sm text-slate-500 relative z-10">Pengguna Premium</p>
-              </div>
-
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-purple-50 rounded-full blur-2xl -mr-8 -mt-8"></div>
-                <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-3 relative z-10">
-                  <TrendingUp size={20} />
-                </div>
-                <p className="text-3xl font-bold text-slate-900 relative z-10">{stats.growth}%</p>
-                <p className="text-sm text-slate-500 relative z-10">Pertumbuhan Trafik</p>
               </div>
             </div>
 
