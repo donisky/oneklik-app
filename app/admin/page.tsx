@@ -15,7 +15,7 @@ import {
 import toast from 'react-hot-toast';
 
 // --- WARNA UNTUK PIE CHART ---
-const COLORS = ['#2563EB', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'];
+const COLORS = ['#2563EB', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#6B7280'];
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -72,10 +72,9 @@ export default function AdminDashboard() {
 
       // --- DATA VIEWS ---
       const today = new Date();
-      // Set waktu ke 00:00:00 untuk menghindari masalah zona waktu
       const todayStr = today.toISOString().split('T')[0];
       const startOfWeek = new Date(today);
-      startOfWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)); // Senin
+      startOfWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
       const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
 
       // Total views minggu ini
@@ -93,7 +92,7 @@ export default function AdminDashboard() {
         .eq('date', todayStr);
       const todayVisitors = todayViews?.reduce((acc, curr) => acc + (curr.view_count || 0), 0) || 0;
 
-      // Growth (dummy, bisa dihitung dari minggu lalu jika mau)
+      // Growth dummy
       const growth = 15.2;
 
       // Data chart (7 hari terakhir)
@@ -113,15 +112,51 @@ export default function AdminDashboard() {
       const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
       const finalChart = dayNames.map((day) => ({ name: day, views: grouped[day] || 0 }));
 
-      // Pie data (distribusi alat) - bisa diambil dari tabel page_views dengan filter path, atau dummy
-      const dummyPie = [
-        { name: 'Bio Link', value: 400 },
-        { name: 'Shortener', value: 300 },
-        { name: 'CV Generator', value: 300 },
-        { name: 'PDF Tools', value: 200 },
+      // --- PIE CHART: DATA REAL DARI PAGE_VIEWS ---
+      // Ambil semua page_views dalam 30 hari terakhir untuk mendapatkan distribusi alat
+      const thirtyDaysAgo = new Date(today);
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      const { data: allViews } = await supabase
+        .from('page_views')
+        .select('page_path, view_count')
+        .gte('date', thirtyDaysAgo.toISOString().split('T')[0]);
+
+      // Fungsi helper untuk mengkategorikan path
+      const getCategory = (path: string) => {
+        if (path.startsWith('/bio')) return 'Bio Link';
+        if (path.startsWith('/tools/url-shortener')) return 'Shortener';
+        if (path.startsWith('/tools/cv')) return 'CV Generator';
+        if (path.startsWith('/tools/pdf')) return 'PDF Tools';
+        if (path.startsWith('/tools/file-qr')) return 'QR Code';
+        if (path.startsWith('/blog')) return 'Blog';
+        if (path.startsWith('/affiliate')) return 'Afiliasi';
+        return 'Lainnya';
+      };
+
+      // Kelompokkan total view per kategori
+      const categoryMap = new Map<string, number>();
+      allViews?.forEach((row) => {
+        const cat = getCategory(row.page_path);
+        const current = categoryMap.get(cat) || 0;
+        categoryMap.set(cat, current + (row.view_count || 0));
+      });
+
+      // Konversi ke format yang dibutuhkan Recharts
+      const pieDataReal = Array.from(categoryMap.entries())
+        .filter(([_, value]) => value > 0) // Jangan tampilkan yang 0
+        .map(([name, value]) => ({ name, value }));
+
+      // Jika data real kosong, gunakan dummy fallback
+      const pieDataFinal = pieDataReal.length > 0 ? pieDataReal : [
+        { name: 'Bio Link', value: 0 },
+        { name: 'Shortener', value: 0 },
+        { name: 'CV Generator', value: 0 },
+        { name: 'PDF Tools', value: 0 },
+        { name: 'QR Code', value: 0 },
+        { name: 'Lainnya', value: 0 },
       ];
 
-      // Top Pages - bisa query dari page_views
+      // Top Pages
       const { data: topPagesData } = await supabase
         .from('page_views')
         .select('page_path, view_count')
@@ -130,21 +165,20 @@ export default function AdminDashboard() {
 
       const topPages = topPagesData?.map((p) => ({ page: p.page_path, visits: p.view_count })) || [];
 
-      // Artikel terbaru (5 terakhir)
+      // Artikel & User terbaru
       const { data: posts } = await supabase
         .from('blog_posts')
         .select('id, title, slug, published_at, category')
         .order('published_at', { ascending: false })
         .limit(5);
 
-      // User terbaru (5 terakhir)
       const { data: users } = await supabase
         .from('users')
         .select('id, email, full_name, is_premium, created_at')
         .order('created_at', { ascending: false })
         .limit(5);
 
-      // Update state
+      // Update semua state
       setStats({
         visitors: totalViews,
         todayVisitors: todayVisitors,
@@ -154,7 +188,7 @@ export default function AdminDashboard() {
         premiumUsers: premiumCount || 0,
       });
       setChartData(finalChart);
-      setPieData(dummyPie);
+      setPieData(pieDataFinal);
       setTopPages(topPages.length > 0 ? topPages : [{ page: '/', visits: 0 }]);
       setRecentPosts(posts || []);
       setRecentUsers(users || []);
@@ -391,7 +425,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Pie Chart - Distribusi Alat */}
+              {/* Pie Chart - Distribusi Alat (DATA REAL) */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h2 className="text-lg font-bold text-slate-800 mb-4">Penggunaan Alat</h2>
                 <div className="h-[280px] w-full flex items-center justify-center">
