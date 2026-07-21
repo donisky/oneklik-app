@@ -1,45 +1,31 @@
-import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+'use client';
 
-export async function POST(req: Request) {
-  try {
-    const { userId, pagePath } = await req.json();
-    const supabase = createRouteHandlerClient({ cookies });
+import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
-    // Catat ke tabel analytics_events (jika masih digunakan)
-    if (userId) {
-      await supabase.from('analytics_events').insert({
-        user_id: userId,
-        event_type: 'profile_view',
-      });
-    }
+export default function PageViewTracker() {
+  const pathname = usePathname();
 
-    // Catat ke tabel page_views (untuk dashboard admin)
-    if (pagePath) {
-      const today = new Date().toISOString().split('T')[0];
-      const { data: existing } = await supabase
-        .from('page_views')
-        .select('id, view_count')
-        .eq('page_path', pagePath)
-        .eq('date', today)
-        .maybeSingle();
-
-      if (existing) {
-        await supabase
-          .from('page_views')
-          .update({ view_count: existing.view_count + 1 })
-          .eq('id', existing.id);
-      } else {
-        await supabase
-          .from('page_views')
-          .insert({ page_path: pagePath, view_count: 1, date: today });
+  useEffect(() => {
+    // Kirim data ke API setiap kali pathname berubah (termasuk halaman pertama)
+    const trackView = async () => {
+      try {
+        await fetch('/api/track-view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            pagePath: pathname,
+            userId: null // Bisa disesuaikan jika ingin track user login
+          }),
+        });
+      } catch (error) {
+        // Abaikan error agar tidak mengganggu pengalaman pengguna
+        console.error('Tracking error:', error);
       }
-    }
+    };
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Track view error:', error);
-    return NextResponse.json({ error: 'Gagal mencatat view' }, { status: 500 });
-  }
+    trackView();
+  }, [pathname]);
+
+  return null; // Komponen ini tidak merender apa pun
 }
