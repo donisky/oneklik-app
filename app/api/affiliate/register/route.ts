@@ -12,6 +12,9 @@ const supabaseAdmin = createClient(
   { auth: { persistSession: false } }
 );
 
+// 🔴 GANTI DENGAN ID ADMIN ANDA (dari tabel auth.users)
+const ADMIN_USER_ID = 'ID_ADMIN_ANDA'; // <-- Ganti dengan UUID akun admin Anda
+
 export async function POST(req: Request) {
   try {
     const { email } = await req.json();
@@ -48,10 +51,23 @@ export async function POST(req: Request) {
 
     const referralLink = `https://oneklik.my.id/r/${referralCode}`;
 
-    // === KIRIM EMAIL VIA RESEND (SEKARANG SUDAH AKTIF) ===
+    // === KIRIM NOTIFIKASI KE ADMIN ===
+    try {
+      await supabaseAdmin.from('notifications').insert({
+        user_id: ADMIN_USER_ID,
+        type: 'affiliate_registered',
+        title: '🤝 Afiliasi Baru Mendaftar!',
+        message: `Email ${email} baru saja bergabung sebagai afiliator.`,
+      });
+      console.log(`📢 Notifikasi afiliasi terkirim ke admin.`);
+    } catch (notifError) {
+      console.error('⚠️ Gagal mengirim notifikasi admin:', notifError);
+    }
+
+    // === KIRIM EMAIL VIA RESEND ===
     try {
       await resend.emails.send({
-        from: 'Oneklik.id <support@oneklik.my.id>', // Pastikan ini sudah terverifikasi di Resend
+        from: 'Oneklik.id <support@oneklik.my.id>',
         to: [email],
         subject: 'Selamat! Ini Link Afiliasi Oneklik.id Anda',
         html: `
@@ -69,10 +85,8 @@ export async function POST(req: Request) {
       });
       console.log(`✅ Email terkirim ke ${email}`);
     } catch (emailError) {
-      // Kita log error tapi jangan gagalkan response API (User tetap dapat link di UI)
       console.error('❌ Gagal kirim email:', emailError);
     }
-    // ====================================================
 
     return NextResponse.json({ isNew: true, referral_code: referralCode, referralLink: referralLink });
 

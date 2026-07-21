@@ -10,7 +10,8 @@ import {
 } from 'recharts';
 import {
   Sparkles, TrendingUp, FileText, Users, Plus, Edit, Trash2, ExternalLink,
-  LayoutDashboard, Eye, Crown, Zap, Bell, Search, LogOut, Home, RefreshCw
+  LayoutDashboard, Eye, Crown, Zap, Bell, Search, LogOut, Home, RefreshCw,
+  X // <-- Tambahkan ini untuk tombol close modal
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -37,10 +38,75 @@ export default function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [adminName, setAdminName] = useState('Admin Oneklik');
 
+  // --- STATE NOTIFIKASI ---
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+
   const supabase = createClientComponentClient();
   const router = useRouter();
 
-  // --- FUNGSI FETCH DATA ---
+  // --- FETCH NOTIFICATIONS ---
+  const fetchNotifications = useCallback(async () => {
+    setNotifLoading(true);
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching notifications:', error);
+    } else {
+      setNotifications(data || []);
+      setUnreadCount(data?.filter((n: any) => !n.is_read).length || 0);
+    }
+    setNotifLoading(false);
+  }, [supabase]);
+
+  // --- SUPABASE REALTIME SUBSCRIPTION ---
+  useEffect(() => {
+    // Ambil data awal
+    fetchNotifications();
+
+    // Subscribe ke channel Realtime
+    const channel = supabase
+      .channel('admin-notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        (payload) => {
+          // Saat notifikasi baru masuk, update state secara langsung!
+          setNotifications((prev) => [payload.new, ...prev]);
+          setUnreadCount((prev) => prev + 1);
+          toast.success(`🔔 ${payload.new.title}`, { duration: 4000 });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, fetchNotifications]);
+
+  // --- MARK NOTIFICATIONS AS READ ---
+  const markAllAsRead = async () => {
+    if (unreadCount === 0) return;
+    const ids = notifications.filter((n) => !n.is_read).map((n) => n.id);
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .in('id', ids);
+
+    if (!error) {
+      setUnreadCount(0);
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, is_read: true }))
+      );
+    }
+  };
+
+  // --- FUNGSI FETCH DATA DASHBOARD (Tidak berubah) ---
   const fetchData = useCallback(async () => {
     try {
       setRefreshing(true);
@@ -113,7 +179,6 @@ export default function AdminDashboard() {
       const finalChart = dayNames.map((day) => ({ name: day, views: grouped[day] || 0 }));
 
       // --- PIE CHART: DATA REAL DARI PAGE_VIEWS ---
-      // Ambil semua page_views dalam 30 hari terakhir untuk mendapatkan distribusi alat
       const thirtyDaysAgo = new Date(today);
       thirtyDaysAgo.setDate(today.getDate() - 30);
       const { data: allViews } = await supabase
@@ -121,7 +186,6 @@ export default function AdminDashboard() {
         .select('page_path, view_count')
         .gte('date', thirtyDaysAgo.toISOString().split('T')[0]);
 
-      // Fungsi helper untuk mengkategorikan path
       const getCategory = (path: string) => {
         if (path.startsWith('/bio')) return 'Bio Link';
         if (path.startsWith('/tools/url-shortener')) return 'Shortener';
@@ -133,7 +197,6 @@ export default function AdminDashboard() {
         return 'Lainnya';
       };
 
-      // Kelompokkan total view per kategori
       const categoryMap = new Map<string, number>();
       allViews?.forEach((row) => {
         const cat = getCategory(row.page_path);
@@ -141,12 +204,10 @@ export default function AdminDashboard() {
         categoryMap.set(cat, current + (row.view_count || 0));
       });
 
-      // Konversi ke format yang dibutuhkan Recharts
       const pieDataReal = Array.from(categoryMap.entries())
-        .filter(([_, value]) => value > 0) // Jangan tampilkan yang 0
+        .filter(([_, value]) => value > 0)
         .map(([name, value]) => ({ name, value }));
 
-      // Jika data real kosong, gunakan dummy fallback
       const pieDataFinal = pieDataReal.length > 0 ? pieDataReal : [
         { name: 'Bio Link', value: 0 },
         { name: 'Shortener', value: 0 },
@@ -281,10 +342,20 @@ export default function AdminDashboard() {
               className="pl-9 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-600 w-48 transition-all"
             />
           </div>
-          <button className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+          
+          {/* --- NOTIFICATION BELL DENGAN BADGE --- */}
+          <button 
+            onClick={() => { setIsNotifOpen(true); markAllAsRead(); }}
+            className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors"
+          >
             <Bell size={20} />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
+
           <div className="w-px h-6 bg-slate-200 hidden sm:block"></div>
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm border-2 border-white shadow-sm">
@@ -570,6 +641,49 @@ export default function AdminDashboard() {
           </div>
         </main>
       </div>
+
+      {/* --- NOTIFICATION MODAL (Dengan List Real Data) --- */}
+      {isNotifOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative max-h-[80vh] flex flex-col">
+            <button onClick={() => setIsNotifOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700">
+              <X size={24} />
+            </button>
+            <div className="flex items-center gap-2 mb-4">
+              <Bell size={20} className="text-blue-600" />
+              <h2 className="text-lg font-bold text-slate-800">Notifikasi</h2>
+              <span className="ml-auto text-xs bg-slate-100 px-2 py-0.5 rounded-full text-slate-600">
+                {unreadCount} belum dibaca
+              </span>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+              {notifLoading ? (
+                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mt-4" />
+              ) : notifications.length > 0 ? (
+                notifications.map((notif) => (
+                  <div key={notif.id} className={`p-3 rounded-lg border transition-colors ${notif.is_read ? 'bg-white border-slate-100' : 'bg-blue-50 border-blue-200'}`}>
+                    <p className="font-medium text-slate-800 text-sm">{notif.title}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{notif.message}</p>
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      {new Date(notif.created_at).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="py-8 text-center text-slate-400">
+                  <Bell size={40} className="mx-auto text-slate-200 mb-2" />
+                  <p className="text-sm font-medium">Belum ada notifikasi</p>
+                </div>
+              )}
+            </div>
+            
+            <button onClick={() => setIsNotifOpen(false)} className="mt-4 w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium transition-colors">
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

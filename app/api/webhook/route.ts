@@ -16,6 +16,9 @@ const supabaseAdmin = createClient(
   { auth: { persistSession: false } }
 );
 
+// 🔴 GANTI DENGAN ID ADMIN ANDA (dari tabel auth.users)
+const ADMIN_USER_ID = 'ID_ADMIN_ANDA'; // <-- Ganti dengan UUID akun admin Anda
+
 export async function POST(req: Request) {
   const body = await req.json();
 
@@ -25,9 +28,8 @@ export async function POST(req: Request) {
     const transactionStatus = notification.transaction_status;
     const fraudStatus = notification.fraud_status;
     
-    // Ambil metadata yang kita kirim dari Frontend saat checkout
     const userId = notification.metadata?.user_id; 
-    const grossAmount = parseFloat(notification.gross_amount); // Total pembayaran
+    const grossAmount = parseFloat(notification.gross_amount);
 
     if (!userId) {
       console.error('❌ User ID tidak ditemukan di metadata Midtrans!');
@@ -38,7 +40,7 @@ export async function POST(req: Request) {
     if (transactionStatus === 'settlement' && fraudStatus === 'accept') {
       // 1. Update status Premium User
       const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30); // Misal Premium 30 hari
+      expiresAt.setDate(expiresAt.getDate() + 30);
 
       const { error: updateError } = await supabaseAdmin
         .from('users')
@@ -54,11 +56,34 @@ export async function POST(req: Request) {
       }
       console.log(`✅ User ${userId} sukses upgrade premium hingga ${expiresAt}`);
 
+      // --- AMBIL DATA USER UNTUK NOTIFIKASI ---
+      const { data: userProfile } = await supabaseAdmin
+        .from('users')
+        .select('email, full_name')
+        .eq('id', userId)
+        .single();
+
+      const userEmail = userProfile?.email || 'Unknown';
+      const userName = userProfile?.full_name || 'User';
+
+      // --- KIRIM NOTIFIKASI KE ADMIN ---
+      try {
+        await supabaseAdmin.from('notifications').insert({
+          user_id: ADMIN_USER_ID, // ID Admin
+          type: 'user_upgraded',
+          title: '🎉 User Premium Baru!',
+          message: `User ${userName} (${userEmail}) telah melakukan upgrade ke Premium.`,
+        });
+        console.log(`📢 Notifikasi upgrade terkirim ke admin.`);
+      } catch (notifError) {
+        // Jangan gagalkan transaksi jika notifikasi gagal
+        console.error('⚠️ Gagal mengirim notifikasi admin:', notifError);
+      }
+
       // =========================================================
       // 2. LOGIKA AFILIASI (20% KOMISI)
       // =========================================================
-      // Cek apakah user yang upgrade ini terdaftar melalui referral
-      const { data: userData, error: userFetchError } = await supabaseAdmin
+      const { data: userData } = await supabaseAdmin
         .from('users')
         .select('referrer_code')
         .eq('id', userId)
@@ -67,31 +92,26 @@ export async function POST(req: Request) {
       const refCode = userData?.referrer_code;
 
       if (refCode) {
-        // Cegah duplikasi: Cek apakah order_id ini sudah pernah mencatat komisi
         const { data: existingCommision } = await supabaseAdmin
           .from('affiliate_conversions')
           .select('id')
-          .eq('id', orderId) // Kita gunakan order_id sebagai Primary Key di tabel komisi agar unik
+          .eq('id', orderId)
           .maybeSingle();
 
         if (existingCommision) {
           console.log(`⏳ Komisi untuk Order ${orderId} sudah tercatat sebelumnya. Skip duplikasi.`);
         } else {
-          // Hitung komisi 20%
           const commissionAmount = grossAmount * 0.20;
-
-          // Masukkan ke tabel affiliate_conversions
           const { error: commError } = await supabaseAdmin
             .from('affiliate_conversions')
             .insert({
-              id: orderId, // Set primary key = order_id untuk mencegah double input webhook
+              id: orderId,
               referral_code: refCode,
               amount: grossAmount,
               commission: commissionAmount,
             });
 
           if (commError) {
-            // Kita log error tapi tidak mematikan response, karena user tetap harus jadi premium
             console.error('⚠️ Gagal mencatat komisi afiliasi:', commError);
           } else {
             console.log(`💰 Komisi 20% (${commissionAmount}) sukses dicatat untuk referal ${refCode} dari Order ${orderId}`);
@@ -100,7 +120,6 @@ export async function POST(req: Request) {
       } else {
         console.log(`ℹ️ User ${userId} tidak memiliki referal.`);
       }
-      // =========================================================
 
     } else {
       console.log(`ℹ️ Transaksi ${orderId} berstatus ${transactionStatus} / ${fraudStatus}. Tidak ada aksi.`);
