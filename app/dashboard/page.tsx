@@ -1,62 +1,77 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
   Crown, LogOut, FileText, FileCheck, User, Layout, Trash2, AlertTriangle, X, 
   Menu, Home, Wand2, Store, Palette, Bell, ChevronRight,
-  Link as LinkIcon, QrCode, Gift, TrendingUp // Tambahkan Gift & TrendingUp
+  Link as LinkIcon, QrCode, Gift, TrendingUp
 } from 'lucide-react';
 import Link from 'next/link';
 
-// --- Modal Notifikasi ---
-const NotificationModal = ({ isOpen, onClose, notifications, loading, tab, setTab }: any) => {
+// --- Modal Notifikasi Upgrade (dengan badge & action) ---
+const NotificationModal = ({ isOpen, onClose, notifications, loading, unreadCount, markAllAsRead }: any) => {
   if (!isOpen) return null;
-  
-  const filtered = notifications.filter((n: any) => {
-    if (tab === 'All') return true;
-    return n.type.toLowerCase() === tab.toLowerCase();
-  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
-        <h2 className="text-lg font-bold text-center text-slate-800 mb-6">Notifikasi</h2>
-        <div className="flex justify-center gap-2 mb-6">
-          {['All', 'Updates', 'Opportunities', 'Insights'].map((t) => (
-            <button 
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${tab === t ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-col items-center justify-center py-4 min-h-[200px]">
-          {loading ? (
-            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          ) : filtered.length > 0 ? (
-            <div className="w-full space-y-3">
-              {filtered.map((notif: any) => (
-                <div key={notif.id} className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                  <p className="font-medium text-slate-800 text-sm">{notif.title}</p>
-                  {notif.message && <p className="text-xs text-slate-500">{notif.message}</p>}
-                  <span className="text-[10px] text-slate-400 mt-1 block">{new Date(notif.created_at).toLocaleDateString()}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <>
-              <Bell size={48} className="text-slate-200 mb-3" />
-              <p className="font-medium text-slate-600">Belum ada notifikasi</p>
-              <p className="text-xs text-slate-400">Pesan, fitur baru, dan insight akan muncul di sini.</p>
-            </>
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative max-h-[80vh] flex flex-col">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700">
+          <X size={24} />
+        </button>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <Bell size={20} className="text-blue-600" /> Notifikasi
+          </h2>
+          {unreadCount > 0 && (
+            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
+              {unreadCount} baru
+            </span>
           )}
         </div>
+        
+        <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+          {loading ? (
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mt-4" />
+          ) : notifications.length > 0 ? (
+            notifications.map((notif: any) => (
+              <div 
+                key={notif.id} 
+                className={`p-3 rounded-lg border transition-colors cursor-pointer hover:shadow-md ${notif.is_read ? 'bg-white border-slate-100' : 'bg-blue-50 border-blue-200'}`}
+                onClick={() => {
+                  if (notif.action_url) {
+                    window.location.href = notif.action_url;
+                  }
+                }}
+              >
+                <p className="font-medium text-slate-800 text-sm">{notif.title}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{notif.message}</p>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  {new Date(notif.created_at).toLocaleString('id-ID')}
+                </span>
+                {notif.action_url && (
+                  <div className="mt-2 text-xs text-blue-600 font-medium hover:underline">
+                    Lihat detail →
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="py-8 text-center text-slate-400">
+              <Bell size={40} className="mx-auto text-slate-200 mb-2" />
+              <p className="text-sm font-medium">Belum ada notifikasi</p>
+            </div>
+          )}
+        </div>
+        
+        <button 
+          onClick={() => { markAllAsRead(); onClose(); }} 
+          className="mt-4 w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium transition-colors"
+        >
+          Tutup
+        </button>
       </div>
     </div>
   );
@@ -70,11 +85,11 @@ export default function Dashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // --- STATE NOTIFIKASI ---
+  // --- STATE NOTIFIKASI (User) ---
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notifLoading, setNotifLoading] = useState(false);
-  const [notifTab, setNotifTab] = useState('All');
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const supabase = createClientComponentClient();
   const router = useRouter();
@@ -118,19 +133,41 @@ export default function Dashboard() {
     getData();
   }, [supabase]);
 
-  // --- FETCH NOTIFICATIONS ---
-  const fetchNotifications = async () => {
+  // --- FETCH NOTIFICATIONS (Hanya milik user) ---
+  const fetchNotifications = useCallback(async () => {
     if (!session?.user?.id) return;
     setNotifLoading(true);
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('recipient_type', 'user')
+      .eq('recipient_id', session.user.id)
       .order('created_at', { ascending: false });
-    if (error) console.error('Error fetching notifications:', error);
-    else setNotifications(data || []);
+    
+    if (error) {
+      console.error('Error fetching notifications:', error);
+      toast.error('Gagal memuat notifikasi');
+    } else {
+      setNotifications(data || []);
+      setUnreadCount(data?.filter((n: any) => !n.is_read).length || 0);
+    }
     setNotifLoading(false);
-  };
+  }, [session?.user?.id, supabase]);
+
+  // --- MARK ALL AS READ (Saat modal ditutup) ---
+  const markAllAsRead = useCallback(async () => {
+    if (unreadCount === 0 || !session?.user?.id) return;
+    const ids = notifications.filter((n) => !n.is_read).map((n) => n.id);
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .in('id', ids);
+
+    if (!error) {
+      setUnreadCount(0);
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    }
+  }, [unreadCount, notifications, session?.user?.id, supabase]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -291,11 +328,18 @@ export default function Dashboard() {
                 <p className="text-sm text-slate-500 mt-1">Kelola semua kebutuhan digital Anda dalam satu tempat.</p>
               </div>
             </div>
+            
+            {/* --- NOTIFICATION BELL DENGAN BADGE (Untuk User) --- */}
             <button 
               onClick={() => { setIsNotificationOpen(true); fetchNotifications(); }}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+              className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors"
             >
-              <Bell className="w-4 h-4" /> Notifikasi
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
           </div>
 
@@ -427,14 +471,14 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* --- NOTIFICATION MODAL --- */}
+      {/* --- NOTIFICATION MODAL (Untuk User) --- */}
       <NotificationModal 
         isOpen={isNotificationOpen} 
-        onClose={() => setIsNotificationOpen(false)} 
+        onClose={() => { setIsNotificationOpen(false); markAllAsRead(); }}
         notifications={notifications} 
         loading={notifLoading} 
-        tab={notifTab} 
-        setTab={setNotifTab} 
+        unreadCount={unreadCount}
+        markAllAsRead={markAllAsRead}
       />
     </div>
   );
