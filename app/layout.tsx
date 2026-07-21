@@ -1,15 +1,22 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import AIChatWidget from "./components/AIChatWidget";
+import dynamic from 'next/dynamic';
+import { Analytics } from '@vercel/analytics/react';
 
 const inter = Inter({ subsets: ["latin"] });
 
+// --- LAZY LOADING UNTUK WIDGET AI (Agar tidak memperlambat LCP halaman utama) ---
+const AIChatWidget = dynamic(
+  () => import("./components/AIChatWidget"),
+  { ssr: false }
+);
+
 // --- OPTIMASI SEO GLOBAL ---
 export const metadata: Metadata = {
-  metadataBase: new URL('https://oneklik.my.id'), // Wajib untuk resolusi link absolut di sosial media
+  metadataBase: new URL('https://oneklik.my.id'),
   title: {
-    template: '%s | Oneklik.id', // Akan dipakai untuk halaman lain (contoh: "URL Shortener | Oneklik.id")
+    template: '%s | Oneklik.id',
     default: 'Oneklik.id - Bio Link, URL Shortener & Alat PDF All-in-One',
   },
   description: 'Platform all-in-one untuk membuat Bio Link profesional, mempersingkat URL panjang, membuat QR Code interaktif, Generator CV dengan AI, serta alat PDF seperti kompres, gabung, dan konversi dokumen.',
@@ -48,7 +55,7 @@ export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
-  themeColor: '#0B2E24', // Warna tema brand Oneklik Anda
+  themeColor: '#2563EB', // Diubah menjadi biru sesuai brand terbaru Anda
 };
 
 export default function RootLayout({
@@ -57,11 +64,35 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className={inter.className}>
+        {/* --- STRUKTUR DATA SCHEMA UNTUK SEO (Rich Snippets) --- */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              "name": "Oneklik.id",
+              "url": "https://oneklik.my.id",
+              "applicationCategory": "UtilityApplication",
+              "description": "Platform all-in-one untuk membuat Bio Link, Short Link, QR Code, Generator CV AI, dan Alat PDF.",
+              "operatingSystem": "All",
+              "browserRequirements": "Requires JavaScript",
+              "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "IDR"
+              }
+            })
+          }}
+        />
+
         {children}
         
         {/* Chatbot akan muncul di pojok kanan bawah setiap halaman */}
         <AIChatWidget />
         
+        {/* --- VERCEL ANALYTICS (Untuk melacak page views real-time pengunjung) --- */}
+        <Analytics />
       </body>
     </html>
   );
