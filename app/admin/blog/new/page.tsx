@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import toast from 'react-hot-toast';
@@ -16,9 +16,20 @@ export default function NewBlogPost() {
   const [imageUrl, setImageUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  
+  // --- STATE UNTUK AUTO-SLUG ---
+  const [autoSlug, setAutoSlug] = useState(true);
 
   const supabase = createClientComponentClient();
   const router = useRouter();
+
+  // --- LOGIKA GENERATE SLUG OTOMATIS (Real-time saat mengetik) ---
+  useEffect(() => {
+    if (autoSlug && title.trim()) {
+      const generated = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      setSlug(generated);
+    }
+  }, [title, autoSlug]);
 
   // --- FUNGSI UPLOAD GAMBAR ---
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,12 +57,12 @@ export default function NewBlogPost() {
     }
   };
 
-  // --- LOGIKA SIMPAN ARTIKEL (DENGAN CEK SLUG DUPLIKAT) ---
+  // --- LOGIKA SIMPAN ARTIKEL ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    // 1. Generate slug awal
+    // 1. Generate slug akhir
     let finalSlug = slug.trim() || title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
     // 2. Cek apakah slug sudah ada di database
@@ -72,11 +83,10 @@ export default function NewBlogPost() {
         .eq('slug', tempSlug)
         .maybeSingle();
       
-      if (!check) break; // Jika sudah tidak ada duplikat, keluar dari loop
+      if (!check) break;
       suffix++;
     }
     
-    // Jika terjadi perubahan slug karena duplikat, beri tahu user dan update finalSlug
     if (tempSlug !== finalSlug) {
       finalSlug = tempSlug;
       toast.success(`Slug "${slug}" sudah dipakai, otomatis diubah menjadi "${finalSlug}"`);
@@ -123,16 +133,34 @@ export default function NewBlogPost() {
               className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
             />
           </div>
+          
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Slug (URL) <span className="text-xs text-slate-400">(Biarkan kosong untuk generate otomatis)</span>
-            </label>
-            <input
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
-            />
+            <label className="block text-sm font-medium text-slate-700 mb-1">Slug (URL)</label>
+            <div className="flex items-center gap-3">
+              <input
+                value={slug}
+                onChange={(e) => {
+                  setSlug(e.target.value);
+                  // Jika user mengetik manual di kolom slug, matikan auto-slug
+                  setAutoSlug(false);
+                }}
+                placeholder="(Biarkan kosong untuk generate otomatis)"
+                className="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
+              />
+              
+              {/* CHECKBOX AUTO GENERATE */}
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  checked={autoSlug}
+                  onChange={(e) => setAutoSlug(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-600"
+                />
+                Otomatis
+              </label>
+            </div>
           </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
             <input
@@ -142,7 +170,6 @@ export default function NewBlogPost() {
             />
           </div>
 
-          {/* BAGIAN UPLOAD GAMBAR */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">URL Gambar Utama</label>
             <div className="flex flex-col sm:flex-row gap-3">
