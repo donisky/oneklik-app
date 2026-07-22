@@ -62,17 +62,14 @@ export default function NewBlogPost() {
     e.preventDefault();
     setLoading(true);
     
-    // 1. Generate slug akhir
     let finalSlug = slug.trim() || title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-    // 2. Cek apakah slug sudah ada di database
     const { data: existingSlug } = await supabase
       .from('blog_posts')
       .select('id')
       .eq('slug', finalSlug)
       .maybeSingle();
 
-    // 3. Jika slug sudah ada, tambahkan angka increment (misal: judul-1, judul-2)
     let suffix = 1;
     let tempSlug = finalSlug;
     while (existingSlug) {
@@ -92,11 +89,10 @@ export default function NewBlogPost() {
       toast.success(`Slug "${slug}" sudah dipakai, otomatis diubah menjadi "${finalSlug}"`);
     }
 
-    // 4. Simpan ke database
     const { error } = await supabase.from('blog_posts').insert({
       title,
       slug: finalSlug,
-      category,
+      category: category || null,
       excerpt,
       content,
       image_url: imageUrl,
@@ -112,6 +108,9 @@ export default function NewBlogPost() {
     }
     setLoading(false);
   };
+
+  // --- LIST KATEGORI ---
+  const categoryOptions = ['Bio Link', 'Short Link', 'QR Code', 'CV Generator', 'PDF Tools', 'Afiliasi', 'Oneklik'];
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -141,14 +140,12 @@ export default function NewBlogPost() {
                 value={slug}
                 onChange={(e) => {
                   setSlug(e.target.value);
-                  // Jika user mengetik manual di kolom slug, matikan auto-slug
                   setAutoSlug(false);
                 }}
                 placeholder="(Biarkan kosong untuk generate otomatis)"
                 className="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
               />
               
-              {/* CHECKBOX AUTO GENERATE */}
               <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 whitespace-nowrap">
                 <input
                   type="checkbox"
@@ -161,14 +158,21 @@ export default function NewBlogPost() {
             </div>
           </div>
 
+          {/* --- BAGIAN KATEGORI YANG DIUBAH MENJADI DROPDOWN --- */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
-            <input
+            <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
-            />
+              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white"
+            >
+              <option value="">Pilih kategori</option>
+              {categoryOptions.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
           </div>
+          {/* --------------------------------------------- */}
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">URL Gambar Utama</label>

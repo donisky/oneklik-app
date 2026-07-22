@@ -22,6 +22,9 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
   const supabase = createClientComponentClient();
   const router = useRouter();
 
+  // --- LIST KATEGORI ---
+  const categoryOptions = ['Bio Link', 'Short Link', 'QR Code', 'CV Generator', 'PDF Tools', 'Afiliasi', 'Oneklik'];
+
   // Ambil data artikel berdasarkan ID
   useEffect(() => {
     const fetchPost = async () => {
@@ -75,24 +78,22 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
     }
   };
 
-  // --- LOGIKA SIMPAN PERUBAHAN (DENGAN CEK SLUG DUPLIKAT) ---
+  // --- LOGIKA SIMPAN PERUBAHAN ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
     let finalSlug = slug.trim();
 
-    // Jika slug berubah, cek apakah slug baru sudah dipakai oleh artikel lain (selain artikel ini)
     if (finalSlug !== originalSlug) {
       const { data: existing } = await supabase
         .from('blog_posts')
         .select('id')
         .eq('slug', finalSlug)
-        .neq('id', params.id) // Jangan cek artikel yang sedang diedit
+        .neq('id', params.id)
         .maybeSingle();
 
       if (existing) {
-        // Jika slug sudah dipakai, tambahkan angka increment
         let suffix = 1;
         let tempSlug = finalSlug;
         while (true) {
@@ -116,7 +117,7 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
       .update({
         title,
         slug: finalSlug,
-        category,
+        category: category || null,
         excerpt,
         content,
         image_url: imageUrl,
@@ -158,9 +159,7 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Slug (URL) <span className="text-xs text-slate-400">(Pastikan unik)</span>
-            </label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Slug (URL)</label>
             <input
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
@@ -168,16 +167,23 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
               className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
             />
           </div>
+
+          {/* --- BAGIAN KATEGORI YANG DIUBAH MENJADI DROPDOWN --- */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
-            <input
+            <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
-            />
+              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white"
+            >
+              <option value="">Pilih kategori</option>
+              {categoryOptions.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
           </div>
+          {/* --------------------------------------------- */}
 
-          {/* --- BAGIAN UPLOAD GAMBAR --- */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">URL Gambar Utama</label>
             <div className="flex flex-col sm:flex-row gap-3">
