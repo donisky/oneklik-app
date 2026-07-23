@@ -7,7 +7,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { ArrowLeft, Calendar, ChevronRight } from 'lucide-react';
 
 const CATEGORIES = ['Semua', 'Bio Link', 'CV Generator', 'Short Link', 'QR Code', 'Afiliasi', 'Oneklik'];
-
+export const dynamic = 'force-dynamic';
 export default function BlogPage() {
   const [activeCategory, setActiveCategory] = useState('Semua');
   const [posts, setPosts] = useState<any[]>([]);
