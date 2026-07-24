@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// Setup Supabase Admin (bypass RLS untuk update premium & insert user)
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } }
 );
 
 export async function POST(req: Request) {
   try {
-    const { email, otp } = await req.json();
+    const { email, otp, userId } = await req.json();
 
-    if (!email || !otp) {
-      return NextResponse.json({ error: 'Email dan OTP wajib diisi.' }, { status: 400 });
+    if (!email || !otp || !userId) {
+      return NextResponse.json({ error: 'Email, OTP, dan User ID wajib diisi.' }, { status: 400 });
     }
 
     // 1. Ambil data klaim berdasarkan email
@@ -34,15 +36,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Kode OTP salah, silakan periksa kembali.' }, { status: 400 });
     }
 
-    // 3. Cari user berdasarkan email di tabel auth.users (via public.users)
-    const { data: userData } = await supabaseAdmin
+    // 3. Cek apakah user dengan userId ini sudah ada di tabel public.users
+    const { data: existingUser } = await supabaseAdmin
       .from('users')
       .select('id')
-      .eq('email', email)
-      .single();
+      .eq('id', userId)
+      .maybeSingle();
 
-    if (!userData) {
-      return NextResponse.json({ error: 'Akun Oneklik tidak ditemukan untuk email ini. Silakan login terlebih dahulu.' }, { status: 400 });
+    if (!existingUser) {
+      // Jika belum ada, buat data user baru (untuk user pertama kali yang belum terdaftar di public.users)
+      const { error: insertError } = await supabaseAdmin
+        .from('users')
+        .insert({
+          id: userId,
+          email: email,
+          full_name: '',
+          username: `user-${userId.slice(0, 8)}`,
+          is_premium: false,
+          selected_template: '1',
+        });
+      if (insertError) {
+        console.error('Gagal membuat user baru:', insertError);
+        return NextResponse.json({ error: 'Gagal membuat akun, silakan coba lagi.' }, { status: 500 });
+      }
     }
 
     // 4. Upgrade user menjadi Premium (30 hari)
@@ -55,7 +71,7 @@ export async function POST(req: Request) {
         is_premium: true,
         premium_expires_at: expiresAt.toISOString(),
       })
-      .eq('id', userData.id);
+      .eq('id', userId);
 
     if (updateError) {
       console.error('Gagal update premium:', updateError);
@@ -68,11 +84,10 @@ export async function POST(req: Request) {
       .update({ is_verified: true })
       .eq('email', email);
 
-    return NextResponse.json({ 
-      success: true, 
-      message: '🎉 Selamat! Akun Anda kini Premium selama 1 bulan.' 
+    return NextResponse.json({
+      success: true,
+      message: '🎉 Selamat! Akun Anda kini Premium selama 1 bulan.',
     });
-
   } catch (error: any) {
     console.error('Verify OTP error:', error);
     return NextResponse.json({ error: 'Terjadi kesalahan server.' }, { status: 500 });
