@@ -9,12 +9,9 @@ import {
   Plus, Search, Edit, Trash2, ExternalLink, Eye,
   Calendar, Tag, ChevronLeft, ChevronRight, Download,
   Loader2, FileText, Clock, X, LayoutGrid, List, CheckCircle, Zap,
-  RefreshCw // Tambahkan ini
+  RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-// --- KONFIGURASI ---
-const ITEMS_PER_PAGE = 12;
 
 // --- TIPE DATA ---
 type Post = {
@@ -47,15 +44,18 @@ const StatCard = ({ icon: Icon, label, value, sub, color }: { icon: any, label: 
   </div>
 );
 
-// --- KOMPONEN FILTER BAR ---
+// --- KOMPONEN FILTER BAR (Dengan Dropdown Items Per Page) ---
 const FilterBar = ({ 
   search, setSearch, 
   categoryFilter, setCategoryFilter, 
   statusFilter, setStatusFilter,
   sortBy, setSortBy,
   viewMode, setViewMode,
-  onReset, categories, totalResults
+  onReset, categories, totalResults,
+  itemsPerPage, setItemsPerPage // Tambahan props baru
 }: any) => {
+  const perPageOptions = [12, 30, 50, 100, 150, 200, 500];
+  
   return (
     <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
       <div className="flex flex-wrap gap-3 items-center">
@@ -101,6 +101,21 @@ const FilterBar = ({
             <option value="alphabetical">A-Z</option>
           </select>
         </div>
+
+        {/* --- DROPDOWN JUMLAH PER HALAMAN --- */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500 whitespace-nowrap">Tampilkan:</span>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => setItemsPerPage(Number(e.target.value))}
+            className="border border-slate-300 rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none bg-white min-w-[70px]"
+          >
+            {perPageOptions.map((num) => (
+              <option key={num} value={num}>{num}</option>
+            ))}
+          </select>
+        </div>
+        {/* ------------------------------------ */}
 
         <div className="flex items-center gap-2 ml-auto">
           <div className="flex bg-slate-100 rounded-xl p-1">
@@ -292,13 +307,12 @@ export default function AdminBlogList() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [itemsPerPage, setItemsPerPage] = useState(30); // Default 30
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalPosts, setTotalPosts] = useState(0);
   const [selectedPosts, setSelectedPosts] = useState<string[]>([]);
   const [stats, setStats] = useState({ published: 0, draft: 0, totalViews: 0 });
-  
-  // --- STATE REFRESH ---
   const [refreshing, setRefreshing] = useState(false);
 
   const supabase = createClientComponentClient();
@@ -306,47 +320,33 @@ export default function AdminBlogList() {
 
   const categories = ['All', 'Bio Link', 'Short Link', 'QR Code', 'CV Generator', 'PDF Tools', 'Afiliasi', 'Oneklik'];
 
-  // --- FETCH DATA ---
+  // --- FETCH DATA (Dengan Logika Statistik Global & Items Per Page) ---
   const fetchPosts = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      let query = supabase
+      // 1. Bangun query dasar untuk filter dan search (TANPA range agar statistik akurat)
+      let baseQuery = supabase
         .from('blog_posts')
-        .select('*', { count: 'exact' });
+        .select('*');
 
       if (categoryFilter !== 'All') {
-        query = query.eq('category', categoryFilter);
+        baseQuery = baseQuery.eq('category', categoryFilter);
       }
 
       if (search.trim()) {
-        query = query.ilike('title', `%${search}%`);
+        baseQuery = baseQuery.ilike('title', `%${search}%`);
       }
 
-      if (sortBy === 'newest') {
-        query = query.order('published_at', { ascending: false });
-      } else if (sortBy === 'oldest') {
-        query = query.order('published_at', { ascending: true });
-      } else if (sortBy === 'most_viewed') {
-        query = query.order('view_count', { ascending: false });
-      } else if (sortBy === 'alphabetical') {
-        query = query.order('title', { ascending: true });
-      }
+      // 2. Ambil SEMUA data berdasarkan filter untuk menghitung statistik TOTAL yang akurat
+      const { data: allData } = await baseQuery;
 
-      const from = (page - 1) * ITEMS_PER_PAGE;
-      const to = from + ITEMS_PER_PAGE - 1;
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
-
-      if (error) throw error;
-
+      // 3. Hitung statistik sebenarnya dari data global
       const now = new Date();
-      // --- PERBAIKAN LOGIKA STATUS DAN STATISTIK ---
-      let publishedCount = 0;
-      let draftCount = 0;
+      let totalPublished = 0;
+      let totalDraft = 0;
       let totalViews = 0;
 
-      const processed = (data || []).map((p: any) => {
+      const processedAll = (allData || []).map((p: any) => {
         let status = 'draft';
         if (p.published_at) {
           const pubDate = new Date(p.published_at);
@@ -354,19 +354,48 @@ export default function AdminBlogList() {
             status = 'published';
           }
         }
-        // Hitung statistik dari data mentah
-        if (status === 'published') publishedCount++;
-        else draftCount++;
+        if (status === 'published') totalPublished++;
+        else totalDraft++;
         totalViews += (p.view_count || 0);
         return { ...p, status };
       });
 
-      setPosts(processed);
-      setTotalPosts(count || 0);
-      setTotalPages(Math.ceil((count || 0) / ITEMS_PER_PAGE));
-      setCurrentPage(page);
+      // 4. Ambil data dengan Pagination (Berdasarkan dropdown itemsPerPage)
+      let pageQuery = baseQuery;
+      if (sortBy === 'newest') pageQuery = pageQuery.order('published_at', { ascending: false });
+      else if (sortBy === 'oldest') pageQuery = pageQuery.order('published_at', { ascending: true });
+      else if (sortBy === 'most_viewed') pageQuery = pageQuery.order('view_count', { ascending: false });
+      else if (sortBy === 'alphabetical') pageQuery = pageQuery.order('title', { ascending: true });
 
-      setStats({ published: publishedCount, draft: draftCount, totalViews });
+      const from = (page - 1) * itemsPerPage;
+      const to = from + itemsPerPage - 1;
+      const { data: pageData, error, count } = await pageQuery.range(from, to);
+
+      if (error) throw error;
+
+      // 5. Update State
+      const processedPage = (pageData || []).map((p: any) => {
+        let status = 'draft';
+        if (p.published_at) {
+          const pubDate = new Date(p.published_at);
+          if (!isNaN(pubDate.getTime()) && pubDate <= now) {
+            status = 'published';
+          }
+        }
+        return { ...p, status };
+      });
+
+      setPosts(processedPage);
+      setTotalPosts(count || 0);
+      setTotalPages(Math.ceil((count || 0) / itemsPerPage));
+      setCurrentPage(page);
+      
+      // Statistik sekarang benar-benar akurat dan tidak terpengaruh pagination/filter halaman!
+      setStats({ 
+        published: totalPublished, 
+        draft: totalDraft, 
+        totalViews: totalViews 
+      });
 
     } catch (error: any) {
       console.error('Error fetching posts:', error);
@@ -375,11 +404,13 @@ export default function AdminBlogList() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [categoryFilter, search, sortBy, supabase]);
+  }, [categoryFilter, search, sortBy, itemsPerPage, supabase]);
 
   useEffect(() => {
+    // Reset halaman ke 1 setiap kali filter/items per page berubah
+    setCurrentPage(1);
     fetchPosts(1);
-  }, [fetchPosts]);
+  }, [categoryFilter, search, sortBy, itemsPerPage, fetchPosts]);
 
   // --- TOMBOL REFRESH MANUAL ---
   const handleRefresh = async () => {
@@ -394,6 +425,7 @@ export default function AdminBlogList() {
     setCategoryFilter('All');
     setStatusFilter('all');
     setSortBy('newest');
+    setItemsPerPage(30);
     setCurrentPage(1);
     fetchPosts(1);
   }, [fetchPosts]);
@@ -489,7 +521,7 @@ export default function AdminBlogList() {
           </p>
         </div>
         <div className="flex gap-3 flex-wrap">
-          {/* --- TOMBOL REFRESH BARU --- */}
+          {/* --- TOMBOL REFRESH --- */}
           <button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -498,7 +530,6 @@ export default function AdminBlogList() {
             <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
             {refreshing ? 'Memperbarui...' : 'Refresh'}
           </button>
-          {/* --------------------- */}
           <button
             onClick={exportCSV}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors shadow-sm text-sm"
@@ -521,7 +552,7 @@ export default function AdminBlogList() {
         <StatCard key="views" icon={Eye} label="Total Tayangan" value={stats.totalViews.toLocaleString()} color="bg-purple-50/50 text-purple-600" />
       </div>
 
-      {/* FILTER BAR */}
+      {/* FILTER BAR (Dengan Dropdown) */}
       <FilterBar 
         search={search} setSearch={setSearch}
         categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter}
@@ -531,6 +562,7 @@ export default function AdminBlogList() {
         onReset={handleReset}
         categories={categories}
         totalResults={stats.published + stats.draft}
+        itemsPerPage={itemsPerPage} setItemsPerPage={setItemsPerPage} // Props baru
       />
 
       {/* BULK ACTIONS */}
@@ -636,7 +668,7 @@ export default function AdminBlogList() {
           {/* PAGINATION */}
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
             <p className="text-sm text-slate-500 order-2 sm:order-1">
-              Menampilkan {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalPosts)} - {Math.min(currentPage * ITEMS_PER_PAGE, totalPosts)} dari {totalPosts} artikel
+              Menampilkan {Math.min((currentPage - 1) * itemsPerPage + 1, totalPosts)} - {Math.min(currentPage * itemsPerPage, totalPosts)} dari {totalPosts} artikel
             </p>
             <div className="flex gap-1 order-1 sm:order-2">
               <button
