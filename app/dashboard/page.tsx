@@ -110,10 +110,11 @@ export default function Dashboard() {
           }
           setUser(userData);
 
-          // --- LOGIKA EMAIL SAMBUTAN UNTUK USER BARU ---
-          if (userData && !userData.welcome_email_sent) {
+          // --- PERBAIKAN: LOGIKA EMAIL SAMBUTAN YANG LEBIH AMAN ---
+          // Hanya kirim jika welcome_email_sent false atau null
+          if (userData && (userData.welcome_email_sent === false || userData.welcome_email_sent === null)) {
             try {
-              await fetch('/api/send-welcome-email', {
+              const res = await fetch('/api/send-welcome-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -122,12 +123,27 @@ export default function Dashboard() {
                   full_name: userData.full_name 
                 })
               });
-              // Set lokal agar tidak terpicu lagi di session ini
-              setUser((prev: any) => ({ ...prev, welcome_email_sent: true }));
+
+              // Jika API berhasil, refetch data user untuk memastikan database terupdate!
+              if (res.ok) {
+                // Update state lokal dulu untuk UX yang lebih cepat
+                setUser((prev: any) => ({ ...prev, welcome_email_sent: true }));
+                
+                // Re-fetch dari database untuk memastikan konsistensi
+                const { data: refreshedUser } = await supabase
+                  .from('users')
+                  .select('*')
+                  .eq('id', session.user.id)
+                  .single();
+                if (refreshedUser) setUser(refreshedUser);
+              } else {
+                console.error('Gagal mengirim email sambutan:', await res.text());
+              }
             } catch (err) {
               console.error('Gagal mengirim email sambutan:', err);
             }
           }
+          // --------------------------------------------
         }
         setLoading(false);
       } catch (err) {

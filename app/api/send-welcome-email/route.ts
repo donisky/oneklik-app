@@ -14,6 +14,25 @@ export async function POST(req: Request) {
     const { userId, email, full_name } = await req.json();
     if (!userId || !email) return NextResponse.json({ error: 'Missing data' }, { status: 400 });
 
+    // --- CEK APAKAH EMAIL SUDAH PERNAH DIKIRIM ---
+    const { data: userData, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('welcome_email_sent')
+      .eq('id', userId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching user:', fetchError);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Jika sudah dikirim, tolak dan return success tanpa mengirim email lagi
+    if (userData?.welcome_email_sent === true) {
+      console.log(`Email sambutan sudah pernah dikirim ke ${email}. Skip.`);
+      return NextResponse.json({ success: true, skipped: true });
+    }
+    // ------------------------------------------
+
     // 1. Kirim email sambutan ke user
     await resend.emails.send({
       from: 'Oneklik.id <support@oneklik.my.id>',
