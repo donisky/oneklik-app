@@ -13,15 +13,15 @@ import {
   Store, Palette, DollarSign, Users, BarChart3, X, Paintbrush,
   Facebook, Twitter, Linkedin, MessageCircle, Send,
   Image as ImageIcon, Video, Sparkles, ChevronRight, ShoppingBag, Package,
-  Upload, Loader2, Menu, Globe // Tambahkan Globe untuk default social
+  Upload, Loader2, Menu, Globe, Instagram, Youtube, Music2 // Tambahkan Instagram, Youtube, Music2 untuk sosmed dinamis
 } from 'lucide-react';
 
-// --- Komponen Preview Mockup HP (DIUPGRADE DENGAN CUSTOM BG, ANIMASI 3D, & FOOTER SOSMED) ---
+// --- Komponen Preview Mockup HP (DIUPGRADE DENGAN CUSTOM BG, ANIMASI 3D, & FOOTER SOSMED DINAMIS) ---
 const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
   const template = templates.find(t => t.id === parseInt(user?.selected_template || '1', 10)) || templates[0];
   const design = user?.design_settings || {};
   
-  // --- FITUR BARU: CUSTOM BACKGROUND ---
+  // --- FITUR: CUSTOM BACKGROUND ---
   const bgType = design.bg_type || 'template'; // 'template', 'url', 'upload'
   const customBgUrl = design.bg_custom_url || '';
 
@@ -47,13 +47,16 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
   const btnStyle = design.buttons || 'fill';
   const showStickers = design.stickers === 'decorate' || design.stickers === 'fun';
   
-  // --- FITUR BARU: FOOTER SOSMED (Logo Oneklik sebagai Link) ---
-  // Ganti URL ini sesuai dengan akun sosial Oneklik Anda
-  const socialLinks = [
-    { name: 'Instagram', icon: <Facebook size={16} />, url: 'https://instagram.com/oneklik.id' },
-    { name: 'TikTok', icon: <Twitter size={16} />, url: 'https://tiktok.com/@oneklik.id' },
-    { name: 'YouTube', icon: <Globe size={16} />, url: 'https://youtube.com/@oneklik.id' },
+  // --- FITUR: FOOTER SOSMED DINAMIS ---
+  // Hanya menampilkan icon platform yang linknya benar-benar diisi oleh user.
+  const socialPlatforms = [
+    { key: 'social_instagram', name: 'Instagram', icon: <Instagram size={16} /> },
+    { key: 'social_tiktok', name: 'TikTok', icon: <Music2 size={16} /> },
+    { key: 'social_youtube', name: 'YouTube', icon: <Youtube size={16} /> },
   ];
+  const socialLinks = socialPlatforms
+    .filter((p) => user?.[p.key])
+    .map((p) => ({ name: p.name, icon: p.icon, url: user[p.key] }));
 
   const getButtonStyles = (baseColor: string, defaultText: string) => {
     if (btnStyle === 'outline') {
@@ -73,8 +76,8 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
       {/* Background Layer (Mendukung Custom Image) */}
       <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" style={backgroundStyle} />
       
-      {/* Glassmorphism Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/50 to-black/80 backdrop-blur-[2px]" />
+      {/* Glassmorphism Gradient Overlay (blur dihapus agar background custom 4K tidak buram) */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/50 to-black/80" />
       
       {/* Side Buttons Mockup */}
       <div className="absolute top-[20%] -left-1 w-1.5 h-8 bg-gray-700 rounded-l-full" />
@@ -141,22 +144,24 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
           <div className="absolute top-4 left-4 text-2xl animate-bounce">✨</div>
         )}
         
-        {/* --- FOOTER BARU: LOGO & SOSIAL MEDIA YANG BISA DIKLIK --- */}
+        {/* --- FOOTER: LOGO & SOSIAL MEDIA DINAMIS (hanya tampil jika ada link diisi) --- */}
         <div className="mt-auto pb-6 w-full px-4 border-t border-white/10 pt-4">
-          <div className="flex justify-center items-center gap-4 mb-1">
-            {socialLinks.map((social, idx) => (
-              <motion.a
-                key={idx}
-                href={social.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ scale: 1.2, y: -2 }}
-                className="text-white/60 hover:text-white transition-colors bg-white/10 backdrop-blur-sm p-2 rounded-full"
-              >
-                {social.icon}
-              </motion.a>
-            ))}
-          </div>
+          {socialLinks.length > 0 && (
+            <div className="flex justify-center items-center gap-4 mb-1">
+              {socialLinks.map((social, idx) => (
+                <motion.a
+                  key={idx}
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.2, y: -2 }}
+                  className="text-white/60 hover:text-white transition-colors bg-white/10 backdrop-blur-sm p-2 rounded-full"
+                >
+                  {social.icon}
+                </motion.a>
+              ))}
+            </div>
+          )}
           <div className="mt-2">
             <motion.a 
               href="https://oneklik.my.id" 
@@ -420,6 +425,7 @@ export default function BioPage() {
         username: user.username, full_name: user.full_name, bio: user.bio || '', selected_template: user.selected_template,
         theme_bg: user.theme_bg, theme_primary: user.theme_primary, theme_secondary: user.theme_secondary,
         shop_link: user.shop_link || null, design_settings: user.design_settings || {}, avatar_url: user.avatar_url || null,
+        social_instagram: user.social_instagram || null, social_tiktok: user.social_tiktok || null, social_youtube: user.social_youtube || null,
       }).eq('id', session.user.id).select();
       if (error) { toast.error('Gagal menyimpan: ' + error.message); return; }
       if (!updatedRows || updatedRows.length === 0) { toast.error('Data tidak tersimpan. Cek RLS policy UPDATE di Supabase.'); return; }
@@ -468,7 +474,7 @@ export default function BioPage() {
     }
   };
 
-  // --- UPLOAD BACKGROUND BIO (FITUR BARU) ---
+  // --- UPLOAD BACKGROUND BIO ---
   const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !session?.user?.id) return;
@@ -733,6 +739,19 @@ export default function BioPage() {
                   </div>
                 </div>
                 <div className="mt-4 border-t border-slate-100 pt-4"><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bio</label><textarea value={user?.bio || ''} onChange={(e) => setUser({...user, bio: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-lg p-3 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent resize-none placeholder:text-slate-300 transition-all" rows={2} placeholder="Ceritakan sedikit tentang dirimu..." /></div>
+
+                {/* --- SHOP LINK (Dipindah dari tab Design ke sini) --- */}
+                <div className="mt-4 border-t border-slate-100 pt-4">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Shop Link</label>
+                  <input 
+                    type="text" 
+                    placeholder="https://shop.anda.com" 
+                    value={user?.shop_link || ''} 
+                    onChange={(e) => setUser((prev: any) => ({ ...prev, shop_link: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Tambahkan link toko Anda (akan muncul sebagai tombol 🛍️ Shop di bio).</p>
+                </div>
               </div>
               <div className="mb-4">
                 {showAddLink ? (
@@ -761,7 +780,7 @@ export default function BioPage() {
             </>
           )}
 
-          {/* --- TAB: DESIGN (HANYA BACKGROUND & SHOP LINK) --- */}
+          {/* --- TAB: DESIGN (BACKGROUND & SOSIAL MEDIA FOOTER) --- */}
           {activeTab === 'design' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
               <div className="flex items-center justify-between mb-4">
@@ -797,17 +816,40 @@ export default function BioPage() {
                   )}
                 </div>
 
-                {/* Shop Link */}
-                <div className="border-t border-slate-100 pt-4">
-                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Shop Link</label>
-                  <input 
-                    type="text" 
-                    placeholder="https://shop.anda.com" 
-                    value={user?.shop_link || ''} 
-                    onChange={(e) => setUser((prev: any) => ({ ...prev, shop_link: e.target.value }))}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">Tambahkan link toko Anda (akan muncul sebagai tombol 🛍️ Shop di bio).</p>
+                {/* --- SOSIAL MEDIA (Footer Bio) --- */}
+                <div className="border-t border-slate-100 pt-4 space-y-2">
+                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Sosial Media (Footer Bio)</label>
+                  <div className="flex items-center gap-2">
+                    <Instagram size={16} className="text-slate-400 flex-shrink-0" />
+                    <input 
+                      type="text" 
+                      placeholder="Link Instagram (opsional)" 
+                      value={user?.social_instagram || ''} 
+                      onChange={(e) => setUser((prev: any) => ({ ...prev, social_instagram: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Music2 size={16} className="text-slate-400 flex-shrink-0" />
+                    <input 
+                      type="text" 
+                      placeholder="Link TikTok (opsional)" 
+                      value={user?.social_tiktok || ''} 
+                      onChange={(e) => setUser((prev: any) => ({ ...prev, social_tiktok: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Youtube size={16} className="text-slate-400 flex-shrink-0" />
+                    <input 
+                      type="text" 
+                      placeholder="Link YouTube (opsional)" 
+                      value={user?.social_youtube || ''} 
+                      onChange={(e) => setUser((prev: any) => ({ ...prev, social_youtube: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400">Icon hanya akan muncul di footer bio jika linknya diisi.</p>
                 </div>
               </div>
               
