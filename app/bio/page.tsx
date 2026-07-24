@@ -5,24 +5,24 @@ import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import toast, { Toaster } from 'react-hot-toast';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion'; // Tambahkan untuk efek 3D/Animasi
 import { templates } from '@/app/lib/templateData';
 import { 
   User, Plus, Trash2, Eye, ArrowLeft, Crown, LogOut, 
   Bell, CheckCircle2, Settings, Share2, Copy, Wand2,
-  Store, Palette, BarChart3, X, Paintbrush,
-  Facebook, Twitter, Linkedin, MessageCircle, Send, Music, Youtube,
+  Store, Palette, DollarSign, Users, BarChart3, X, Paintbrush,
+  Facebook, Twitter, Linkedin, MessageCircle, Send,
   Image as ImageIcon, Video, Sparkles, ChevronRight, ShoppingBag, Package,
-  Upload, Loader2, Menu, Globe
+  Upload, Loader2, Menu, Globe // Tambahkan Globe untuk default social
 } from 'lucide-react';
 
-// --- Komponen Preview Mockup HP (DIUPGRADE DENGAN CUSTOM BG, ANIMASI 3D, & FOOTER SOSMED DINAMIS) ---
+// --- Komponen Preview Mockup HP (DIUPGRADE DENGAN CUSTOM BG, ANIMASI 3D, & FOOTER SOSMED) ---
 const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
   const template = templates.find(t => t.id === parseInt(user?.selected_template || '1', 10)) || templates[0];
   const design = user?.design_settings || {};
   
-  // --- FITUR CUSTOM BACKGROUND ---
-  const bgType = design.bg_type || 'template';
+  // --- FITUR BARU: CUSTOM BACKGROUND ---
+  const bgType = design.bg_type || 'template'; // 'template', 'url', 'upload'
   const customBgUrl = design.bg_custom_url || '';
 
   let backgroundStyle = {};
@@ -47,31 +47,13 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
   const btnStyle = design.buttons || 'fill';
   const showStickers = design.stickers === 'decorate' || design.stickers === 'fun';
   
-  // --- FOOTER SOSMED DINAMIS ---
-  const getSocialLinks = (links: any[]) => {
-    const socialIcons = [];
-    const platformMap: { [key: string]: { icon: JSX.Element, name: string } } = {
-      'instagram.com': { icon: <Globe size={16} />, name: 'Instagram' },
-      'tiktok.com': { icon: <Music size={16} />, name: 'TikTok' },
-      'youtube.com': { icon: <Youtube size={16} />, name: 'YouTube' },
-      't.me': { icon: <Send size={16} />, name: 'Telegram' },
-      'twitter.com': { icon: <Twitter size={16} />, name: 'Twitter/X' },
-      'linkedin.com': { icon: <Linkedin size={16} />, name: 'LinkedIn' },
-      'facebook.com': { icon: <Facebook size={16} />, name: 'Facebook' },
-    };
-    links.forEach(link => {
-      const url = link.url.toLowerCase();
-      for (const [key, val] of Object.entries(platformMap)) {
-        if (url.includes(key)) {
-          socialIcons.push({ icon: val.icon, url: link.url });
-          break;
-        }
-      }
-    });
-    return socialIcons;
-  };
-
-  const socialLinks = getSocialLinks(links || []);
+  // --- FITUR BARU: FOOTER SOSMED (Logo Oneklik sebagai Link) ---
+  // Ganti URL ini sesuai dengan akun sosial Oneklik Anda
+  const socialLinks = [
+    { name: 'Instagram', icon: <Facebook size={16} />, url: 'https://instagram.com/oneklik.id' },
+    { name: 'TikTok', icon: <Twitter size={16} />, url: 'https://tiktok.com/@oneklik.id' },
+    { name: 'YouTube', icon: <Globe size={16} />, url: 'https://youtube.com/@oneklik.id' },
+  ];
 
   const getButtonStyles = (baseColor: string, defaultText: string) => {
     if (btnStyle === 'outline') {
@@ -88,7 +70,7 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
       {/* Dynamic Island */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-20 shadow-lg" />
       
-      {/* Background Layer */}
+      {/* Background Layer (Mendukung Custom Image) */}
       <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" style={backgroundStyle} />
       
       {/* Glassmorphism Gradient Overlay */}
@@ -101,6 +83,8 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
       
       {/* Konten Bio */}
       <div className="relative z-10 h-full flex flex-col items-center pt-10 px-4 text-center" style={{ fontFamily }}>
+        
+        {/* Avatar dengan efek Glassmorphism premium */}
         <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-xl border border-white/20 mb-3">
           {user?.avatar_url ? (
             <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover rounded-full" />
@@ -109,9 +93,11 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
           )}
         </div>
         
+        {/* Nama & Username */}
         <h3 className="font-bold text-xl text-white drop-shadow-md">{user?.full_name || 'Nama Kamu'}</h3>
         <p className="text-[10px] mb-5 text-white/70 drop-shadow">@{user?.username || 'username'}</p>
         
+        {/* Link Button Dinamis dengan Animasi 3D Wobble */}
         <div className="w-full space-y-3 px-2">
           {links && links.map((link) => {
             const btnStyleObj = getButtonStyles(buttonColor, textColor);
@@ -127,11 +113,13 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
                 className="block w-full py-3 px-4 rounded-2xl font-semibold shadow-lg backdrop-blur-sm relative overflow-hidden"
                 style={btnStyleObj}
               >
+                {/* --- IKON TELAH DIHAPUS, HANYA TULISAN --- */}
                 {link.title}
               </motion.a>
             );
           })}
           
+          {/* Tombol Shop Kustom */}
           {user?.shop_link && (
             <motion.a
               href={user.shop_link} 
@@ -148,39 +136,38 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
           )}
         </div>
 
+        {/* Sticker Decoration */}
         {showStickers && (
           <div className="absolute top-4 left-4 text-2xl animate-bounce">✨</div>
         )}
         
-        {/* --- FOOTER DINAMIS --- */}
-        {socialLinks.length > 0 && (
-          <div className="mt-auto pb-6 w-full px-4 border-t border-white/10 pt-4">
-            <div className="flex justify-center items-center gap-4 mb-1">
-              {socialLinks.map((social, idx) => (
-                <motion.a
-                  key={idx}
-                  href={social.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  whileHover={{ scale: 1.2, y: -2 }}
-                  className="text-white/60 hover:text-white transition-colors bg-white/10 backdrop-blur-sm p-2 rounded-full"
-                >
-                  {social.icon}
-                </motion.a>
-              ))}
-            </div>
-            <div className="mt-2">
-              <motion.a 
-                href="https://oneklik.my.id" 
+        {/* --- FOOTER BARU: LOGO & SOSIAL MEDIA YANG BISA DIKLIK --- */}
+        <div className="mt-auto pb-6 w-full px-4 border-t border-white/10 pt-4">
+          <div className="flex justify-center items-center gap-4 mb-1">
+            {socialLinks.map((social, idx) => (
+              <motion.a
+                key={idx}
+                href={social.url}
                 target="_blank"
-                whileHover={{ scale: 1.05 }}
-                className="text-[9px] text-white/40 hover:text-white/80 transition-colors block font-semibold tracking-wider"
+                rel="noopener noreferrer"
+                whileHover={{ scale: 1.2, y: -2 }}
+                className="text-white/60 hover:text-white transition-colors bg-white/10 backdrop-blur-sm p-2 rounded-full"
               >
-                POWERED BY <span className="text-blue-300">Oneklik.id</span>
+                {social.icon}
               </motion.a>
-            </div>
+            ))}
           </div>
-        )}
+          <div className="mt-2">
+            <motion.a 
+              href="https://oneklik.my.id" 
+              target="_blank"
+              whileHover={{ scale: 1.05 }}
+              className="text-[9px] text-white/40 hover:text-white/80 transition-colors block font-semibold tracking-wider"
+            >
+              POWERED BY <span className="text-blue-300">Oneklik.id</span>
+            </motion.a>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -226,13 +213,15 @@ const ShareDropdown = ({ url }: { url: string }) => {
   );
 };
 
-// --- Modal Notifikasi ---
+// --- Modal Notifikasi (Tetap sama) ---
 const NotificationModal = ({ isOpen, onClose, notifications, loading, tab, setTab }: any) => {
   if (!isOpen) return null;
+  
   const filtered = notifications.filter((n: any) => {
     if (tab === 'All') return true;
     return n.type.toLowerCase() === tab.toLowerCase();
   });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
@@ -240,11 +229,19 @@ const NotificationModal = ({ isOpen, onClose, notifications, loading, tab, setTa
         <h2 className="text-lg font-bold text-center text-slate-800 mb-6">Notifikasi</h2>
         <div className="flex justify-center gap-2 mb-6">
           {['All', 'Updates', 'Opportunities', 'Insights'].map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${tab === t ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>{t}</button>
+            <button 
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${tab === t ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}
+            >
+              {t}
+            </button>
           ))}
         </div>
         <div className="flex flex-col items-center justify-center py-4 min-h-[200px]">
-          {loading ? <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /> : filtered.length > 0 ? (
+          {loading ? (
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          ) : filtered.length > 0 ? (
             <div className="w-full space-y-3">
               {filtered.map((notif: any) => (
                 <div key={notif.id} className="p-3 bg-slate-50 rounded-lg border border-slate-100">
@@ -267,9 +264,34 @@ const NotificationModal = ({ isOpen, onClose, notifications, loading, tab, setTa
   );
 };
 
+// --- Komponen Modal Design (Fungsional) ---
+const DesignOptionModal = ({ isOpen, onClose, title, options, currentValue, onSelect }: any) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
+        <h2 className="text-lg font-bold text-slate-800 mb-4">{title}</h2>
+        <div className="space-y-2">
+          {options.map((opt: string) => (
+            <button
+              key={opt}
+              onClick={() => { onSelect(opt); onClose(); }}
+              className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${currentValue === opt ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'}`}
+            >
+              {opt.charAt(0).toUpperCase() + opt.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- Komponen Helper Ikon Kotak ---
 function SquareIcon(props: any) { return <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="18" height="18" x="3" y="3" rx="2"/></svg>; }
 
+// --- Main Page ---
 export default function BioPage() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -283,17 +305,30 @@ export default function BioPage() {
   const [copied, setCopied] = useState(false);
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // --- STATE UNTUK MOBILE MENU ---
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // --- NOTIFICATION STATE ---
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifTab, setNotifTab] = useState('All');
+
+  // --- DESIGN MODAL STATE ---
+  const [designModal, setDesignModal] = useState<string | null>(null);
+
+  // --- SHOP STATE ---
   const [products, setProducts] = useState<any[]>([]);
   const [showProductModal, setShowProductModal] = useState(false);
   const [uploadingProduct, setUploadingProduct] = useState(false);
   const [newProduct, setNewProduct] = useState({ title: '', price: '', description: '', link: '', image: null as File | null });
+
+  // --- ANALYTICS STATE ---
   const [analyticsData, setAnalyticsData] = useState<any[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  // --- STATE UNTUK CUSTOM BACKGROUND ---
   const [uploadingBg, setUploadingBg] = useState(false);
 
   const supabase = createClientComponentClient();
@@ -330,26 +365,41 @@ export default function BioPage() {
     getData();
   }, [supabase]);
 
+  // --- FETCH NOTIFICATIONS ---
   const fetchNotifications = async () => {
     if (!session?.user?.id) return;
     setNotifLoading(true);
-    const { data, error } = await supabase.from('notifications').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
     if (error) console.error('Error fetching notifications:', error);
     else setNotifications(data || []);
     setNotifLoading(false);
   };
 
+  // --- FETCH PRODUCTS ---
   const fetchProducts = async () => {
     if (!session?.user?.id) return;
-    const { data, error } = await supabase.from('shop_products').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('shop_products')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
     if (error) console.error('Error fetching products:', error);
     else setProducts(data || []);
   };
 
+  // --- FETCH ANALYTICS ---
   const fetchAnalytics = async () => {
     if (!session?.user?.id) return;
     setAnalyticsLoading(true);
-    const { data, error } = await supabase.from('analytics_events').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('analytics_events')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
     if (error) console.error('Error fetching analytics:', error);
     else setAnalyticsData(data || []);
     setAnalyticsLoading(false);
@@ -386,17 +436,39 @@ export default function BioPage() {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `avatar-${session.user.id}-${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { cacheControl: '3600', upsert: true });
-      if (uploadError) throw new Error(uploadError.message || 'Gagal mengunggah file.');
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { cacheControl: '3600', upsert: true });
+
+      if (uploadError) {
+        console.error('Supabase Storage Error:', uploadError);
+        throw new Error(uploadError.message || 'Gagal mengunggah file. Cek RLS Storage bucket.');
+      }
+
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-      setUser((prev: any) => ({ ...prev, avatar_url: urlData.publicUrl }));
-      const { error: updateError } = await supabase.from('users').update({ avatar_url: urlData.publicUrl }).eq('id', session.user.id);
-      if (updateError) throw new Error(updateError.message || 'Gagal menyimpan URL avatar.');
+      const publicUrl = urlData.publicUrl;
+      
+      setUser((prev: any) => ({ ...prev, avatar_url: publicUrl }));
+      
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ avatar_url: publicUrl })
+        .eq('id', session.user.id);
+
+      if (updateError) throw new Error(updateError.message || 'Gagal menyimpan URL avatar ke database.');
+
       toast.success('Foto profil berhasil diunggah!');
-    } catch (error: any) { toast.error('Gagal mengunggah foto: ' + error.message); } finally { setUploadingAvatar(false); setIsAvatarMenuOpen(false); }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error('Gagal mengunggah foto: ' + error.message);
+    } finally {
+      setUploadingAvatar(false);
+      setIsAvatarMenuOpen(false);
+    }
   };
 
-  // --- UPLOAD BACKGROUND BIO ---
+  // --- UPLOAD BACKGROUND BIO (FITUR BARU) ---
   const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !session?.user?.id) return;
@@ -404,14 +476,34 @@ export default function BioPage() {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `bg-${session.user.id}-${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { cacheControl: '3600', upsert: true });
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars') // Menggunakan bucket avatars untuk sementara
+        .upload(fileName, file, { cacheControl: '3600', upsert: true });
+
       if (uploadError) throw new Error(uploadError.message || 'Gagal mengunggah background.');
+
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-      setUser((prev: any) => ({ ...prev, design_settings: { ...(prev.design_settings || {}), bg_type: 'upload', bg_custom_url: urlData.publicUrl } }));
+      const publicUrl = urlData.publicUrl;
+
+      // Update state design_settings
+      setUser((prev: any) => ({ 
+        ...prev, 
+        design_settings: { 
+          ...(prev.design_settings || {}), 
+          bg_type: 'upload', 
+          bg_custom_url: publicUrl 
+        } 
+      }));
       toast.success('Background berhasil diunggah!');
-    } catch (error: any) { toast.error('Gagal upload background: ' + error.message); } finally { setUploadingBg(false); }
+    } catch (error: any) {
+      toast.error('Gagal upload background: ' + error.message);
+    } finally {
+      setUploadingBg(false);
+    }
   };
 
+  // --- HAPUS AVATAR ---
   const handleRemoveAvatar = async () => {
     if (!session?.user?.id) return;
     if (!confirm('Apakah Anda yakin ingin menghapus foto profil ini?')) return;
@@ -451,6 +543,26 @@ export default function BioPage() {
   // --- UPDATE DESIGN ---
   const updateDesign = (key: string, value: any) => {
     setUser((prev: any) => ({ ...prev, design_settings: { ...(prev?.design_settings || {}), [key]: value } }));
+  };
+
+  // --- TOMBOL ENHANCE (Randomizer) ---
+  const handleEnhance = () => {
+    const themes = ['air', 'customize', 'dark', 'light'];
+    const headers = ['classic', 'minimal', 'gradient'];
+    const wallpapers = ['fill', 'gradient', 'image'];
+    const buttons = ['fill', 'outline', 'ghost'];
+    const fonts = ['sans', 'serif', 'mono'];
+    const newDesign = {
+      theme: themes[Math.floor(Math.random() * themes.length)],
+      header: headers[Math.floor(Math.random() * headers.length)],
+      wallpaper: wallpapers[Math.floor(Math.random() * wallpapers.length)],
+      buttons: buttons[Math.floor(Math.random() * buttons.length)],
+      font: fonts[Math.floor(Math.random() * fonts.length)],
+      stickers: 'decorate',
+      footer: 'default',
+    };
+    setUser((prev: any) => ({ ...prev, design_settings: { ...prev.design_settings, ...newDesign } }));
+    toast.success('Desain telah disempurnakan!');
   };
 
   // --- SHOP CRUD ---
@@ -493,15 +605,35 @@ export default function BioPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col lg:flex-row overflow-hidden">
       <Toaster position="top-center" />
-      {mobileMenuOpen && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setMobileMenuOpen(false)} />}
 
-      {/* --- SIDEBAR DRAWER --- */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:w-[260px] lg:flex lg:flex-col lg:h-screen lg:flex-shrink-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* --- OVERLAY UNTUK MENUTUP SIDEBAR SAAT DI KLIK DI LUAR (HP) --- */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden" 
+          onClick={() => setMobileMenuOpen(false)} 
+        />
+      )}
+
+      {/* --- SIDEBAR DRAWER (RESPONSIF) --- */}
+      <aside 
+        className={`
+          fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 
+          transform transition-transform duration-300 ease-in-out 
+          lg:relative lg:translate-x-0 lg:w-[260px] lg:flex lg:flex-col lg:h-screen lg:flex-shrink-0
+          ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <Link href="/" className="text-2xl font-bold text-blue-600 tracking-tight">Oneklik<span className="text-blue-400">.id</span></Link>
           <Bell className="w-5 h-5 text-slate-400 hover:text-slate-700 cursor-pointer" onClick={() => { setIsNotificationOpen(true); fetchNotifications(); }} />
-          <button onClick={() => setMobileMenuOpen(false)} className="lg:hidden text-slate-600 hover:bg-slate-50 p-1 rounded-lg transition-colors"><X size={20} /></button>
+          <button 
+            onClick={() => setMobileMenuOpen(false)} 
+            className="lg:hidden text-slate-600 hover:bg-slate-50 p-1 rounded-lg transition-colors"
+          >
+            <X size={20} />
+          </button>
         </div>
+        
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 custom-scrollbar">
           <div className="space-y-1">
             <div className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider"><span>Menu</span></div>
@@ -511,20 +643,39 @@ export default function BioPage() {
             <button onClick={() => setActiveTab('analytics')} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left ${activeTab === 'analytics' ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-50'}`}><BarChart3 className="w-4 h-4" /> Analytics</button>
             <Link href="/templates"><div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors"><Paintbrush className="w-4 h-4" /> Template</div></Link>
           </div>
-          <div className="border-t border-slate-100 pt-4"><Link href="/dashboard"><div className="flex items-center gap-3 px-3 py-2.5 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"><ArrowLeft className="w-4 h-4" /> Dashboard</div></Link></div>
+          <div className="border-t border-slate-100 pt-4">
+             <Link href="/dashboard"><div className="flex items-center gap-3 px-3 py-2.5 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"><ArrowLeft className="w-4 h-4" /> Dashboard</div></Link>
+          </div>
         </div>
-        <div className="p-4 border-t border-slate-100 bg-white"><button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 text-xs text-red-500 hover:bg-red-50 py-2 rounded-lg transition-colors"><LogOut size={14} /> Keluar</button></div>
+        <div className="p-4 border-t border-slate-100 bg-white">
+          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 text-xs text-red-500 hover:bg-red-50 py-2 rounded-lg transition-colors"><LogOut size={14} /> Keluar</button>
+        </div>
       </aside>
 
       {/* --- MAIN CONTENT --- */}
       <main className="flex-1 h-screen overflow-y-auto bg-[#F8FAFC] p-6 lg:p-10">
         <div className="max-w-2xl mx-auto">
+          {/* HEADER DENGAN TOMBOL HAMBURGER */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"><Menu size={24} /></button>
-              <h2 className="text-2xl font-bold text-slate-800">{activeTab === 'links' && 'Links'}{activeTab === 'design' && 'Design'}{activeTab === 'shop' && 'My Shop'}{activeTab === 'analytics' && 'Analytics'}</h2>
+              {/* --- TOMBOL HAMBURGER UNTUK MOBILE --- */}
+              <button 
+                onClick={() => setMobileMenuOpen(true)} 
+                className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <Menu size={24} />
+              </button>
+
+              <h2 className="text-2xl font-bold text-slate-800">
+                {activeTab === 'links' && 'Links'}
+                {activeTab === 'design' && 'Design'}
+                {activeTab === 'shop' && 'My Shop'}
+                {activeTab === 'analytics' && 'Analytics'}
+              </h2>
             </div>
-            <button onClick={handleSaveProfile} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold shadow-md shadow-blue-200 transition-all">{saving ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
+            <button onClick={handleSaveProfile} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold shadow-md shadow-blue-200 transition-all">
+              {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+            </button>
           </div>
 
           {/* --- TAB: LINKS --- */}
@@ -534,27 +685,78 @@ export default function BioPage() {
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-t-xl" />
                 <div className="mt-2 flex items-center gap-4">
                   <div className="relative">
-                    <button onClick={() => setIsAvatarMenuOpen(!isAvatarMenuOpen)} className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 shadow-md shadow-blue-200 hover:opacity-90 transition-opacity overflow-hidden focus:outline-none">{user?.avatar_url ? <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" /> : user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?'}</button>
-                    {isAvatarMenuOpen && (<div className="absolute z-[60] top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 space-y-0.5">
-                      <label className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700 transition-colors"><ImageIcon size={18} className="text-slate-500" /> Upload image or GIF<input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={uploadingAvatar} /></label>
-                      <div className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-slate-400 cursor-not-allowed" onClick={() => toast.error('Fitur ini hanya untuk pengguna Premium.')}><div className="flex items-center gap-3"><Video size={18} className="text-slate-300" /> Select video</div><span className="text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded">Upgrade</span></div>
-                      <div className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-slate-400 cursor-not-allowed" onClick={() => toast.error('Fitur ini hanya untuk pengguna Premium.')}><div className="flex items-center gap-3"><Sparkles size={18} className="text-slate-300" /> Generate with AI</div><span className="text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded">Upgrade</span></div>
-                      <a href="https://www.canva.com/create/profile-pictures/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700 transition-colors"><div className="w-5 h-5 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center text-[8px] text-white font-bold">C</div> Design with Canva</a>
-                      {user?.avatar_url && (<div onClick={handleRemoveAvatar} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 cursor-pointer text-sm text-red-600 transition-colors"><Trash2 size={18} /> Hapus Foto</div>)}
-                    </div>)}
+                    <button onClick={() => setIsAvatarMenuOpen(!isAvatarMenuOpen)} className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 shadow-md shadow-blue-200 hover:opacity-90 transition-opacity overflow-hidden focus:outline-none">
+                      {user?.avatar_url ? <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" /> : user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?'}
+                    </button>
+                    {isAvatarMenuOpen && (
+                      <div className="absolute z-[60] top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 space-y-0.5">
+                        <label className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700 transition-colors">
+                          <ImageIcon size={18} className="text-slate-500" /> Upload image or GIF
+                          <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+                        </label>
+                        <div className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-slate-400 cursor-not-allowed" onClick={() => toast.error('Fitur ini hanya untuk pengguna Premium.')}>
+                          <div className="flex items-center gap-3"><Video size={18} className="text-slate-300" /> Select video</div>
+                          <span className="text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded">Upgrade</span>
+                        </div>
+                        <div className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-slate-400 cursor-not-allowed" onClick={() => toast.error('Fitur ini hanya untuk pengguna Premium.')}>
+                          <div className="flex items-center gap-3"><Sparkles size={18} className="text-slate-300" /> Generate with AI</div>
+                          <span className="text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded">Upgrade</span>
+                        </div>
+                        <a href="https://www.canva.com/create/profile-pictures/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700 transition-colors">
+                          <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center text-[8px] text-white font-bold">C</div> Design with Canva
+                        </a>
+                        
+                        {user?.avatar_url && (
+                          <div 
+                            onClick={handleRemoveAvatar}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 cursor-pointer text-sm text-red-600 transition-colors"
+                          >
+                            <Trash2 size={18} />
+                            Hapus Foto
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0 space-y-2">
-                    <div><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nama Lengkap</label><input type="text" value={user?.full_name || ''} onChange={(e) => setUser({...user, full_name: e.target.value})} className="w-full border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 bg-transparent outline-none text-lg font-bold text-slate-800 transition-all p-1 -ml-1 placeholder:text-slate-300" placeholder="Nama Kamu" /></div>
-                    <div><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-2">Username</label><div className="flex items-center gap-1 -ml-1"><span className="text-sm text-slate-400 font-medium select-none">oneklik.my.id/</span><input type="text" value={user?.username || ''} onChange={(e) => setUser({...user, username: e.target.value})} className="flex-1 border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 bg-transparent outline-none text-base font-semibold text-slate-700 transition-all p-1 placeholder:text-slate-300" placeholder="username" /></div></div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nama Lengkap</label>
+                      <input type="text" value={user?.full_name || ''} onChange={(e) => setUser({...user, full_name: e.target.value})} className="w-full border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 bg-transparent outline-none text-lg font-bold text-slate-800 transition-all p-1 -ml-1 placeholder:text-slate-300" placeholder="Nama Kamu" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-2">Username</label>
+                      <div className="flex items-center gap-1 -ml-1">
+                        <span className="text-sm text-slate-400 font-medium select-none">oneklik.my.id/</span>
+                        <input type="text" value={user?.username || ''} onChange={(e) => setUser({...user, username: e.target.value})} className="flex-1 border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 bg-transparent outline-none text-base font-semibold text-slate-700 transition-all p-1 placeholder:text-slate-300" placeholder="username" />
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="mt-4 border-t border-slate-100 pt-4"><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bio</label><textarea value={user?.bio || ''} onChange={(e) => setUser({...user, bio: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-lg p-3 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent resize-none placeholder:text-slate-300 transition-all" rows={2} placeholder="Ceritakan sedikit tentang dirimu..." /></div>
               </div>
               <div className="mb-4">
-                {showAddLink ? (<div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4"><div className="flex flex-col sm:flex-row gap-3 mb-3"><input type="text" value={newLinkTitle} onChange={(e) => setNewLinkTitle(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Judul (misal: Instagram)" /><input type="text" value={newLinkUrl} onChange={(e) => setNewLinkUrl(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://..." /></div><div className="flex gap-3"><button onClick={handleAddLink} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">Simpan Tautan</button><button onClick={() => setShowAddLink(false)} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium rounded-lg text-sm transition-colors">Batal</button></div></div>) : (<button onClick={() => setShowAddLink(true)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl text-base flex items-center justify-center gap-2 shadow-sm transition-all"><Plus size={20} /> Tambah</button>)}
+                {showAddLink ? (
+                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                    <div className="flex flex-col sm:flex-row gap-3 mb-3"><input type="text" value={newLinkTitle} onChange={(e) => setNewLinkTitle(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Judul (misal: Instagram)" /><input type="text" value={newLinkUrl} onChange={(e) => setNewLinkUrl(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://..." /></div>
+                    <div className="flex gap-3"><button onClick={handleAddLink} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">Simpan Tautan</button><button onClick={() => setShowAddLink(false)} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium rounded-lg text-sm transition-colors">Batal</button></div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddLink(true)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl text-base flex items-center justify-center gap-2 shadow-sm transition-all"><Plus size={20} /> Tambah</button>
+                )}
               </div>
               <div className="bg-white min-h-[200px] rounded-xl border border-slate-200 p-8 flex flex-col items-center justify-center">
-                {links.length > 0 ? (<div className="w-full space-y-3">{links.map((link, idx) => (<div key={link.id ?? idx} className="flex items-center justify-between bg-slate-50 p-3.5 rounded-lg border border-slate-100 hover:border-slate-200 transition-colors group"><div className="flex items-center gap-3 truncate"><span className="bg-blue-100 text-blue-600 p-1.5 rounded-md text-xs font-bold w-6 h-6 flex items-center justify-center">{idx + 1}</span><div className="flex flex-col truncate"><span className="font-medium text-slate-700 text-sm truncate">{link.title}</span><span className="text-[10px] text-slate-400 truncate">{link.url}</span></div></div><button onClick={() => handleDeleteLink(link.id)} className="text-slate-400 hover:text-red-600 transition-colors p-1.5 hover:bg-red-50 rounded-full"><Trash2 size={16} /></button></div>))}</div>) : (<div className="text-center py-8"><div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300"><svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg></div><h4 className="text-base font-semibold text-slate-700">Tampilkan dirimu ke dunia</h4><p className="text-sm text-slate-400 mt-1">Tambahkan tautan untuk memulai.</p></div>)}
+                {links.length > 0 ? (
+                  <div className="w-full space-y-3">
+                    {links.map((link, idx) => (
+                      <div key={link.id ?? idx} className="flex items-center justify-between bg-slate-50 p-3.5 rounded-lg border border-slate-100 hover:border-slate-200 transition-colors group">
+                        <div className="flex items-center gap-3 truncate"><span className="bg-blue-100 text-blue-600 p-1.5 rounded-md text-xs font-bold w-6 h-6 flex items-center justify-center">{idx + 1}</span><div className="flex flex-col truncate"><span className="font-medium text-slate-700 text-sm truncate">{link.title}</span><span className="text-[10px] text-slate-400 truncate">{link.url}</span></div></div>
+                        <button onClick={() => handleDeleteLink(link.id)} className="text-slate-400 hover:text-red-600 transition-colors p-1.5 hover:bg-red-50 rounded-full"><Trash2 size={16} /></button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8"><div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300"><svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg></div><h4 className="text-base font-semibold text-slate-700">Tampilkan dirimu ke dunia</h4><p className="text-sm text-slate-400 mt-1">Tambahkan tautan untuk memulai.</p></div>
+                )}
               </div>
             </>
           )}
