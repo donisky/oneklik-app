@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import toast, { Toaster } from 'react-hot-toast';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion'; // Tambahkan untuk efek 3D/Animasi
 import { templates } from '@/app/lib/templateData';
 import { 
   User, Plus, Trash2, Eye, ArrowLeft, Crown, LogOut, 
@@ -12,33 +13,48 @@ import {
   Store, Palette, DollarSign, Users, BarChart3, X, Paintbrush,
   Facebook, Twitter, Linkedin, MessageCircle, Send,
   Image as ImageIcon, Video, Sparkles, ChevronRight, ShoppingBag, Package,
-  Upload, Loader2, Menu
+  Upload, Loader2, Menu, Globe // Tambahkan Globe untuk default social
 } from 'lucide-react';
 
-// --- Komponen Preview Mockup HP (SUDAH DIUPGRADE!) ---
+// --- Komponen Preview Mockup HP (DIUPGRADE DENGAN CUSTOM BG, ANIMASI 3D, & FOOTER SOSMED) ---
 const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
   const template = templates.find(t => t.id === parseInt(user?.selected_template || '1', 10)) || templates[0];
   const design = user?.design_settings || {};
   
-  // Warna & Font dari user / template
-  const bgColor = design.theme === 'air' ? '#dbeafe' : user?.theme_bg || template?.colors?.bg || '#f3f4f6';
+  // --- FITUR BARU: CUSTOM BACKGROUND ---
+  const bgType = design.bg_type || 'template'; // 'template', 'url', 'upload'
+  const customBgUrl = design.bg_custom_url || '';
+
+  let backgroundStyle = {};
+  if (bgType === 'url' || bgType === 'upload') {
+    backgroundStyle = { 
+      backgroundImage: `url(${customBgUrl})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    };
+  } else {
+    backgroundStyle = {
+      backgroundImage: `url(${template.bgImage})`,
+      backgroundColor: user?.theme_bg || template?.colors?.bg || '#f3f4f6',
+      backgroundBlendMode: 'overlay',
+    };
+  }
+
+  // Warna & Font
   const buttonColor = user?.theme_primary || (template as any)?.colors?.primary || '#3b82f6';
   const textColor = user?.theme_secondary || template?.colors?.text || '#ffffff';
-  
   const fontFamily = design.font === 'serif' ? 'serif' : design.font === 'mono' ? 'monospace' : 'sans-serif';
-  const btnStyle = design.buttons || 'fill'; // fill, outline, ghost
+  const btnStyle = design.buttons || 'fill';
   const showStickers = design.stickers === 'decorate' || design.stickers === 'fun';
   
-  const getIcon = (title: string) => {
-    const t = title.toLowerCase();
-    if (t.includes('instagram')) return <span className="text-lg">📸</span>;
-    if (t.includes('youtube')) return <span className="text-lg">▶️</span>;
-    if (t.includes('tiktok')) return <span className="text-lg">🎵</span>;
-    if (t.includes('whatsapp')) return <span className="text-lg">💬</span>;
-    return <span className="text-lg">🔗</span>;
-  };
+  // --- FITUR BARU: FOOTER SOSMED (Logo Oneklik sebagai Link) ---
+  // Ganti URL ini sesuai dengan akun sosial Oneklik Anda
+  const socialLinks = [
+    { name: 'Instagram', icon: <Facebook size={16} />, url: 'https://instagram.com/oneklik.id' },
+    { name: 'TikTok', icon: <Twitter size={16} />, url: 'https://tiktok.com/@oneklik.id' },
+    { name: 'YouTube', icon: <Globe size={16} />, url: 'https://youtube.com/@oneklik.id' },
+  ];
 
-  // Helper untuk gaya tombol (Fill, Outline, Ghost)
   const getButtonStyles = (baseColor: string, defaultText: string) => {
     if (btnStyle === 'outline') {
       return { backgroundColor: 'transparent', color: baseColor, border: `2px solid ${baseColor}` };
@@ -46,7 +62,6 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
     if (btnStyle === 'ghost') {
       return { backgroundColor: 'transparent', color: baseColor };
     }
-    // Fill (default)
     return { backgroundColor: baseColor, color: defaultText };
   };
 
@@ -55,12 +70,11 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
       {/* Dynamic Island */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-20 shadow-lg" />
       
-      {/* Background Layer */}
-      <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" 
-           style={{ backgroundImage: `url(${template.bgImage})`, backgroundColor: bgColor, backgroundBlendMode: 'overlay' }} />
+      {/* Background Layer (Mendukung Custom Image) */}
+      <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" style={backgroundStyle} />
       
-      {/* Gradient Overlay - Memastikan teks putih tetap terbaca */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/40 to-black/80" />
+      {/* Glassmorphism Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/50 to-black/80 backdrop-blur-[2px]" />
       
       {/* Side Buttons Mockup */}
       <div className="absolute top-[20%] -left-1 w-1.5 h-8 bg-gray-700 rounded-l-full" />
@@ -69,8 +83,9 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
       
       {/* Konten Bio */}
       <div className="relative z-10 h-full flex flex-col items-center pt-10 px-4 text-center" style={{ fontFamily }}>
-        {/* Avatar */}
-        <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg border-2 border-white/40 mb-3">
+        
+        {/* Avatar dengan efek Glassmorphism premium */}
+        <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-xl border border-white/20 mb-3">
           {user?.avatar_url ? (
             <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover rounded-full" />
           ) : (
@@ -79,41 +94,79 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
         </div>
         
         {/* Nama & Username */}
-        <h3 className="font-bold text-lg text-white drop-shadow-md">{user?.full_name || 'Nama Kamu'}</h3>
-        <p className="text-[10px] mb-4 text-white/80 drop-shadow">@{user?.username || 'username'}</p>
+        <h3 className="font-bold text-xl text-white drop-shadow-md">{user?.full_name || 'Nama Kamu'}</h3>
+        <p className="text-[10px] mb-5 text-white/70 drop-shadow">@{user?.username || 'username'}</p>
         
-        {/* Link Button Dinamis */}
-        <div className="w-full space-y-2.5 px-2">
+        {/* Link Button Dinamis dengan Animasi 3D Wobble */}
+        <div className="w-full space-y-3 px-2">
           {links && links.map((link) => {
             const btnStyleObj = getButtonStyles(buttonColor, textColor);
             return (
-              <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" 
-                 className="block w-full py-2.5 px-3 rounded-xl font-medium transition-all hover:scale-105 flex items-center justify-center gap-2 shadow-sm text-xs"
-                 style={btnStyleObj}>
-                {getIcon(link.title)}
+              <motion.a
+                key={link.id} 
+                href={link.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                whileHover={{ scale: 1.08, rotate: [0, -3, 3, 0] }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="block w-full py-3 px-4 rounded-2xl font-semibold shadow-lg backdrop-blur-sm relative overflow-hidden"
+                style={btnStyleObj}
+              >
+                {/* --- IKON TELAH DIHAPUS, HANYA TULISAN --- */}
                 {link.title}
-              </a>
+              </motion.a>
             );
           })}
           
           {/* Tombol Shop Kustom */}
           {user?.shop_link && (
-            <a href={user.shop_link} target="_blank" rel="noopener noreferrer"
-               className="block w-full py-2.5 px-3 rounded-xl font-medium transition-all hover:scale-105 flex items-center justify-center gap-2 shadow-sm text-xs"
-               style={getButtonStyles('#22c55e', '#ffffff')}>
+            <motion.a
+              href={user.shop_link} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              whileHover={{ scale: 1.08, rotate: [0, -3, 3, 0] }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
+              className="block w-full py-3 px-4 rounded-2xl font-semibold shadow-lg backdrop-blur-sm"
+              style={getButtonStyles('#22c55e', '#ffffff')}
+            >
               🛍️ Shop
-            </a>
+            </motion.a>
           )}
         </div>
 
         {/* Sticker Decoration */}
         {showStickers && (
-          <div className="absolute top-4 left-4 text-2xl animate-pulse">✨</div>
+          <div className="absolute top-4 left-4 text-2xl animate-bounce">✨</div>
         )}
         
-        {/* Footer */}
-        <div className="mt-auto pb-6 w-full px-6">
-          <p className="text-[9px] text-white/60">Powered by <span className="text-blue-400 font-semibold">Oneklik.id</span></p>
+        {/* --- FOOTER BARU: LOGO & SOSIAL MEDIA YANG BISA DIKLIK --- */}
+        <div className="mt-auto pb-6 w-full px-4 border-t border-white/10 pt-4">
+          <div className="flex justify-center items-center gap-4 mb-1">
+            {socialLinks.map((social, idx) => (
+              <motion.a
+                key={idx}
+                href={social.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                whileHover={{ scale: 1.2, y: -2 }}
+                className="text-white/60 hover:text-white transition-colors bg-white/10 backdrop-blur-sm p-2 rounded-full"
+              >
+                {social.icon}
+              </motion.a>
+            ))}
+          </div>
+          <div className="mt-2">
+            <motion.a 
+              href="https://oneklik.my.id" 
+              target="_blank"
+              whileHover={{ scale: 1.05 }}
+              className="text-[9px] text-white/40 hover:text-white/80 transition-colors block font-semibold tracking-wider"
+            >
+              POWERED BY <span className="text-blue-300">Oneklik.id</span>
+            </motion.a>
+          </div>
         </div>
       </div>
     </div>
@@ -160,7 +213,7 @@ const ShareDropdown = ({ url }: { url: string }) => {
   );
 };
 
-// --- Modal Notifikasi (Fungsional) ---
+// --- Modal Notifikasi (Tetap sama) ---
 const NotificationModal = ({ isOpen, onClose, notifications, loading, tab, setTab }: any) => {
   if (!isOpen) return null;
   
@@ -274,6 +327,9 @@ export default function BioPage() {
   // --- ANALYTICS STATE ---
   const [analyticsData, setAnalyticsData] = useState<any[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  // --- STATE UNTUK CUSTOM BACKGROUND ---
+  const [uploadingBg, setUploadingBg] = useState(false);
 
   const supabase = createClientComponentClient();
   const router = useRouter();
@@ -412,26 +468,51 @@ export default function BioPage() {
     }
   };
 
+  // --- UPLOAD BACKGROUND BIO (FITUR BARU) ---
+  const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !session?.user?.id) return;
+    setUploadingBg(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `bg-${session.user.id}-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars') // Menggunakan bucket avatars untuk sementara
+        .upload(fileName, file, { cacheControl: '3600', upsert: true });
+
+      if (uploadError) throw new Error(uploadError.message || 'Gagal mengunggah background.');
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      const publicUrl = urlData.publicUrl;
+
+      // Update state design_settings
+      setUser((prev: any) => ({ 
+        ...prev, 
+        design_settings: { 
+          ...(prev.design_settings || {}), 
+          bg_type: 'upload', 
+          bg_custom_url: publicUrl 
+        } 
+      }));
+      toast.success('Background berhasil diunggah!');
+    } catch (error: any) {
+      toast.error('Gagal upload background: ' + error.message);
+    } finally {
+      setUploadingBg(false);
+    }
+  };
+
   // --- HAPUS AVATAR ---
   const handleRemoveAvatar = async () => {
     if (!session?.user?.id) return;
     if (!confirm('Apakah Anda yakin ingin menghapus foto profil ini?')) return;
-
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ avatar_url: null })
-        .eq('id', session.user.id);
-
+      const { error } = await supabase.from('users').update({ avatar_url: null }).eq('id', session.user.id);
       if (error) throw new Error('Gagal menghapus foto: ' + error.message);
-
       setUser((prev: any) => ({ ...prev, avatar_url: null }));
       toast.success('Foto profil berhasil dihapus!');
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setIsAvatarMenuOpen(false);
-    }
+    } catch (err: any) { toast.error(err.message); } finally { setIsAvatarMenuOpen(false); }
   };
 
   // --- CRUD LINK ---
@@ -486,43 +567,25 @@ export default function BioPage() {
 
   // --- SHOP CRUD ---
   const handleAddProduct = async () => {
-    if (!newProduct.title || !newProduct.price) {
-      toast.error('Nama dan harga wajib diisi!');
-      return;
-    }
+    if (!newProduct.title || !newProduct.price) { toast.error('Nama dan harga wajib diisi!'); return; }
     setUploadingProduct(true);
     try {
       let imageUrl = null;
       if (newProduct.image) {
         const fileExt = newProduct.image.name.split('.').pop();
         const fileName = `shop-${session.user.id}-${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('products')
-          .upload(fileName, newProduct.image, { upsert: true });
+        const { error: uploadError } = await supabase.storage.from('products').upload(fileName, newProduct.image, { upsert: true });
         if (uploadError) throw new Error('Gagal upload gambar');
         const { data: urlData } = supabase.storage.from('products').getPublicUrl(fileName);
         imageUrl = urlData.publicUrl;
       }
-
-      const { error } = await supabase.from('shop_products').insert({
-        user_id: session.user.id,
-        title: newProduct.title,
-        price: newProduct.price,
-        description: newProduct.description,
-        product_link: newProduct.link,
-        image_url: imageUrl,
-      });
-
+      const { error } = await supabase.from('shop_products').insert({ user_id: session.user.id, title: newProduct.title, price: newProduct.price, description: newProduct.description, product_link: newProduct.link, image_url: imageUrl });
       if (error) throw new Error(error.message);
       toast.success('Produk berhasil ditambahkan!');
       setShowProductModal(false);
       setNewProduct({ title: '', price: '', description: '', link: '', image: null });
       fetchProducts();
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setUploadingProduct(false);
-    }
+    } catch (err: any) { toast.error(err.message); } finally { setUploadingProduct(false); }
   };
 
   const handleDeleteProduct = async (id: string) => {
@@ -698,7 +761,7 @@ export default function BioPage() {
             </>
           )}
 
-          {/* --- TAB: DESIGN --- */}
+          {/* --- TAB: DESIGN (DENGAN FITUR CUSTOM BACKGROUND BARU) --- */}
           {activeTab === 'design' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
               <div className="flex items-center justify-between mb-4">
@@ -733,6 +796,57 @@ export default function BioPage() {
                     <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><span className="text-sm font-bold">Aa</span></div><div><p className="font-medium text-slate-800 text-sm">Text</p><p className="text-xs text-slate-500">{user?.design_settings?.font || 'Link Sans'}</p></div></div>
                     <ChevronRight size={18} className="text-slate-400" />
                   </div>
+
+                  {/* --- FITUR BARU: CUSTOM BACKGROUND (URL & UPLOAD) --- */}
+                  <div className="mt-2 border-t border-slate-100 pt-2">
+                    <p className="text-xs font-medium text-slate-400 uppercase tracking-wider px-2 pt-2 mb-1">Background Source</p>
+                    
+                    <div className="flex gap-2 mb-3">
+                      {['template', 'url', 'upload'].map((type) => (
+                        <button
+                          key={type}
+                          onClick={() => updateDesign('bg_type', type)}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                            user?.design_settings?.bg_type === type 
+                            ? 'bg-blue-100 text-blue-700' 
+                            : 'bg-slate-100 text-slate-500'
+                          }`}
+                        >
+                          {type === 'template' ? 'Template' : type === 'url' ? 'URL' : 'Upload'}
+                        </button>
+                      ))}
+                    </div>
+
+                    {(user?.design_settings?.bg_type === 'url' || user?.design_settings?.bg_type === 'upload') && (
+                      <div className="flex flex-col gap-2">
+                        {user?.design_settings?.bg_type === 'url' && (
+                          <input
+                            type="text"
+                            placeholder="https://example.com/background.jpg"
+                            value={user?.design_settings?.bg_custom_url || ''}
+                            onChange={(e) => updateDesign('bg_custom_url', e.target.value)}
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        )}
+                        {user?.design_settings?.bg_type === 'upload' && (
+                          <div className="relative">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              onChange={handleBackgroundUpload}
+                              disabled={uploadingBg}
+                            />
+                            <div className="w-full border-2 border-dashed border-slate-300 rounded-lg p-3 text-center text-sm text-slate-500 hover:bg-slate-50 transition-colors">
+                              {uploadingBg ? 'Mengupload...' : 'Klik untuk upload Background Image'}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* --------------------------------------------- */}
+
                   {/* Colors */}
                   <div onClick={() => setDesignModal('colors')} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
                     <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><div className="w-4 h-4 rounded-full bg-black border border-slate-300" /></div><div><p className="font-medium text-slate-800 text-sm">Colors</p><p className="text-xs text-slate-500">Edit</p></div></div>
