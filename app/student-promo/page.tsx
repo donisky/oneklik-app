@@ -13,6 +13,9 @@ export default function StudentPromoPage() {
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // --- STATE BARU UNTUK MENYIMPAN USER ID ---
+  const [userId, setUserId] = useState<string | null>(null);
 
   const supabase = createClientComponentClient();
   const router = useRouter();
@@ -33,6 +36,9 @@ export default function StudentPromoPage() {
         });
         return;
       }
+
+      // --- SIMPAN USER ID DARI SESSION ---
+      setUserId(session.user.id);
 
       const res = await fetch('/api/promo/send-otp', {
         method: 'POST',
@@ -56,10 +62,16 @@ export default function StudentPromoPage() {
     e.preventDefault();
     setLoading(true);
     try {
+      if (!userId) {
+        toast.error('Sesi tidak valid. Silakan refresh halaman dan login ulang.');
+        return;
+      }
+
       const res = await fetch('/api/promo/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp }),
+        // --- KIRIM USER ID BERSAMA EMAIL DAN OTP ---
+        body: JSON.stringify({ email, otp, userId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
