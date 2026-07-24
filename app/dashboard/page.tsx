@@ -386,6 +386,26 @@ export default function Dashboard() {
             </button>
           </div>
 
+          {/* --- STUDENT PROMO BANNER (HANYA UNTUK NON-PREMIUM) --- */}
+          {!user?.is_premium && (
+            <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Crown size={20} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-amber-800">🎓 Student Promo for You!</p>
+                  <p className="text-xs text-amber-600 mt-0.5">
+                    Punya email kampus (.ac.id)? Klaim Premium 1 bulan <strong>GRATIS</strong> sekarang.
+                  </p>
+                </div>
+              </div>
+              <Link href="/student-promo" className="shrink-0 px-4 py-2 bg-amber-600 text-white text-sm font-bold rounded-lg hover:bg-amber-700 transition-colors self-end sm:self-center">
+                Klaim Gratis
+              </Link>
+            </div>
+          )}
+
           {/* KARTU STATUS AKUN */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
             <div className="flex justify-between items-center flex-wrap gap-4">
