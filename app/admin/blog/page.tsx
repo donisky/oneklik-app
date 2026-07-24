@@ -8,7 +8,8 @@ import toast from 'react-hot-toast';
 import {
   Plus, Search, Edit, Trash2, ExternalLink, Eye,
   Calendar, Tag, ChevronLeft, ChevronRight, Download,
-  Loader2, FileText, Clock, X, LayoutGrid, List, CheckCircle, Zap
+  Loader2, FileText, Clock, X, LayoutGrid, List, CheckCircle, Zap,
+  RefreshCw // Tambahkan ini
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -296,6 +297,9 @@ export default function AdminBlogList() {
   const [totalPosts, setTotalPosts] = useState(0);
   const [selectedPosts, setSelectedPosts] = useState<string[]>([]);
   const [stats, setStats] = useState({ published: 0, draft: 0, totalViews: 0 });
+  
+  // --- STATE REFRESH ---
+  const [refreshing, setRefreshing] = useState(false);
 
   const supabase = createClientComponentClient();
   const router = useRouter();
@@ -337,32 +341,52 @@ export default function AdminBlogList() {
       if (error) throw error;
 
       const now = new Date();
-      const processed = (data || []).map((p: any) => ({
-        ...p,
-        status: new Date(p.published_at) > now ? 'draft' : 'published'
-      }));
+      // --- PERBAIKAN LOGIKA STATUS DAN STATISTIK ---
+      let publishedCount = 0;
+      let draftCount = 0;
+      let totalViews = 0;
+
+      const processed = (data || []).map((p: any) => {
+        let status = 'draft';
+        if (p.published_at) {
+          const pubDate = new Date(p.published_at);
+          if (!isNaN(pubDate.getTime()) && pubDate <= now) {
+            status = 'published';
+          }
+        }
+        // Hitung statistik dari data mentah
+        if (status === 'published') publishedCount++;
+        else draftCount++;
+        totalViews += (p.view_count || 0);
+        return { ...p, status };
+      });
 
       setPosts(processed);
       setTotalPosts(count || 0);
       setTotalPages(Math.ceil((count || 0) / ITEMS_PER_PAGE));
       setCurrentPage(page);
 
-      const pub = processed.filter((p: any) => p.status === 'published').length;
-      const drf = processed.filter((p: any) => p.status === 'draft').length;
-      const views = processed.reduce((acc: number, p: any) => acc + (p.view_count || 0), 0);
-      setStats({ published: pub, draft: drf, totalViews: views });
+      setStats({ published: publishedCount, draft: draftCount, totalViews });
 
     } catch (error: any) {
       console.error('Error fetching posts:', error);
       toast.error('Gagal memuat daftar artikel');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [categoryFilter, search, sortBy, supabase]);
 
   useEffect(() => {
     fetchPosts(1);
   }, [fetchPosts]);
+
+  // --- TOMBOL REFRESH MANUAL ---
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchPosts(currentPage);
+    toast.success('Statistik diperbarui!');
+  };
 
   // --- RESET FILTER ---
   const handleReset = useCallback(() => {
@@ -465,6 +489,16 @@ export default function AdminBlogList() {
           </p>
         </div>
         <div className="flex gap-3 flex-wrap">
+          {/* --- TOMBOL REFRESH BARU --- */}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+            {refreshing ? 'Memperbarui...' : 'Refresh'}
+          </button>
+          {/* --------------------- */}
           <button
             onClick={exportCSV}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors shadow-sm text-sm"

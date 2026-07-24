@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Loader2, Upload } from 'lucide-react';
+import { ArrowLeft, Loader2, Upload, Eye, X } from 'lucide-react';
 import Link from 'next/link';
 
 export default function NewBlogPost() {
@@ -19,6 +19,9 @@ export default function NewBlogPost() {
   
   // --- STATE UNTUK AUTO-SLUG ---
   const [autoSlug, setAutoSlug] = useState(true);
+  
+  // --- STATE UNTUK PREVIEW ---
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const supabase = createClientComponentClient();
   const router = useRouter();
@@ -62,14 +65,17 @@ export default function NewBlogPost() {
     e.preventDefault();
     setLoading(true);
     
+    // 1. Generate slug akhir
     let finalSlug = slug.trim() || title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
+    // 2. Cek apakah slug sudah ada di database
     const { data: existingSlug } = await supabase
       .from('blog_posts')
       .select('id')
       .eq('slug', finalSlug)
       .maybeSingle();
 
+    // 3. Jika slug sudah ada, tambahkan angka increment (misal: judul-1, judul-2)
     let suffix = 1;
     let tempSlug = finalSlug;
     while (existingSlug) {
@@ -89,6 +95,7 @@ export default function NewBlogPost() {
       toast.success(`Slug "${slug}" sudah dipakai, otomatis diubah menjadi "${finalSlug}"`);
     }
 
+    // 4. Simpan ke database
     const { error } = await supabase.from('blog_posts').insert({
       title,
       slug: finalSlug,
@@ -158,7 +165,7 @@ export default function NewBlogPost() {
             </div>
           </div>
 
-          {/* --- BAGIAN KATEGORI YANG DIUBAH MENJADI DROPDOWN --- */}
+          {/* KATEGORI */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
             <select
@@ -172,8 +179,8 @@ export default function NewBlogPost() {
               ))}
             </select>
           </div>
-          {/* --------------------------------------------- */}
 
+          {/* --- GAMBAR DENGAN PREVIEW REAL-TIME --- */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">URL Gambar Utama</label>
             <div className="flex flex-col sm:flex-row gap-3">
@@ -202,6 +209,25 @@ export default function NewBlogPost() {
               </div>
             </div>
             <p className="text-xs text-slate-400 mt-1">Upload gambar dari komputer, atau masukkan URL gambar eksternal.</p>
+            
+            {/* --- PREVIEW GAMBAR --- */}
+            {imageUrl && (
+              <div className="mt-3">
+                <p className="text-xs font-medium text-slate-500 mb-1">Preview Gambar:</p>
+                <div className="relative aspect-[16/9] w-full max-w-sm rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
+                  <img
+                    src={imageUrl}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Jika gambar gagal dimuat, tampilkan placeholder
+                      (e.target as HTMLImageElement).src = 'https://placehold.co/800x400/slate-200/slate-500?text=Gambar+Gagal+Dimuat';
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+            {/* ------------------------------------ */}
           </div>
 
           <div>
@@ -222,15 +248,75 @@ export default function NewBlogPost() {
               className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none font-mono text-sm"
             />
           </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {loading ? <Loader2 className="animate-spin" size={18} /> : 'Publikasikan Artikel'}
-          </button>
+
+          {/* --- TOMBOL PREVIEW DAN PUBLISH --- */}
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(true)}
+              className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <Eye size={18} /> Preview
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 className="animate-spin" size={18} /> : 'Publikasikan Artikel'}
+            </button>
+          </div>
+          {/* ---------------------------- */}
         </form>
       </div>
+
+      {/* --- MODAL PREVIEW ARTIKEL --- */}
+      {previewOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="text-lg font-bold text-slate-800">Preview Artikel</h3>
+              <button onClick={() => setPreviewOpen(false)} className="p-2 text-slate-400 hover:text-slate-700 rounded-lg transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-2xl mx-auto">
+                <div className="mb-4">
+                  <h1 className="text-3xl font-bold text-slate-900">{title || 'Judul Artikel'}</h1>
+                  {category && (
+                    <span className="inline-block mt-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">{category}</span>
+                  )}
+                </div>
+                {excerpt && <p className="text-slate-500 text-sm mb-4">{excerpt}</p>}
+                {imageUrl && (
+                  <div className="mb-6 rounded-lg overflow-hidden border border-slate-200">
+                    <img
+                      src={imageUrl}
+                      alt="Cover"
+                      className="w-full h-auto object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://placehold.co/800x400/slate-200/slate-500?text=Gambar+Gagal+Dimuat';
+                      }}
+                    />
+                  </div>
+                )}
+                <div className="prose prose-slate max-w-none">
+                  <div dangerouslySetInnerHTML={{ __html: content || '<p class="text-slate-400 italic">Konten belum ditulis.</p>' }} />
+                </div>
+                <div className="mt-8 text-center text-xs text-slate-400 border-t pt-4">
+                  <p>Preview Oneklik.id</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
+              <button onClick={() => setPreviewOpen(false)} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                Tutup Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
