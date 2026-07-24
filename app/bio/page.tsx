@@ -13,7 +13,7 @@ import {
   Store, Palette, DollarSign, Users, BarChart3, X, Paintbrush,
   Facebook, Twitter, Linkedin, MessageCircle, Send,
   Image as ImageIcon, Video, Sparkles, ChevronRight, ShoppingBag, Package,
-  Upload, Loader2, Menu, Globe, Instagram, Youtube, Music2 // Tambahkan Instagram, Youtube, Music2 untuk sosmed dinamis
+  Upload, Loader2, Menu, Globe, Instagram, Youtube, Music2, Twitch // Tambahkan icon2 sosmed
 } from 'lucide-react';
 
 // --- Komponen Preview Mockup HP (DIUPGRADE DENGAN CUSTOM BG, ANIMASI 3D, & FOOTER SOSMED DINAMIS) ---
@@ -25,19 +25,28 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
   const bgType = design.bg_type || 'template'; // 'template', 'url', 'upload'
   const customBgUrl = design.bg_custom_url || '';
 
-  let backgroundStyle = {};
+  let backgroundStyle: any = {};
   if (bgType === 'url' || bgType === 'upload') {
+    // Background custom (URL/Upload) — full resolusi, tanpa blend mode apa pun
     backgroundStyle = { 
       backgroundImage: `url(${customBgUrl})`,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
     };
   } else {
-    backgroundStyle = {
-      backgroundImage: `url(${template.bgImage})`,
-      backgroundColor: user?.theme_bg || template?.colors?.bg || '#f3f4f6',
-      backgroundBlendMode: 'overlay',
-    };
+    // Background dari Template — dulu pakai backgroundBlendMode: 'overlay' yang mencampur
+    // gambar dengan warna solid sehingga terlihat pudar/buram. Sekarang gambar template
+    // ditampilkan tajam (cover, tanpa blend), warna solid hanya jadi fallback jika template
+    // tidak punya gambar sama sekali.
+    backgroundStyle = template?.bgImage
+      ? {
+          backgroundImage: `url(${template.bgImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }
+      : {
+          backgroundColor: user?.theme_bg || template?.colors?.bg || '#f3f4f6',
+        };
   }
 
   // Warna & Font
@@ -47,12 +56,18 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
   const btnStyle = design.buttons || 'fill';
   const showStickers = design.stickers === 'decorate' || design.stickers === 'fun';
   
-  // --- FITUR: FOOTER SOSMED DINAMIS ---
-  // Hanya menampilkan icon platform yang linknya benar-benar diisi oleh user.
+  // --- FITUR: FOOTER SOSMED DINAMIS (SEMUA PLATFORM) ---
+  // Icon hanya muncul jika linknya benar-benar diisi oleh user, dan sesuai platform masing-masing.
   const socialPlatforms = [
     { key: 'social_instagram', name: 'Instagram', icon: <Instagram size={16} /> },
     { key: 'social_tiktok', name: 'TikTok', icon: <Music2 size={16} /> },
     { key: 'social_youtube', name: 'YouTube', icon: <Youtube size={16} /> },
+    { key: 'social_facebook', name: 'Facebook', icon: <Facebook size={16} /> },
+    { key: 'social_twitter', name: 'Twitter/X', icon: <Twitter size={16} /> },
+    { key: 'social_linkedin', name: 'LinkedIn', icon: <Linkedin size={16} /> },
+    { key: 'social_whatsapp', name: 'WhatsApp', icon: <MessageCircle size={16} /> },
+    { key: 'social_telegram', name: 'Telegram', icon: <Send size={16} /> },
+    { key: 'social_twitch', name: 'Twitch', icon: <Twitch size={16} /> },
   ];
   const socialLinks = socialPlatforms
     .filter((p) => user?.[p.key])
@@ -73,10 +88,10 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
       {/* Dynamic Island */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-20 shadow-lg" />
       
-      {/* Background Layer (Mendukung Custom Image) */}
+      {/* Background Layer (Mendukung Template & Custom Image, tanpa blend/blur) */}
       <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" style={backgroundStyle} />
       
-      {/* Glassmorphism Gradient Overlay (blur dihapus agar background custom 4K tidak buram) */}
+      {/* Glassmorphism Gradient Overlay (blur dihapus agar background tidak buram) */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/50 to-black/80" />
       
       {/* Side Buttons Mockup */}
@@ -147,7 +162,7 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
         {/* --- FOOTER: LOGO & SOSIAL MEDIA DINAMIS (hanya tampil jika ada link diisi) --- */}
         <div className="mt-auto pb-6 w-full px-4 border-t border-white/10 pt-4">
           {socialLinks.length > 0 && (
-            <div className="flex justify-center items-center gap-4 mb-1">
+            <div className="flex flex-wrap justify-center items-center gap-3 mb-1">
               {socialLinks.map((social, idx) => (
                 <motion.a
                   key={idx}
@@ -156,6 +171,7 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
                   rel="noopener noreferrer"
                   whileHover={{ scale: 1.2, y: -2 }}
                   className="text-white/60 hover:text-white transition-colors bg-white/10 backdrop-blur-sm p-2 rounded-full"
+                  title={social.name}
                 >
                   {social.icon}
                 </motion.a>
@@ -425,7 +441,15 @@ export default function BioPage() {
         username: user.username, full_name: user.full_name, bio: user.bio || '', selected_template: user.selected_template,
         theme_bg: user.theme_bg, theme_primary: user.theme_primary, theme_secondary: user.theme_secondary,
         shop_link: user.shop_link || null, design_settings: user.design_settings || {}, avatar_url: user.avatar_url || null,
-        social_instagram: user.social_instagram || null, social_tiktok: user.social_tiktok || null, social_youtube: user.social_youtube || null,
+        social_instagram: user.social_instagram || null,
+        social_tiktok: user.social_tiktok || null,
+        social_youtube: user.social_youtube || null,
+        social_facebook: user.social_facebook || null,
+        social_twitter: user.social_twitter || null,
+        social_linkedin: user.social_linkedin || null,
+        social_whatsapp: user.social_whatsapp || null,
+        social_telegram: user.social_telegram || null,
+        social_twitch: user.social_twitch || null,
       }).eq('id', session.user.id).select();
       if (error) { toast.error('Gagal menyimpan: ' + error.message); return; }
       if (!updatedRows || updatedRows.length === 0) { toast.error('Data tidak tersimpan. Cek RLS policy UPDATE di Supabase.'); return; }
@@ -816,39 +840,65 @@ export default function BioPage() {
                   )}
                 </div>
 
-                {/* --- SOSIAL MEDIA (Footer Bio) --- */}
+                {/* --- SOSIAL MEDIA (Footer Bio) - SEMUA PLATFORM --- */}
                 <div className="border-t border-slate-100 pt-4 space-y-2">
                   <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Sosial Media (Footer Bio)</label>
+
                   <div className="flex items-center gap-2">
                     <Instagram size={16} className="text-slate-400 flex-shrink-0" />
-                    <input 
-                      type="text" 
-                      placeholder="Link Instagram (opsional)" 
-                      value={user?.social_instagram || ''} 
+                    <input type="text" placeholder="Link Instagram (opsional)" value={user?.social_instagram || ''} 
                       onChange={(e) => setUser((prev: any) => ({ ...prev, social_instagram: e.target.value }))}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-                    />
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
                   </div>
                   <div className="flex items-center gap-2">
                     <Music2 size={16} className="text-slate-400 flex-shrink-0" />
-                    <input 
-                      type="text" 
-                      placeholder="Link TikTok (opsional)" 
-                      value={user?.social_tiktok || ''} 
+                    <input type="text" placeholder="Link TikTok (opsional)" value={user?.social_tiktok || ''} 
                       onChange={(e) => setUser((prev: any) => ({ ...prev, social_tiktok: e.target.value }))}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-                    />
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
                   </div>
                   <div className="flex items-center gap-2">
                     <Youtube size={16} className="text-slate-400 flex-shrink-0" />
-                    <input 
-                      type="text" 
-                      placeholder="Link YouTube (opsional)" 
-                      value={user?.social_youtube || ''} 
+                    <input type="text" placeholder="Link YouTube (opsional)" value={user?.social_youtube || ''} 
                       onChange={(e) => setUser((prev: any) => ({ ...prev, social_youtube: e.target.value }))}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-                    />
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Facebook size={16} className="text-slate-400 flex-shrink-0" />
+                    <input type="text" placeholder="Link Facebook (opsional)" value={user?.social_facebook || ''} 
+                      onChange={(e) => setUser((prev: any) => ({ ...prev, social_facebook: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Twitter size={16} className="text-slate-400 flex-shrink-0" />
+                    <input type="text" placeholder="Link Twitter/X (opsional)" value={user?.social_twitter || ''} 
+                      onChange={(e) => setUser((prev: any) => ({ ...prev, social_twitter: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Linkedin size={16} className="text-slate-400 flex-shrink-0" />
+                    <input type="text" placeholder="Link LinkedIn (opsional)" value={user?.social_linkedin || ''} 
+                      onChange={(e) => setUser((prev: any) => ({ ...prev, social_linkedin: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MessageCircle size={16} className="text-slate-400 flex-shrink-0" />
+                    <input type="text" placeholder="Link WhatsApp (opsional)" value={user?.social_whatsapp || ''} 
+                      onChange={(e) => setUser((prev: any) => ({ ...prev, social_whatsapp: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Send size={16} className="text-slate-400 flex-shrink-0" />
+                    <input type="text" placeholder="Link Telegram (opsional)" value={user?.social_telegram || ''} 
+                      onChange={(e) => setUser((prev: any) => ({ ...prev, social_telegram: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Twitch size={16} className="text-slate-400 flex-shrink-0" />
+                    <input type="text" placeholder="Link Twitch (opsional)" value={user?.social_twitch || ''} 
+                      onChange={(e) => setUser((prev: any) => ({ ...prev, social_twitch: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                  </div>
+
                   <p className="text-[10px] text-slate-400">Icon hanya akan muncul di footer bio jika linknya diisi.</p>
                 </div>
               </div>
