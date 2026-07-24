@@ -386,9 +386,13 @@ export default function AdminBlogList() {
       });
 
       setPosts(processedPage);
-      setTotalPosts(count || 0);
-      setTotalPages(Math.ceil((count || 0) / itemsPerPage));
+      
+      // --- PERBAIKAN: Gunakan allData.length untuk total artikel yang sebenarnya ---
+      const totalPostsGlobal = allData?.length || 0;
+      setTotalPosts(totalPostsGlobal);
+      setTotalPages(Math.ceil(totalPostsGlobal / itemsPerPage));
       setCurrentPage(page);
+      // -------------------------------------------------------------
       
       // Statistik sekarang benar-benar akurat dan tidak terpengaruh pagination/filter halaman!
       setStats({ 
