@@ -185,7 +185,7 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
               whileHover={{ scale: 1.05 }}
               className="text-[9px] text-white/40 hover:text-white/80 transition-colors block font-semibold tracking-wider"
             >
-              POWERED BY <span className="text-blue-300">Oneklik.id</span>
+              Powered by <span className="text-blue-300">Oneklik.id</span>
             </motion.a>
           </div>
         </div>
