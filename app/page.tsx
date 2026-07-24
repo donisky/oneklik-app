@@ -86,7 +86,7 @@ const features = [
   }
 ];
 
-// --- EXTRA FEATURES (UNTUK BAGIAN PRICING / INTEGRASI) ---
+// --- EXTRA FEATURES ---
 const extraFeatures = [
   { title: 'Analitik Real-Time', desc: 'Pantau pengunjung bio link Anda secara langsung.', icon: BarChart3 },
   { title: 'Kustom Domain', desc: 'Gunakan domain Anda sendiri untuk halaman bio.', icon: Globe },
@@ -185,7 +185,7 @@ const footerData = {
   ],
 };
 
-// --- HELPER COMPONENT: ANIMATED COUNTER (REAL-TIME EFFECT) ---
+// --- HELPER COMPONENT: ANIMATED COUNTER ---
 const AnimatedCount = ({ value, suffix = '', duration = 1800 }: { value: number; suffix?: string; duration?: number }) => {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
@@ -193,19 +193,13 @@ const AnimatedCount = ({ value, suffix = '', duration = 1800 }: { value: number;
 
   useEffect(() => {
     if (!isInView) return;
-
     let start = 0;
-    const step = Math.max(1, Math.ceil(value / (duration / 30))); // smooth increment per frame
-    
+    const step = Math.max(1, Math.ceil(value / (duration / 30)));
     const timer = setInterval(() => {
       start += step;
-      if (start >= value) {
-        start = value;
-        clearInterval(timer);
-      }
+      if (start >= value) { start = value; clearInterval(timer); }
       setCount(start);
     }, 30);
-
     return () => clearInterval(timer);
   }, [isInView, value, duration]);
 
@@ -219,28 +213,14 @@ const StatCard = ({ stat, index }: { stat: any; index: number }) => {
       variants={itemVariants}
       className={`group relative overflow-hidden rounded-2xl p-6 border border-slate-200/50 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl ${stat.bg} ${stat.outline ? 'bg-white/80' : ''}`}
     >
-      {/* Subtle inner glow */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-      
       <div className="flex items-start justify-between mb-4 relative z-10">
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.outline ? 'bg-slate-100 shadow-sm' : 'bg-white/60 backdrop-blur-sm shadow-sm'}`}>
           <stat.icon className={`w-6 h-6 ${stat.text}`} />
         </div>
-        
-        {stat.pill && (
-          <span className={`text-[10px] font-bold px-3 py-1 rounded-full shadow-sm ${stat.pillColor}`}>
-            {stat.pill}
-          </span>
-        )}
-        {stat.stars && (
-          <div className="flex gap-0.5 text-yellow-400">
-            {[...Array(stat.stars)].map((_, i) => (
-              <StarIcon key={i} size={14} className="fill-current" />
-            ))}
-          </div>
-        )}
+        {stat.pill && <span className={`text-[10px] font-bold px-3 py-1 rounded-full shadow-sm ${stat.pillColor}`}>{stat.pill}</span>}
+        {stat.stars && <div className="flex gap-0.5 text-yellow-400">{[...Array(stat.stars)].map((_, i) => <StarIcon key={i} size={14} className="fill-current" />)}</div>}
       </div>
-
       <div className="space-y-1 relative z-10">
         <h4 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight flex items-baseline gap-1">
           {typeof stat.value === 'number' ? <AnimatedCount value={stat.value} /> : stat.value}
@@ -449,20 +429,17 @@ export default function Home() {
             </div>
           </motion.div>
 
-          {/* MOCKUP HP TERBARU (DENGAN GLASSMORPHISM) */}
+          {/* MOCKUP HP */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.9, y: 30 }} 
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             transition={{ duration: 0.8, delay: 0.2 }}
             className="relative mx-auto w-full max-w-[340px] aspect-[9/16] rounded-[3.5rem] border-[8px] border-[#1a1a1a] bg-white overflow-hidden shadow-2xl"
           >
-            {/* Dynamic Island */}
             <div className="absolute top-3 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-20 shadow-lg" />
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 opacity-10" />
             <div className="absolute inset-0 bg-white p-6 flex flex-col items-center pt-10">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-3 shadow-lg">
-                A
-              </div>
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-3 shadow-lg">A</div>
               <h3 className="text-xl font-bold text-slate-900">Andi Creator</h3>
               <p className="text-sm text-slate-500 mb-6">@andicreator</p>
               <div className="w-full space-y-4 px-2">
@@ -478,7 +455,32 @@ export default function Home() {
           </motion.div>
         </section>
 
-        {/* --- STATISTIK REAL-TIME (BARU, ELEGAN & MEWAH) --- */}
+        {/* --- STUDENT PROMO BANNER (FITUR BARU DITAMBAHKAN DI SINI) --- */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="max-w-6xl mx-auto px-6 -mt-8 mb-12 relative z-10"
+        >
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
+            <div className="relative z-10 flex items-center gap-3">
+              <Crown size={24} className="text-yellow-300 flex-shrink-0" />
+              <div>
+                <h3 className="text-xl md:text-2xl font-bold">Student Promo</h3>
+                <p className="text-white/90 text-sm md:text-base mt-0.5">
+                  Dapatkan akses <strong>Premium 1 Bulan GRATIS</strong> khusus mahasiswa dengan email <strong>.ac.id</strong>.
+                </p>
+              </div>
+            </div>
+            <Link href="/student-promo" className="shrink-0 bg-white text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 transform duration-200 text-sm md:text-base">
+              Klaim Sekarang 🎓
+            </Link>
+          </div>
+        </motion.div>
+        {/* ----------------------------------------------------- */}
+
+        {/* --- STATISTIK REAL-TIME --- */}
         <section className="max-w-6xl mx-auto px-6 mb-24 relative z-10">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -505,7 +507,6 @@ export default function Home() {
             ))}
           </motion.div>
 
-          {/* Row ke-2: 2 Kartu Lebar (White Cards) */}
           <motion.div
             variants={containerVariants}
             initial="hidden"
@@ -518,7 +519,6 @@ export default function Home() {
             ))}
           </motion.div>
 
-          {/* Aktivitas Hari Ini Pill */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
@@ -536,7 +536,7 @@ export default function Home() {
           </motion.div>
         </section>
 
-        {/* --- SOCIAL PROOF (SOSIAL MEDIA) --- */}
+        {/* --- SOCIAL PROOF --- */}
         <section className="border-y border-slate-100 py-16 bg-white">
           <div className="max-w-6xl mx-auto px-6 text-center">
             <p className="text-sm font-semibold uppercase tracking-widest text-slate-400 mb-8">Dipercaya & Terintegrasi dengan Platform Besar</p>
@@ -554,7 +554,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* --- FITUR UTAMA (DIPERLUAS) --- */}
+        {/* --- FITUR UTAMA --- */}
         <section id="features" className="py-24 md:py-32 max-w-6xl mx-auto px-6">
           <motion.div 
             initial={{ opacity: 0, y: 30 }} 
@@ -604,31 +604,16 @@ export default function Home() {
 
           <svg className="w-0 h-0 absolute">
             <defs>
-              <linearGradient id="bio_gradient" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#3b82f6"/>
-                <stop offset="100%" stopColor="#8b5cf6"/>
-              </linearGradient>
-              <linearGradient id="pdf_gradient" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#ef4444"/>
-                <stop offset="100%" stopColor="#f97316"/>
-              </linearGradient>
-              <linearGradient id="cv_gradient" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#10b981"/>
-                <stop offset="100%" stopColor="#34d399"/>
-              </linearGradient>
-              <linearGradient id="shortener_gradient" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#8b5cf6"/>
-                <stop offset="100%" stopColor="#3b82f6"/>
-              </linearGradient>
-              <linearGradient id="fileqr_gradient" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#ec4899"/>
-                <stop offset="100%" stopColor="#f43f5e"/>
-              </linearGradient>
+              <linearGradient id="bio_gradient" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0%" stopColor="#3b82f6"/><stop offset="100%" stopColor="#8b5cf6"/></linearGradient>
+              <linearGradient id="pdf_gradient" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0%" stopColor="#ef4444"/><stop offset="100%" stopColor="#f97316"/></linearGradient>
+              <linearGradient id="cv_gradient" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0%" stopColor="#10b981"/><stop offset="100%" stopColor="#34d399"/></linearGradient>
+              <linearGradient id="shortener_gradient" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0%" stopColor="#8b5cf6"/><stop offset="100%" stopColor="#3b82f6"/></linearGradient>
+              <linearGradient id="fileqr_gradient" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0%" stopColor="#ec4899"/><stop offset="100%" stopColor="#f43f5e"/></linearGradient>
             </defs>
           </svg>
         </section>
 
-        {/* --- BAGIAN INTEGRASI & FITUR TAMBAHAN (BARU) --- */}
+        {/* --- BAGIAN INTEGRASI & FITUR TAMBAHAN --- */}
         <section className="py-24 bg-white border-t border-slate-100">
           <div className="max-w-6xl mx-auto px-6">
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-16">
@@ -639,9 +624,7 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {extraFeatures.map((feat, idx) => (
                 <motion.div key={idx} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: idx * 0.1 }} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-all text-center">
-                  <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <feat.icon size={24} />
-                  </div>
+                  <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4"><feat.icon size={24} /></div>
                   <h4 className="font-bold text-slate-800">{feat.title}</h4>
                   <p className="text-sm text-slate-500 mt-2">{feat.desc}</p>
                 </motion.div>
@@ -650,7 +633,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* --- BAGIAN PRICING / HARGA --- */}
+        {/* --- BAGIAN PRICING --- */}
         <section className="py-24 md:py-32 max-w-6xl mx-auto px-6">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Harga yang <span className="text-blue-600">Transparan</span></h2>
@@ -674,35 +657,12 @@ export default function Home() {
                   <p className="text-sm text-slate-500 mt-1">{plan.name === 'Enterprise' ? 'Custom' : '/bulan'}</p>
                 </div>
                 <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, fIdx) => (
-                    <li key={fIdx} className="flex items-center gap-3 text-sm text-slate-600">
-                      <CheckCircle2 size={18} className="text-green-500 flex-shrink-0" /> {feature}
-                    </li>
-                  ))}
+                  {plan.features.map((feature, fIdx) => <li key={fIdx} className="flex items-center gap-3 text-sm text-slate-600"><CheckCircle2 size={18} className="text-green-500 flex-shrink-0" /> {feature}</li>)}
                 </ul>
-
-                {/* LOGIKA TOMBOL */}
                 {plan.name === 'Premium' ? (
-                  userProfile?.is_premium ? (
-                    <div className="block w-full text-center py-3 rounded-xl font-bold bg-green-100 text-green-700 cursor-default">
-                      ✔ Sudah Premium
-                    </div>
-                  ) : (
-                    <Link 
-                      href="/upgrade"
-                      className={`block w-full text-center py-3 rounded-xl font-bold transition-all ${plan.popular ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 hover:shadow-blue-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'}`}
-                    >
-                      {plan.cta}
-                    </Link>
-                  )
+                  userProfile?.is_premium ? <div className="block w-full text-center py-3 rounded-xl font-bold bg-green-100 text-green-700 cursor-default">✔ Sudah Premium</div> : <Link href="/upgrade" className={`block w-full text-center py-3 rounded-xl font-bold transition-all ${plan.popular ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 hover:shadow-blue-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'}`}>{plan.cta}</Link>
                 ) : (
-                  <Link 
-                    href={session ? "/dashboard" : "#"} 
-                    onClick={session ? undefined : handleLogin} 
-                    className={`block w-full text-center py-3 rounded-xl font-bold transition-all ${plan.popular ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'}`}
-                  >
-                    {plan.cta}
-                  </Link>
+                  <Link href={session ? "/dashboard" : "#"} onClick={session ? undefined : handleLogin} className={`block w-full text-center py-3 rounded-xl font-bold transition-all ${plan.popular ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'}`}>{plan.cta}</Link>
                 )}
               </motion.div>
             ))}
@@ -712,40 +672,25 @@ export default function Home() {
         {/* --- CAROUSEL TESTIMONIAL --- */}
         <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white overflow-hidden">
           <div className="max-w-6xl mx-auto px-6">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
-              Apa Kata Mereka?
-            </h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Apa Kata Mereka?</h2>
             <div className="relative h-[200px] md:h-[180px] flex items-center justify-center">
               <AnimatePresence mode="wait">
-                <motion.div
-                  key={testimonialIndex}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.5 }}
-                  className="absolute w-full max-w-2xl mx-auto text-center px-4"
-                >
+                <motion.div key={testimonialIndex} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.5 }} className="absolute w-full max-w-2xl mx-auto text-center px-4">
                   <p className="italic text-lg md:text-xl mb-4 text-white/90">"{testimonials[testimonialIndex].text}"</p>
                   <p className="font-semibold">{testimonials[testimonialIndex].name}</p>
                   <p className="text-sm text-blue-200">{testimonials[testimonialIndex].role}</p>
                 </motion.div>
               </AnimatePresence>
             </div>
-            <div className="flex justify-center gap-2 mt-8">
-              {testimonials.map((_, i) => (
-                <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i === testimonialIndex ? 'bg-white' : 'bg-white/30'}`} />
-              ))}
-            </div>
+            <div className="flex justify-center gap-2 mt-8">{testimonials.map((_, i) => <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i === testimonialIndex ? 'bg-white' : 'bg-white/30'}`} />)}</div>
           </div>
         </section>
 
-        {/* --- BAGIAN KEAMANAN & TRUST (BARU) --- */}
+        {/* --- BAGIAN KEAMANAN --- */}
         <section className="py-24 bg-slate-50 border-t border-slate-200">
           <div className="max-w-4xl mx-auto px-6 text-center">
             <motion.div initial={{ opacity: 0, scale: 0.8 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
-              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mx-auto mb-6">
-                <Lock size={40} />
-              </div>
+              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mx-auto mb-6"><Lock size={40} /></div>
               <h2 className="text-3xl font-bold text-slate-900 mb-4">Keamanan adalah Prioritas Utama Kami</h2>
               <p className="text-lg text-slate-600 mb-8 max-w-2xl mx-auto">Data Anda dilindungi dengan teknologi enkripsi modern. Tidak ada yang bisa mengakses informasi pribadi Anda tanpa izin Anda.</p>
               <div className="flex justify-center gap-8 flex-wrap text-sm text-slate-600">
@@ -757,13 +702,12 @@ export default function Home() {
           </div>
         </section>
 
-        {/* --- HOW IT WORKS (Lingkaran Bergantian) --- */}
+        {/* --- HOW IT WORKS --- */}
         <section className="py-24 md:py-32 max-w-6xl mx-auto px-6">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Bagaimana Cara Kerjanya?</h2>
             <p className="text-lg text-slate-600">Hanya 3 langkah mudah untuk memulai.</p>
           </motion.div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center relative max-w-4xl mx-auto">
             <div className="absolute top-12 left-0 right-0 h-1 bg-blue-200 hidden md:block" />
             {[
@@ -772,9 +716,7 @@ export default function Home() {
               { step: '3', title: 'Bagikan & Download', desc: 'Bagikan halaman bio atau download CV siap pakai.' }
             ].map((item, index) => (
               <motion.div key={index} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: stepIndex === index ? 1 : 0.4, scale: stepIndex === index ? 1.1 : 1 }} transition={{ duration: 0.5 }} className="flex flex-col items-center relative">
-                <div className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold transition-all duration-500 ${stepIndex === index ? 'bg-blue-600 text-white shadow-xl scale-110 ring-4 ring-blue-100' : 'bg-slate-100 text-blue-600'}`}>
-                  {item.step}
-                </div>
+                <div className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold transition-all duration-500 ${stepIndex === index ? 'bg-blue-600 text-white shadow-xl scale-110 ring-4 ring-blue-100' : 'bg-slate-100 text-blue-600'}`}>{item.step}</div>
                 <h3 className="text-xl font-bold text-slate-800 mt-4 mb-2">{item.title}</h3>
                 <p className="text-slate-600 max-w-xs">{item.desc}</p>
               </motion.div>
@@ -793,9 +735,7 @@ export default function Home() {
                     {faq.q}
                     <ChevronDown className={`w-5 h-5 text-slate-500 transition-transform duration-300 ${activeFaq === index ? 'rotate-180' : ''}`} />
                   </button>
-                  {activeFaq === index && (
-                    <div className="p-6 pt-0 text-slate-600 border-t border-slate-100">{faq.a}</div>
-                  )}
+                  {activeFaq === index && <div className="p-6 pt-0 text-slate-600 border-t border-slate-100">{faq.a}</div>}
                 </div>
               ))}
             </div>
@@ -805,103 +745,36 @@ export default function Home() {
         {/* --- CTA AKHIR --- */}
         <section className="py-24 md:py-32 max-w-4xl mx-auto px-6 text-center">
           <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
-            <h2 className="text-3xl md:text-5xl font-bold text-slate-900 mb-6">
-              Siap memulai <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">perjalanan digital</span> kamu?
-            </h2>
-            <p className="text-lg text-slate-600 mb-8 max-w-xl mx-auto">
-              Bergabunglah dengan ribuan pengguna yang sudah beralih ke Oneklik.id.
-            </p>
-            {session ? (
-              <Link href="/dashboard" className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-10 py-5 rounded-full text-xl font-bold shadow-xl shadow-blue-200 hover:shadow-blue-300 transition-all transform hover:-translate-y-1">
-                Lanjut ke Dashboard
-              </Link>
-            ) : (
-              <button onClick={handleLogin} className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-10 py-5 rounded-full text-xl font-bold shadow-xl shadow-blue-200 hover:shadow-blue-300 transition-all transform hover:-translate-y-1">
-                Buat Akun Gratis Sekarang
-              </button>
-            )}
+            <h2 className="text-3xl md:text-5xl font-bold text-slate-900 mb-6">Siap memulai <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">perjalanan digital</span> kamu?</h2>
+            <p className="text-lg text-slate-600 mb-8 max-w-xl mx-auto">Bergabunglah dengan ribuan pengguna yang sudah beralih ke Oneklik.id.</p>
+            {session ? <Link href="/dashboard" className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-10 py-5 rounded-full text-xl font-bold shadow-xl shadow-blue-200 hover:shadow-blue-300 transition-all transform hover:-translate-y-1">Lanjut ke Dashboard</Link> : <button onClick={handleLogin} className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-10 py-5 rounded-full text-xl font-bold shadow-xl shadow-blue-200 hover:shadow-blue-300 transition-all transform hover:-translate-y-1">Buat Akun Gratis Sekarang</button>}
           </motion.div>
         </section>
-
       </div>
 
-      {/* --- FOOTER MODEL LINKTREE DENGAN IDENTITAS ONEKLIK --- */}
+      {/* --- FOOTER --- */}
       <footer className="bg-white border-t border-slate-200 py-16">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12 mb-12">
-            <div>
-              <h4 className="font-bold text-slate-900 mb-5">Company</h4>
-              <ul className="space-y-3 text-sm text-slate-500">
-                {footerData.company.map((item, idx) => (
-                  <li key={idx}><Link href={item.href} className="hover:text-blue-600 transition-colors">{item.label}</Link></li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-slate-900 mb-5">Community</h4>
-              <ul className="space-y-3 text-sm text-slate-500">
-                {footerData.community.map((item, idx) => (
-                  <li key={idx}><Link href={item.href} className="hover:text-blue-600 transition-colors">{item.label}</Link></li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-slate-900 mb-5">Support</h4>
-              <ul className="space-y-3 text-sm text-slate-500">
-                {footerData.support.map((item, idx) => (
-                  <li key={idx}><Link href={item.href} className="hover:text-blue-600 transition-colors">{item.label}</Link></li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-slate-900 mb-5">Trust & Legal</h4>
-              <ul className="space-y-3 text-sm text-slate-500">
-                {footerData.legal.map((item, idx) => (
-                  <li key={idx}><Link href={item.href} className="hover:text-blue-600 transition-colors">{item.label}</Link></li>
-                ))}
-              </ul>
-            </div>
+            <div><h4 className="font-bold text-slate-900 mb-5">Company</h4><ul className="space-y-3 text-sm text-slate-500">{footerData.company.map((item, idx) => <li key={idx}><Link href={item.href} className="hover:text-blue-600 transition-colors">{item.label}</Link></li>)}</ul></div>
+            <div><h4 className="font-bold text-slate-900 mb-5">Community</h4><ul className="space-y-3 text-sm text-slate-500">{footerData.community.map((item, idx) => <li key={idx}><Link href={item.href} className="hover:text-blue-600 transition-colors">{item.label}</Link></li>)}</ul></div>
+            <div><h4 className="font-bold text-slate-900 mb-5">Support</h4><ul className="space-y-3 text-sm text-slate-500">{footerData.support.map((item, idx) => <li key={idx}><Link href={item.href} className="hover:text-blue-600 transition-colors">{item.label}</Link></li>)}</ul></div>
+            <div><h4 className="font-bold text-slate-900 mb-5">Trust & Legal</h4><ul className="space-y-3 text-sm text-slate-500">{footerData.legal.map((item, idx) => <li key={idx}><Link href={item.href} className="hover:text-blue-600 transition-colors">{item.label}</Link></li>)}</ul></div>
           </div>
-
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-8 border-t border-slate-100">
             <div className="flex items-center gap-4">
-              {session ? (
-                <>
-                  <Link href="/dashboard" className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-800 font-semibold transition-colors">Dashboard</Link>
-                  <button onClick={handleLogout} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-full text-white font-bold transition-colors shadow-md shadow-blue-200">Logout</button>
-                </>
-              ) : (
-                <>
-                  <button onClick={handleLogin} className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-800 font-semibold transition-colors">Log in</button>
-                  <button onClick={handleLogin} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-full text-white font-bold transition-colors shadow-md shadow-blue-200">Mulai Sekarang Gratis</button>
-                </>
-              )}
+              {session ? (<> <Link href="/dashboard" className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-800 font-semibold transition-colors">Dashboard</Link> <button onClick={handleLogout} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-full text-white font-bold transition-colors shadow-md shadow-blue-200">Logout</button> </>) : (<> <button onClick={handleLogin} className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-800 font-semibold transition-colors">Log in</button> <button onClick={handleLogin} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-full text-white font-bold transition-colors shadow-md shadow-blue-200">Mulai Sekarang Gratis</button> </>)}
             </div>
-
             <div className="flex items-center gap-4 flex-wrap justify-center">
               <div className="flex gap-2">
-                <div className="bg-black text-white px-3 py-1.5 rounded-lg flex items-center gap-2 text-[10px] cursor-pointer hover:opacity-90 transition-opacity">
-                   <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M3.609 1.814L13.792 12 3.609 22.186c-.217-.145-.375-.357-.406-.619V2.433c.031-.262.188-.474.406-.619zM14.922 12l-2.006 2.006 8.423 8.423c.152-.195.248-.442.248-.719V4.29c0-.277-.095-.523-.247-.719L14.922 12z"/></svg>
-                   <div className="flex flex-col leading-none"><span className="opacity-70">GET IT ON</span><span className="font-bold">Google Play</span></div>
-                </div>
-                <div className="bg-black text-white px-3 py-1.5 rounded-lg flex items-center gap-2 text-[10px] cursor-pointer hover:opacity-90 transition-opacity">
-                   <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.6 19.6C16.3 21.6 14.8 24 12.6 24c-2 0-2.5-1.1-4.7-1.1-2.2 0-2.9 1.1-4.6 1.1-1.9 0-3.6-2.2-4.8-4.2-1.7-2.9-3-8.4-1.2-12.1 1.2-2.5 3.8-3.8 6.3-3.8 1.8 0 3.4.6 4.8.6 1.2 0 3.1-.8 5-.8 2.2.1 4.4 1 5.7 2.5-4.4 2.6-3.5 9.1.8 10.8zM12 5.4C11 2.9 9.4 0 6.8 0 4.5.2 2.3 2.1 2 4.7c-.3 3 2.3 5.9 4.9 6.3 1.3.2 2.5-1.7 3.8-1.8 1.3-.2 2.5 1.7 3.8 1.8 1.3.1 2.5-1.7 3.8-1.8.3 0 2.8 1.2 3.5 2.5-.3 0-2.5 1.2-3.5 2.5 0 0 2.3 2.6 2.3 2.6 0 0-1.7 1.2-2.3 2.6 0 0 1.5.6 2.3 1.8 0 0 2.5 1.2 3.5 2.5 0 0-1 2.6-2.3 2.5 0 0-2.5-2.6-4.6-2.6-1.5 0-2.8.8-4.5.8-1.7 0-3.1-1.8-4.8-1.8-1.7 0-3.4 1.8-4.5 1.8-1 0-2.8-1.2-3.5-2.5 0 0 1.7-2.6 2.3-2.6 0 0 2.3-2.6 2.3-2.6 0 0-1.5-1.2-2.3-2.5 0 0 2.5-2.5 3.5-2.5 0 0 0 0 0 0z"/></svg>
-                   <div className="flex flex-col leading-none"><span className="opacity-70">Download on the</span><span className="font-bold">App Store</span></div>
-                </div>
+                <div className="bg-black text-white px-3 py-1.5 rounded-lg flex items-center gap-2 text-[10px] cursor-pointer hover:opacity-90 transition-opacity"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M3.609 1.814L13.792 12 3.609 22.186c-.217-.145-.375-.357-.406-.619V2.433c.031-.262.188-.474.406-.619zM14.922 12l-2.006 2.006 8.423 8.423c.152-.195.248-.442.248-.719V4.29c0-.277-.095-.523-.247-.719L14.922 12z"/></svg><div className="flex flex-col leading-none"><span className="opacity-70">GET IT ON</span><span className="font-bold">Google Play</span></div></div>
+                <div className="bg-black text-white px-3 py-1.5 rounded-lg flex items-center gap-2 text-[10px] cursor-pointer hover:opacity-90 transition-opacity"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.6 19.6C16.3 21.6 14.8 24 12.6 24c-2 0-2.5-1.1-4.7-1.1-2.2 0-2.9 1.1-4.6 1.1-1.9 0-3.6-2.2-4.8-4.2-1.7-2.9-3-8.4-1.2-12.1 1.2-2.5 3.8-3.8 6.3-3.8 1.8 0 3.4.6 4.8.6 1.2 0 3.1-.8 5-.8 2.2.1 4.4 1 5.7 2.5-4.4 2.6-3.5 9.1.8 10.8zM12 5.4C11 2.9 9.4 0 6.8 0 4.5.2 2.3 2.1 2 4.7c-.3 3 2.3 5.9 4.9 6.3 1.3.2 2.5-1.7 3.8-1.8 1.3-.2 2.5 1.7 3.8 1.8 1.3.1 2.5-1.7 3.8-1.8.3 0 2.8 1.2 3.5 2.5-.3 0-2.5 1.2-3.5 2.5 0 0 2.3 2.6 2.3 2.6 0 0-1.7 1.2-2.3 2.6 0 0 1.5.6 2.3 1.8 0 0 2.5 1.2 3.5 2.5 0 0-1 2.6-2.3 2.5 0 0-2.5-2.6-4.6-2.6-1.5 0-2.8.8-4.5.8-1.7 0-3.1-1.8-4.8-1.8-1.7 0-3.4 1.8-4.5 1.8-1 0-2.8-1.2-3.5-2.5 0 0 1.7-2.6 2.3-2.6 0 0 2.3-2.6 2.3-2.6 0 0-1.5-1.2-2.3-2.5 0 0 2.5-2.5 3.5-2.5 0 0 0 0 0 0z"/></svg><div className="flex flex-col leading-none"><span className="opacity-70">Download on the</span><span className="font-bold">App Store</span></div></div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-800 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer">
-                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.05-1.1-.23-2.19-.53-3.25-.25-1.09-.66-2.14-1.26-3.08-1.1 1.05-1.64 2.48-1.74 3.97-.01 2.03-.02 4.06-.02 6.09 0 .25-.01.49-.02.73.51.09 1.03.14 1.55.15v4.02c-2.82-.01-5.63-.02-8.45-.02.09-2.07.18-4.14.27-6.21.14-2.23.28-4.46.42-6.68-.58.81-1.16 1.62-1.74 2.43-.3.51-.67 1-1.02 1.48-1.13 1.62-2.21 3.28-3.35 4.89-.54.78-1.14 1.53-1.68 2.31-2.3-1.14-4.6-2.28-6.9-3.42 1.41-1.96 2.82-3.92 4.23-5.88.28-.39.57-.78.85-1.18.66-.93 1.32-1.86 1.98-2.79.59-.85 1.19-1.7 1.78-2.55 2.33 1.18 4.67 2.36 7 3.54.26.13.52.26.78.38.21-1.49.72-2.92 1.48-4.24.02-.02.03-.05.05-.08 2.1-2.95 5.43-4.55 8.98-4.55z"/></svg>
-                </div>
-                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-800 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer">
-                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-                </div>
-                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-800 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer">
-                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-                </div>
-                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-800 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer">
-                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.078.037l-.211.691a14.292 14.292 0 0 0-5.063.001l-.211-.691a.074.074 0 0 0-.078-.037 19.738 19.738 0 0 0-4.885 1.516.074.074 0 0 0-.038.052C1.392 9.218.752 13.999.75 18.707a.074.074 0 0 0 .027.057c2.201 1.63 4.426 2.545 6.75 3.005.18.034.25-.139.255-.191l.447-1.458a.074.074 0 0 0-.054-.089 11.185 11.185 0 0 1-2.379-1.132.074.074 0 0 1-.06-.099c.021-.06.042-.116.065-.174l.014-.017c.021-.028.044-.052.068-.074l.014-.013a8.52 8.52 0 0 0 5.235 1.56 8.535 8.535 0 0 0 5.253-1.568l.016.021c.023.022.046.045.066.073.023.058.043.114.064.173a.074.074 0 0 1-.058.101 11.213 11.213 0 0 1-2.376 1.13.074.074 0 0 0-.054.091l.447 1.458c.005.052.078.225.255.191 2.324-.46 4.548-1.375 6.75-3.005a.074.074 0 0 0 .027-.056c.002-4.708-.643-9.489-2.815-14.287a.074.074 0 0 0-.039-.052z"/></svg>
-                </div>
+                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-800 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"><svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.05-1.1-.23-2.19-.53-3.25-.25-1.09-.66-2.14-1.26-3.08-1.1 1.05-1.64 2.48-1.74 3.97-.01 2.03-.02 4.06-.02 6.09 0 .25-.01.49-.02.73.51.09 1.03.14 1.55.15v4.02c-2.82-.01-5.63-.02-8.45-.02.09-2.07.18-4.14.27-6.21.14-2.23.28-4.46.42-6.68-.58.81-1.16 1.62-1.74 2.43-.3.51-.67 1-1.02 1.48-1.13 1.62-2.21 3.28-3.35 4.89-.54.78-1.14 1.53-1.68 2.31-2.3-1.14-4.6-2.28-6.9-3.42 1.41-1.96 2.82-3.92 4.23-5.88.28-.39.57-.78.85-1.18.66-.93 1.32-1.86 1.98-2.79.59-.85 1.19-1.7 1.78-2.55 2.33 1.18 4.67 2.36 7 3.54.26.13.52.26.78.38.21-1.49.72-2.92 1.48-4.24.02-.02.03-.05.05-.08 2.1-2.95 5.43-4.55 8.98-4.55z"/></svg></div>
+                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-800 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"><svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></div>
+                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-800 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"><svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></div>
+                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-800 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"><svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.078.037l-.211.691a14.292 14.292 0 0 0-5.063.001l-.211-.691a.074.074 0 0 0-.078-.037 19.738 19.738 0 0 0-4.885 1.516.074.074 0 0 0-.038.052C1.392 9.218.752 13.999.75 18.707a.074.074 0 0 0 .027.057c2.201 1.63 4.426 2.545 6.75 3.005.18.034.25-.139.255-.191l.447-1.458a.074.074 0 0 0-.054-.089 11.185 11.185 0 0 1-2.379-1.132.074.074 0 0 1-.06-.099c.021-.06.042-.116.065-.174l.014-.017c.021-.028.044-.052.068-.074l.014-.013a8.52 8.52 0 0 0 5.235 1.56 8.535 8.535 0 0 0 5.253-1.568l.016.021c.023.022.046.045.066.073.023.058.043.114.064.173a.074.074 0 0 1-.058.101 11.213 11.213 0 0 1-2.376 1.13.074.074 0 0 0-.054.091l.447 1.458c.005.052.078.225.255.191 2.324-.46 4.548-1.375 6.75-3.005a.074.074 0 0 0 .027-.056c.002-4.708-.643-9.489-2.815-14.287a.074.074 0 0 0-.039-.052z"/></svg></div>
               </div>
             </div>
           </div>
