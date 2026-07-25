@@ -8,31 +8,70 @@ export async function generateStaticParams() {
   const supabase = createServerComponentClient({ cookies });
   const { data: posts } = await supabase.from('blog_posts').select('slug');
   
-  // Mengembalikan array slug agar Next.js membuat halaman statis saat deploy
   return posts?.map((post) => ({
     slug: post.slug,
   })) || [];
 }
 
-// --- AGAR ARTIKEL BARU YANG BELUM DI-BUILD TETAP BISA DIBUKA (TIDAK 404) ---
+// --- AGAR ARTIKEL BARU YANG BELUM DI-BUILD TETAP BISA DIBUKA ---
 export const dynamic = 'force-dynamic';
-// atau gunakan: export const revalidate = 60; // (ISR: refresh setiap 60 detik)
 
-export default async function BlogDetailPage({ params }: { params: { slug: string } }) {
+// --- TAMBAHAN BARU: GENERATE METADATA UNTUK SEO & OG IMAGE ---
+export async function generateMetadata({ params }: { params: { slug: string } }) {
   const supabase = createServerComponentClient({ cookies });
   
-  // Ambil data berdasarkan slug dari Supabase
   const { data: post } = await supabase
     .from('blog_posts')
     .select('*')
     .eq('slug', params.slug)
     .single();
 
-  // Jika artikel tidak ditemukan di database, tampilkan halaman 404
+  if (!post) {
+    return {
+      title: 'Artikel Tidak Ditemukan - Oneklik.id',
+    };
+  }
+
+  return {
+    title: post.title,
+    description: post.excerpt || post.meta_description || `Baca artikel ${post.title} di Oneklik.id`,
+    openGraph: {
+      title: post.title,
+      description: post.excerpt || `Baca artikel ${post.title} di Oneklik.id`,
+      url: `https://oneklik.my.id/blog/${params.slug}`,
+      siteName: 'Oneklik.id',
+      images: [
+        {
+          url: post.cover_image || post.image_url, // <--- PERHATIKAN INI! (Lihat penjelasan di bawah)
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ],
+      type: 'article',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title,
+      description: post.excerpt || `Baca artikel ${post.title} di Oneklik.id`,
+      images: [post.cover_image || post.image_url], // <--- PERHATIKAN INI JUG
+    },
+  };
+}
+
+// --- KONTEN UTAMA TETAP SAMA ---
+export default async function BlogDetailPage({ params }: { params: { slug: string } }) {
+  const supabase = createServerComponentClient({ cookies });
+  
+  const { data: post } = await supabase
+    .from('blog_posts')
+    .select('*')
+    .eq('slug', params.slug)
+    .single();
+
   if (!post) {
     notFound();
   }
 
-  // Kirim data ke Client Component untuk dirender
   return <BlogContent post={post} />;
 }
