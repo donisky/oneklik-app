@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import BlogContent from './client';
 
-// --- GENERATE SLUG DARI DATABASE SAAT BUILD (Agar SEO Cepat) ---
+// --- GENERATE SLUG DARI DATABASE SAAT BUILD ---
 export async function generateStaticParams() {
   const supabase = createServerComponentClient({ cookies });
   const { data: posts } = await supabase.from('blog_posts').select('slug');
@@ -16,7 +16,7 @@ export async function generateStaticParams() {
 // --- AGAR ARTIKEL BARU YANG BELUM DI-BUILD TETAP BISA DIBUKA ---
 export const dynamic = 'force-dynamic';
 
-// --- TAMBAHAN BARU: GENERATE METADATA UNTUK SEO & OG IMAGE ---
+// --- GENERATE METADATA UNTUK SEO & OG IMAGE ---
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const supabase = createServerComponentClient({ cookies });
   
@@ -34,7 +34,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
   return {
     title: post.title,
-    description: post.excerpt || post.meta_description || `Baca artikel ${post.title} di Oneklik.id`,
+    // Menggunakan 'excerpt' untuk deskripsi, jika kosong pakai fallback
+    description: post.excerpt || `Baca artikel ${post.title} di Oneklik.id`,
     openGraph: {
       title: post.title,
       description: post.excerpt || `Baca artikel ${post.title} di Oneklik.id`,
@@ -42,7 +43,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       siteName: 'Oneklik.id',
       images: [
         {
-          url: post.cover_image || post.image_url, // <--- PERHATIKAN INI! (Lihat penjelasan di bawah)
+          // MENGGUNAKAN KOLOM 'image-url' DENGAN NOTASI KURUNG SIKU
+          url: post['image-url'] || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2671&auto=format&fit=crop',
           width: 1200,
           height: 630,
           alt: post.title,
@@ -54,12 +56,12 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       card: 'summary_large_image',
       title: post.title,
       description: post.excerpt || `Baca artikel ${post.title} di Oneklik.id`,
-      images: [post.cover_image || post.image_url], // <--- PERHATIKAN INI JUG
+      images: [post['image-url'] || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2671&auto=format&fit=crop'],
     },
   };
 }
 
-// --- KONTEN UTAMA TETAP SAMA ---
+// --- KONTEN UTAMA ---
 export default async function BlogDetailPage({ params }: { params: { slug: string } }) {
   const supabase = createServerComponentClient({ cookies });
   
