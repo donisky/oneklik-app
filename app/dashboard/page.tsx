@@ -425,23 +425,9 @@ export default function Dashboard() {
 
       {/* --- KONTEN UTAMA --- */}
       <main className="flex-1 h-screen overflow-y-auto bg-[#F8FAFC] p-6 lg:p-10">
-        <div className="max-w-4xl mx-auto relative">
-          {/* Ilustrasi Dekoratif Header */}
-          <div className="hidden lg:block absolute -top-2 right-0 w-72 h-40 pointer-events-none select-none z-0">
-            <div className="absolute top-2 right-16 w-4 h-4 text-indigo-300">
-              <Sparkles size={18} />
-            </div>
-            <div className="absolute top-8 right-40 w-3 h-3 bg-indigo-300 rounded-full opacity-70" />
-            <div className="absolute top-6 right-6 w-24 h-24 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-[28px] rotate-6 opacity-80" />
-            <div className="absolute top-16 right-24 w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-50 rounded-[24px] -rotate-6" />
-            <div className="absolute top-24 right-2 w-9 h-9 bg-indigo-300 rounded-full opacity-70" />
-            <svg className="absolute top-20 right-8 opacity-60" width="70" height="30" viewBox="0 0 70 30" fill="none">
-              <path d="M2 26 L20 16 L34 20 L50 6 L68 12" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-
+        <div className="max-w-4xl mx-auto">
           {/* Header Konten */}
-          <div className="relative z-10 flex items-center justify-between mb-8">
+          <div className="relative flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => setMobileMenuOpen(true)} 
@@ -454,6 +440,21 @@ export default function Dashboard() {
                 <p className="text-sm text-slate-500 mt-1">Kelola semua kebutuhan digital Anda dalam satu tempat.</p>
               </div>
             </div>
+
+            {/* Ilustrasi Dekoratif — dikunci di dalam tinggi baris header (inset-y-0 mengikuti tinggi parent), jadi tidak akan pernah menutupi konten di bawahnya (mis. banner promo student) */}
+            <div className="hidden lg:block absolute inset-y-0 right-28 w-32 pointer-events-none select-none" aria-hidden="true">
+              <div className="relative w-full h-full flex items-center justify-center">
+                <div className="absolute w-9 h-12 bg-indigo-100 rounded-2xl -rotate-6 -translate-x-4" />
+                <div className="absolute w-9 h-14 bg-gradient-to-b from-blue-100 to-indigo-100 rounded-2xl rotate-3 translate-x-2 flex items-start justify-center pt-2">
+                  <svg width="24" height="12" viewBox="0 0 24 12" fill="none">
+                    <path d="M1 10 L7 5 L11 8 L16 3 L23 5" stroke="#6366F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="23" cy="5" r="1.8" fill="#6366F1" />
+                  </svg>
+                </div>
+                <div className="absolute w-3 h-3 bg-indigo-400 rounded-full bottom-1 left-3" />
+                <Sparkles size={12} className="absolute text-indigo-300 top-0 right-2" />
+              </div>
+            </div>
             
             {/* --- AREA IKON (NOTIFIKASI & AVATAR HEADER) --- */}
             <div className="flex items-center gap-4">
@@ -464,9 +465,7 @@ export default function Dashboard() {
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-pulse">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
+                  <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
                 )}
               </button>
 
