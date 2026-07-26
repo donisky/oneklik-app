@@ -3,7 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import dynamic from 'next/dynamic';
 import { Analytics } from '@vercel/analytics/react';
-import PageViewTracker from "./components/PageViewTracker"; // <-- Import komponen baru
+import PageViewTracker from "./components/PageViewTracker";
+import { ThemeProvider } from 'next-themes'; // <-- Tambahkan ini
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -60,39 +61,42 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="id">
+    <html lang="id" suppressHydrationWarning> {/* <-- Tambahkan suppressHydrationWarning */}
       <body className={inter.className}>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebApplication",
-              "name": "Oneklik.id",
-              "url": "https://oneklik.my.id",
-              "applicationCategory": "UtilityApplication",
-              "description": "Platform all-in-one untuk membuat Bio Link, Short Link, QR Code, Generator CV AI, dan Alat PDF.",
-              "operatingSystem": "All",
-              "browserRequirements": "Requires JavaScript",
-              "offers": {
-                "@type": "Offer",
-                "price": "0",
-                "priceCurrency": "IDR"
-              }
-            })
-          }}
-        />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {/* Schema.org structured data */}
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "WebApplication",
+                "name": "Oneklik.id",
+                "url": "https://oneklik.my.id",
+                "applicationCategory": "UtilityApplication",
+                "description": "Platform all-in-one untuk membuat Bio Link, Short Link, QR Code, Generator CV AI, dan Alat PDF.",
+                "operatingSystem": "All",
+                "browserRequirements": "Requires JavaScript",
+                "offers": {
+                  "@type": "Offer",
+                  "price": "0",
+                  "priceCurrency": "IDR"
+                }
+              })
+            }}
+          />
 
-        {children}
-        
-        {/* Chatbot akan muncul di pojok kanan bawah */}
-        <AIChatWidget />
-        
-        {/* Vercel Analytics (opsional, untuk data tambahan) */}
-        <Analytics />
-        
-        {/* Pelacakan global untuk semua halaman */}
-        <PageViewTracker />
+          {children}
+          
+          {/* Chatbot akan muncul di pojok kanan bawah */}
+          <AIChatWidget />
+          
+          {/* Vercel Analytics (opsional, untuk data tambahan) */}
+          <Analytics />
+          
+          {/* Pelacakan global untuk semua halaman */}
+          <PageViewTracker />
+        </ThemeProvider>
       </body>
     </html>
   );
