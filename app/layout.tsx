@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css"; // Pastikan path ini benar (relatif)
+import "./globals.css";
 import dynamic from 'next/dynamic';
 import { Analytics } from '@vercel/analytics/react';
 import PageViewTracker from "./components/PageViewTracker";
-import { ThemeProvider } from 'next-themes'; // <-- Import ThemeProvider
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -61,46 +60,33 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="id" suppressHydrationWarning>
+    <html lang="id">
       <body className={inter.className}>
-        {/* --- PERUBAHAN PENTING DI SINI --- */}
-        {/* defaultTheme="light" agar mode terang menjadi default */}
-        {/* enableSystem={false} agar tidak mengikuti mode sistem perangkat */}
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          
-          {/* Schema.org structured data */}
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{
-              __html: JSON.stringify({
-                "@context": "https://schema.org",
-                "@type": "WebApplication",
-                "name": "Oneklik.id",
-                "url": "https://oneklik.my.id",
-                "applicationCategory": "UtilityApplication",
-                "description": "Platform all-in-one untuk membuat Bio Link, Short Link, QR Code, Generator CV AI, dan Alat PDF.",
-                "operatingSystem": "All",
-                "browserRequirements": "Requires JavaScript",
-                "offers": {
-                  "@type": "Offer",
-                  "price": "0",
-                  "priceCurrency": "IDR"
-                }
-              })
-            }}
-          />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              "name": "Oneklik.id",
+              "url": "https://oneklik.my.id",
+              "applicationCategory": "UtilityApplication",
+              "description": "Platform all-in-one untuk membuat Bio Link, Short Link, QR Code, Generator CV AI, dan Alat PDF.",
+              "operatingSystem": "All",
+              "browserRequirements": "Requires JavaScript",
+              "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "IDR"
+              }
+            })
+          }}
+        />
 
-          {children}
-          
-          {/* Chatbot akan muncul di pojok kanan bawah */}
-          <AIChatWidget />
-          
-          {/* Vercel Analytics */}
-          <Analytics />
-          
-          {/* Pelacakan global untuk semua halaman */}
-          <PageViewTracker />
-        </ThemeProvider>
+        {children}
+        <AIChatWidget />
+        <Analytics />
+        <PageViewTracker />
       </body>
     </html>
   );
