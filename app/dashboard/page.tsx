@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
   Crown, LogOut, FileText, FileCheck, User, Layout, Trash2, AlertTriangle, X, 
   Menu, Home, Wand2, Store, Palette, Bell, ChevronRight,
-  Link as LinkIcon, QrCode, Gift, TrendingUp
+  Link as LinkIcon, QrCode, Gift, TrendingUp, Settings
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -76,6 +76,9 @@ export default function Dashboard() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // --- STATE MENU PROFIL ---
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   // --- STATE NOTIFIKASI ---
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -85,6 +88,19 @@ export default function Dashboard() {
 
   const supabase = createClientComponentClient();
   const router = useRouter();
+
+  // --- CLICK OUTSIDE UNTUK MENU PROFIL ---
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [profileMenuRef]);
 
   // --- FETCH DATA USER & HANDLE WELCOME EMAIL ---
   useEffect(() => {
@@ -110,8 +126,6 @@ export default function Dashboard() {
           }
           setUser(userData);
 
-          // --- PERBAIKAN: LOGIKA EMAIL SAMBUTAN YANG LEBIH AMAN ---
-          // Hanya kirim jika welcome_email_sent false atau null
           if (userData && (userData.welcome_email_sent === false || userData.welcome_email_sent === null)) {
             try {
               const res = await fetch('/api/send-welcome-email', {
@@ -124,12 +138,8 @@ export default function Dashboard() {
                 })
               });
 
-              // Jika API berhasil, refetch data user untuk memastikan database terupdate!
               if (res.ok) {
-                // Update state lokal dulu untuk UX yang lebih cepat
                 setUser((prev: any) => ({ ...prev, welcome_email_sent: true }));
-                
-                // Re-fetch dari database untuk memastikan konsistensi
                 const { data: refreshedUser } = await supabase
                   .from('users')
                   .select('*')
@@ -143,7 +153,6 @@ export default function Dashboard() {
               console.error('Gagal mengirim email sambutan:', err);
             }
           }
-          // --------------------------------------------
         }
         setLoading(false);
       } catch (err) {
@@ -219,6 +228,7 @@ export default function Dashboard() {
   };
 
   const handleLogout = async () => {
+    setIsProfileMenuOpen(false);
     await supabase.auth.signOut();
     toast('Logout berhasil!');
     setTimeout(() => router.push('/'), 1000);
@@ -245,6 +255,7 @@ export default function Dashboard() {
     } finally {
       setIsDeleting(false);
       setIsDeleteModalOpen(false);
+      setIsProfileMenuOpen(false);
     }
   };
 
@@ -327,7 +338,6 @@ export default function Dashboard() {
                 <QrCode className="w-4 h-4" /> File to QR
               </div>
             </Link>
-            {/* --- MENU BARU: AFFILIATE --- */}
             <Link href="/affiliate">
               <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
                 <Gift className="w-4 h-4" /> Program Afiliasi
@@ -336,9 +346,12 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Footer Sidebar: Profil & Logout */}
-        <div className="p-4 border-t border-slate-100 bg-white">
-          <div className="flex items-center gap-3 mb-4 px-2">
+        {/* --- FOOTER SIDEBAR: PROFIL & MENU POPUP --- */}
+        <div className="p-4 border-t border-slate-100 bg-white relative" ref={profileMenuRef}>
+          <button 
+            onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+            className="w-full flex items-center gap-3 mb-0 px-2 hover:bg-slate-50 rounded-lg py-2 transition-colors text-left"
+          >
             <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-500 font-bold flex-shrink-0">
               {user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?'}
             </div>
@@ -346,11 +359,39 @@ export default function Dashboard() {
               <div className="text-sm font-medium text-slate-700 truncate">{user?.full_name || 'Pengguna'}</div>
               <div className="text-xs text-slate-400 truncate">{session.user.email}</div>
             </div>
-          </div>
-          
-          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 text-sm text-red-500 hover:bg-red-50 py-2.5 rounded-lg transition-colors font-medium">
-            <LogOut size={16} /> Keluar
+            <ChevronRight size={16} className={`text-slate-400 transition-transform duration-200 ${isProfileMenuOpen ? 'rotate-90' : ''}`} />
           </button>
+
+          {/* --- POPUP MENU PROFIL --- */}
+          {isProfileMenuOpen && (
+            <div className="absolute bottom-20 left-4 right-4 bg-white border border-slate-200 rounded-xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+              <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                <p className="text-sm font-semibold text-slate-800">{user?.full_name || 'Pengguna'}</p>
+                <p className="text-xs text-slate-500 truncate">{session.user.email}</p>
+              </div>
+              
+              <div className="space-y-1 mt-1">
+                <button 
+                  onClick={() => {
+                    setIsProfileMenuOpen(false);
+                    setIsDeleteModalOpen(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
+                >
+                  <Trash2 size={16} /> Hapus Akun
+                </button>
+              </div>
+
+              <div className="mt-1 pt-1 border-t border-slate-100">
+                <button 
+                  onClick={handleLogout} 
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors font-medium"
+                >
+                  <LogOut size={16} /> Keluar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -469,26 +510,6 @@ export default function Dashboard() {
               <h3 className="font-medium text-slate-800">Program Afiliasi</h3>
               <p className="text-sm text-slate-500 mt-1">Dapatkan komisi 20% dengan membagikan link Oneklik.id.</p>
             </Link>
-          </div>
-
-          {/* --- ZONA BERBAHAYA: HAPUS AKUN --- */}
-          <div className="mt-8 pt-8 border-t-2 border-red-200">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <h3 className="text-lg font-bold text-red-600 flex items-center gap-2">
-                  <Trash2 size={20} /> Hapus Akun
-                </h3>
-                <p className="text-sm text-slate-500 max-w-lg mt-1">
-                  Menghapus akun akan menghapus semua data Anda (profil, tautan bio, riwayat CV) secara permanen. Tindakan ini <strong className="text-red-600">tidak dapat dibatalkan</strong>.
-                </p>
-              </div>
-              <button 
-                onClick={() => setIsDeleteModalOpen(true)}
-                className="px-6 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-colors text-sm font-medium"
-              >
-                Hapus Akun Saya
-              </button>
-            </div>
           </div>
         </div>
       </main>
