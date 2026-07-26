@@ -113,8 +113,16 @@ const MiniLineChart = ({ series }: { series: { label: string; views: number; cli
   );
 };
 
-const DonutChart = ({ segments, centerLabel, centerValue }: any) => {
-  const total = segments.reduce((a, s) => a + s.value, 0);
+const DonutChart = ({
+  segments,
+  centerLabel,
+  centerValue,
+}: {
+  segments: { label: string; value: number; color: string }[];
+  centerLabel: string;
+  centerValue: string | number;
+}) => {
+  const total = segments.reduce((acc: number, s) => acc + s.value, 0);
   const r = 60;
   const c = 2 * Math.PI * r;
   let offset = 0;
@@ -127,7 +135,18 @@ const DonutChart = ({ segments, centerLabel, centerValue }: any) => {
             const frac = s.value / total;
             const dash = frac * c;
             const el = (
-              <circle key={i} cx={80} cy={80} r={r} fill="none" stroke={s.color} strokeWidth={18} strokeDasharray={`${dash} ${c - dash}`} strokeDashoffset={-offset} strokeLinecap="butt" />
+              <circle
+                key={i}
+                cx={80}
+                cy={80}
+                r={r}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={18}
+                strokeDasharray={`${dash} ${c - dash}`}
+                strokeDashoffset={-offset}
+                strokeLinecap="butt"
+              />
             );
             offset += dash;
             return el;
@@ -140,7 +159,9 @@ const DonutChart = ({ segments, centerLabel, centerValue }: any) => {
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
               {s.label}
             </div>
-            <span className="font-semibold text-slate-700">{total > 0 ? ((s.value / total) * 100).toFixed(1) : '0'}% ({s.value})</span>
+            <span className="font-semibold text-slate-700">
+              {total > 0 ? ((s.value / total) * 100).toFixed(1) : '0'}% ({s.value})
+            </span>
           </div>
         ))}
         {total === 0 && <p className="text-xs text-slate-400">Belum ada data.</p>}
@@ -161,7 +182,8 @@ const ActivityHeatmap = ({ events }: { events: any[] }) => {
             <div className="flex gap-[3px] flex-1">
               {row.map((v, h) => {
                 const intensity = v / max;
-                const bg = v === 0 ? '#f1f5f9' : `rgba(37, 99, 235, ${0.15 + intensity * 0.75})`;
+                const bg =
+                  v === 0 ? '#f1f5f9' : `rgba(37, 99, 235, ${0.15 + intensity * 0.75})`;
                 return <div key={h} className="flex-1 aspect-square rounded-sm" style={{ backgroundColor: bg }} title={`${dayLabels[r]} ${h}:00 — ${v} aktivitas`} />;
               })}
             </div>
@@ -521,7 +543,6 @@ export default function BioPage() {
     if (!session?.user?.id) return;
     setOrdersLoading(true);
     try {
-      // Ambil data pesanan yang sudah dibayar/dikirim
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*, order_items(*)')
@@ -532,7 +553,6 @@ export default function BioPage() {
       setOrders(ordersData || []);
     } catch (err: any) {
       console.error('Error fetching orders:', err);
-      // Jangan tampilkan error toast jika tabel belum ada, tapi biarkan statistik 0
     } finally {
       setOrdersLoading(false);
     }
@@ -542,7 +562,6 @@ export default function BioPage() {
   const fetchShopStats = async () => {
     if (!session?.user?.id) return;
     try {
-      // Total Penjualan & Pesanan (hanya status delivered/paid)
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('total_amount')
@@ -552,7 +571,6 @@ export default function BioPage() {
       const totalRevenue = (ordersData || []).reduce((sum, o) => sum + (o.total_amount || 0), 0);
       const totalOrders = (ordersData || []).length;
 
-      // Rating Toko
       const { data: reviewsData, error: reviewsError } = await supabase
         .from('reviews')
         .select('rating')
@@ -886,7 +904,7 @@ export default function BioPage() {
           </div>
         </div>
 
-        {/* FOOTER SIDEBAR */}
+        {/* FOOTER SIDEBAR (Hanya Upgrade + Profil + Logout, tanpa link Dashboard kedua) */}
         <div className="p-4 border-t border-slate-100 bg-white space-y-3">
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-3">
             <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5 mb-1"><Crown size={14} className="text-amber-500" /> Upgrade ke PRO</p>
