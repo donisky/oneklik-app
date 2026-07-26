@@ -637,14 +637,28 @@ export default function BioPage() {
 
   const filteredProducts = useMemo(() => {
     let list = [...products];
+    
+    // Filter berdasarkan Search
     if (shopSearch.trim()) {
       const q = shopSearch.toLowerCase();
       list = list.filter((p) => p.title?.toLowerCase().includes(q));
     }
+
+    // Filter berdasarkan STATUS (Aktif, Habis, Arsip) - Sudah berfungsi!
+    if (shopStatusTab === 'aktif') {
+      list = list.filter((p) => p.status === 'aktif');
+    } else if (shopStatusTab === 'habis') {
+      list = list.filter((p) => p.status === 'habis');
+    } else if (shopStatusTab === 'arsip') {
+      list = list.filter((p) => p.status === 'arsip');
+    }
+
+    // Sort berdasarkan Harga/Nama/Terbaru
     if (shopSort === 'harga') list.sort((a, b) => parseFloat((a.price || '0').replace(/[^0-9.]/g, '')) - parseFloat((b.price || '0').replace(/[^0-9.]/g, '')));
     else if (shopSort === 'nama') list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+
     return list;
-  }, [products, shopSearch, shopSort]);
+  }, [products, shopSearch, shopSort, shopStatusTab]);
 
   const templateCategories = useMemo(() => {
     const set = new Set<string>(['Semua Kategori']);
@@ -667,7 +681,6 @@ export default function BioPage() {
     analyticsData.forEach((e) => {
       if (e.referrer) map[e.referrer] = (map[e.referrer] || 0) + 1;
     });
-    // Warnakan secara bergantian
     const colors = ['#3b82f6', '#22c55e', '#f97316', '#a855f7', '#ec4899'];
     return Object.entries(map).map(([key, value], i) => ({ label: key, value, color: colors[i % colors.length] }));
   }, [analyticsData]);
@@ -686,8 +699,8 @@ export default function BioPage() {
       if (e.location) map[e.location] = (map[e.location] || 0) + 1;
     });
     return Object.entries(map)
-      .sort((a, b) => b[1] - a[1]) // Urutkan dari yang tertinggi
-      .slice(0, 5) // Ambil 5 teratas
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
       .map(([key, value]) => ({ label: key, value }));
   }, [analyticsData]);
 
@@ -1490,9 +1503,6 @@ export default function BioPage() {
                       <option value="nama">Nama</option>
                     </select>
                   </div>
-                  {shopStatusTab !== 'semua' && (
-                    <p className="text-[10px] text-amber-600 flex items-center gap-1"><Info size={12} /> Filter status produk perlu kolom "status" di tabel shop_products — untuk saat ini semua produk ditampilkan.</p>
-                  )}
                 </div>
 
                 {filteredProducts.length > 0 ? (
@@ -1518,7 +1528,7 @@ export default function BioPage() {
                 ) : (
                   <div className="col-span-2 py-14 text-center text-slate-400 text-sm">
                     <ShoppingBag size={36} className="mx-auto mb-2 text-slate-200" />
-                    Belum ada produk. Klik "+ Tambah Produk" untuk memulai.
+                    {shopStatusTab === 'semua' ? 'Belum ada produk.' : `Tidak ada produk dengan status "${shopStatusTab}".`}
                   </div>
                 )}
               </div>

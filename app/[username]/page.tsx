@@ -37,7 +37,6 @@ const PublicBioPreview = ({ user, links }: { user: any; links: any[] }) => {
   const template = templates.find(t => t.id === parseInt(user?.selected_template || '1', 10)) || templates[0];
 
   // Deteksi template Street Style (biasanya id 4 atau memiliki nama 'Street Style')
-  // Sesuaikan 'Street Style' dengan nama persis di templateData Anda
   const isStreetStyle = template.name.toLowerCase().includes('street') || template.id === 4;
 
   const design = user?.design_settings || {};
@@ -53,16 +52,12 @@ const PublicBioPreview = ({ user, links }: { user: any; links: any[] }) => {
 
   let backgroundStyle: any = {};
   if (bgType === 'url' || bgType === 'upload') {
-    // Background custom (URL/Upload) — full resolusi, tanpa blend mode apa pun
     backgroundStyle = {
       backgroundImage: `url(${customBgUrl})`,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
     };
   } else {
-    // Background dari Template — tidak lagi pakai backgroundBlendMode: 'overlay' yang
-    // membuat gambar terlihat pudar/buram. Gambar template ditampilkan tajam (cover),
-    // warna solid hanya jadi fallback jika template tidak punya gambar sama sekali.
     backgroundStyle = template?.bgImage
       ? {
           backgroundImage: `url(${template.bgImage})`,
@@ -75,7 +70,6 @@ const PublicBioPreview = ({ user, links }: { user: any; links: any[] }) => {
   }
 
   // --- FOOTER SOSMED DINAMIS (SEMUA PLATFORM) ---
-  // Sama seperti dashboard: icon hanya muncul jika link-nya benar-benar diisi user.
   const socialPlatforms = [
     { key: 'social_instagram', name: 'Instagram', icon: <Instagram size={16} /> },
     { key: 'social_tiktok', name: 'TikTok', icon: <Music2 size={16} /> },
@@ -160,14 +154,23 @@ const PublicBioPreview = ({ user, links }: { user: any; links: any[] }) => {
             );
           })}
 
-          {/* Shop Button Dinamis */}
+          {/* --- TOMBOL INTERNAL SHOP (MENUJU HALAMAN SHOP PUBLIK) --- */}
+          <a
+            href={`/${user.username}/shop`}
+            className="block w-full py-3 px-4 rounded-2xl font-semibold transition-all hover:scale-105 shadow-sm text-sm"
+            style={getButtonStyles('#3b82f6', '#ffffff', btnStyle, isStreetStyle)}
+          >
+            🛍️ Shop
+          </a>
+
+          {/* Tombol Shop Eksternal (jika user memiliki shop_link) */}
           {user?.shop_link && (
             <a
               href={user.shop_link} target="_blank" rel="noopener noreferrer"
               className="block w-full py-3 px-4 rounded-2xl font-semibold transition-all hover:scale-105 flex items-center justify-center gap-2 shadow-sm text-sm"
-              style={getButtonStyles('#22c55e', '#ffffff', btnStyle, false)} // Tombol Shop tetap hijau
+              style={getButtonStyles('#22c55e', '#ffffff', btnStyle, false)}
             >
-              🛍️ Shop
+              🛍️ Toko Eksternal
             </a>
           )}
         </div>
