@@ -900,11 +900,10 @@ export default function BioPage() {
                 {item.icon} {item.label}
               </button>
             ))}
-            {/* Menu TEMPLATES DIHAPUS SESUAI PERMINTAAN */}
           </div>
         </div>
 
-        {/* FOOTER SIDEBAR (Hanya Upgrade + Profil + Logout, tanpa link Dashboard kedua) */}
+        {/* FOOTER SIDEBAR */}
         <div className="p-4 border-t border-slate-100 bg-white space-y-3">
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-3">
             <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5 mb-1"><Crown size={14} className="text-amber-500" /> Upgrade ke PRO</p>
@@ -1166,9 +1165,44 @@ export default function BioPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       {filteredTemplates.slice(0, templateShowCount).map((t: any) => {
                         const active = String(user?.selected_template) === String(t.id);
+                        const isPremium = t.isPremium || false;
+                        const isLocked = isPremium && !user?.is_premium;
+
                         return (
-                          <button key={t.id} onClick={() => setUser((prev: any) => ({ ...prev, selected_template: String(t.id) }))} className={cx('rounded-xl overflow-hidden border-2 text-left transition-all', active ? 'border-blue-500 ring-2 ring-blue-100' : 'border-transparent')}>
-                            <div className="relative aspect-[3/4] flex flex-col items-center justify-between p-3" style={t.bgImage ? { backgroundImage: `url(${t.bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { backgroundColor: t.colors?.bg || '#e2e8f0' }}>
+                          <button
+                            key={t.id}
+                            onClick={() => {
+                              if (isLocked) {
+                                toast.error('Template Premium hanya bisa diakses oleh pengguna PRO. Upgrade sekarang!');
+                                router.push('/upgrade');
+                                return;
+                              }
+                              setUser((prev: any) => ({ ...prev, selected_template: String(t.id) }));
+                            }}
+                            className={cx(
+                              'rounded-xl overflow-hidden border-2 text-left transition-all relative',
+                              active ? 'border-blue-500 ring-2 ring-blue-100' : 'border-transparent',
+                              isLocked ? 'cursor-not-allowed opacity-60 grayscale' : 'cursor-pointer'
+                            )}
+                          >
+                            {/* --- OVERLAY LOCK UNTUK PREMIUM --- */}
+                            {isLocked && (
+                              <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center z-10 rounded-xl">
+                                <div className="bg-amber-500 text-white px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg text-[10px] font-bold mb-1">
+                                  <Crown size={14} /> PRO
+                                </div>
+                                <span className="text-[9px] text-white/80">Klik untuk Upgrade</span>
+                              </div>
+                            )}
+
+                            <div
+                              className="relative aspect-[3/4] flex flex-col items-center justify-between p-3"
+                              style={
+                                t.bgImage
+                                  ? { backgroundImage: `url(${t.bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                                  : { backgroundColor: t.colors?.bg || '#e2e8f0' }
+                              }
+                            >
                               {active && <span className="absolute top-1.5 right-1.5 bg-blue-500 text-white rounded-full p-0.5"><CheckCircle2 size={14} /></span>}
                               <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white text-xs font-bold border border-white/30 mt-2">B</div>
                               <div className="w-full space-y-1 mb-1">
