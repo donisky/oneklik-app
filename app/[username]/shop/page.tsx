@@ -5,12 +5,17 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { 
-  Package, ArrowLeft, Star, ShieldCheck, Zap, RefreshCw, 
+  Package, ArrowLeft, ShieldCheck, Zap, RefreshCw, 
   Headphones, Instagram, Youtube, Music2, Facebook, Twitter, 
-  Linkedin, MessageCircle, Send, Twitch, Globe, Mail, ChevronDown,
-  LayoutGrid, List, Sun, Moon, Bell
+  Linkedin, MessageCircle, Send, Twitch, Mail, ChevronDown,
+  LayoutGrid, List, Bell
 } from 'lucide-react';
-import ThemeToggle from '@/components/ThemeToggle'; // Import komponen toggle yang baru kita buat
+import ThemeToggle from '@/app/components/ThemeToggle';
+
+// Helper safe classNames (didefinisikan di dalam file)
+function cx(...classes: (string | boolean | undefined | null)[]) {
+  return classes.filter(Boolean).join(' ');
+}
 
 export default function PublicShopPage({ params }: { params: { username: string } }) {
   const [user, setUser] = useState<any>(null);
@@ -23,9 +28,10 @@ export default function PublicShopPage({ params }: { params: { username: string 
 
   useEffect(() => {
     const fetchData = async () => {
+      // 1. Ambil data user (termasuk email dari auth.users atau public.users)
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, full_name, username, avatar_url, bio, social_instagram, social_tiktok, social_youtube, social_facebook, social_twitter, social_linkedin, social_whatsapp, social_telegram, social_twitch')
+        .select('id, full_name, username, avatar_url, bio, email, social_instagram, social_tiktok, social_youtube, social_facebook, social_twitter, social_linkedin, social_whatsapp, social_telegram, social_twitch')
         .eq('username', username)
         .maybeSingle();
 
@@ -35,6 +41,7 @@ export default function PublicShopPage({ params }: { params: { username: string 
       }
       setUser(userData);
 
+      // 2. Ambil produk yang aktif
       const { data: productsData, error: productsError } = await supabase
         .from('shop_products')
         .select('*')
@@ -79,7 +86,7 @@ export default function PublicShopPage({ params }: { params: { username: string 
           <Link href="/" className="text-xl font-bold text-blue-600 tracking-tight">Oneklik<span className="text-blue-400">.id</span></Link>
         </div>
         <div className="flex items-center gap-3">
-          {/* --- TOMBOL THEME TOGGLE DIPASANG DI SINI --- */}
+          {/* --- TOMBOL THEME TOGGLE SUDAH AMAN DIPASANG --- */}
           <ThemeToggle />
           
           <button className="p-2 text-slate-500 dark:text-white/60 hover:text-slate-900 dark:hover:text-white">
@@ -99,7 +106,6 @@ export default function PublicShopPage({ params }: { params: { username: string 
       </header>
 
       {/* --- HERO SECTION --- */}
-      {/* Hero sengaja tetap menggunakan overlay gelap agar gambar dan teks tetap terbaca di Light Mode maupun Dark Mode */}
       <section className="relative w-full h-[60vh] flex flex-col items-center justify-end pb-8 px-4 bg-slate-800">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2070&auto=format&fit=crop')` }} />
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/60 to-black/90" />
@@ -119,9 +125,12 @@ export default function PublicShopPage({ params }: { params: { username: string 
           </p>
 
           <div className="flex flex-wrap justify-center gap-3">
-            <a href={`mailto:${user.email || ''}`} className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all">
-              <Mail size={18} />
-            </a>
+            {/* Email hanya muncul jika ada email di database */}
+            {user.email && (
+              <a href={`mailto:${user.email}`} className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all">
+                <Mail size={18} />
+              </a>
+            )}
             {activeSocials.map((s, idx) => (
               <a key={idx} href={user[s.key]} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all">
                 {s.icon}
@@ -233,13 +242,10 @@ export default function PublicShopPage({ params }: { params: { username: string 
         Powered by <span className="text-blue-600 font-semibold">Oneklik.id</span>
       </footer>
 
+      {/* --- FLOATING CHAT BUTTON --- */}
       <button className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-500 rounded-full shadow-2xl flex items-center justify-center text-white transition-colors z-50">
         <MessageCircle size={24} />
       </button>
     </div>
   );
-}
-
-function cx(...classes: (string | boolean | undefined | null)[]) {
-  return classes.filter(Boolean).join(' ');
 }
