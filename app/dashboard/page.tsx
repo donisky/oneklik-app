@@ -6,8 +6,8 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
   Crown, LogOut, FileText, FileCheck, User, Layout, Trash2, AlertTriangle, X, 
-  Menu, Home, Wand2, Store, Palette, Bell, ChevronRight,
-  Link as LinkIcon, QrCode, Gift, TrendingUp, Settings
+  Menu, Home, Wand2, Store, Palette, Bell, ChevronRight, Sparkles,
+  Link as LinkIcon, QrCode, Gift, TrendingUp
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -76,6 +76,7 @@ export default function Dashboard() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
   // --- STATE MENU PROFIL ---
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -126,6 +127,7 @@ export default function Dashboard() {
           }
           setUser(userData);
 
+          // --- PERBAIKAN: LOGIKA EMAIL SAMBUTAN YANG LEBIH AMAN ---
           if (userData && (userData.welcome_email_sent === false || userData.welcome_email_sent === null)) {
             try {
               const res = await fetch('/api/send-welcome-email', {
@@ -289,7 +291,7 @@ export default function Dashboard() {
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
           <Link href="/" className="text-2xl font-bold text-blue-600 tracking-tight">Oneklik<span className="text-blue-400">.id</span></Link>
           <button 
             onClick={() => setMobileMenuOpen(false)} 
@@ -303,11 +305,13 @@ export default function Dashboard() {
           {/* Menu Utama */}
           <div className="space-y-1">
             <div className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              <span>Oneklik</span>
+              <span>Menu</span>
             </div>
-            <div className="bg-blue-50 text-blue-600 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer">
-              <Home className="w-4 h-4" /> Dashboard
-            </div>
+            <Link href="/dashboard">
+              <div className="bg-blue-50 text-blue-600 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                <Home className="w-4 h-4" /> Dashboard
+              </div>
+            </Link>
             <Link href="/bio">
               <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
                 <Layout className="w-4 h-4" /> Bio Link
@@ -344,13 +348,31 @@ export default function Dashboard() {
               </div>
             </Link>
           </div>
+
+          {/* --- CARD UPGRADE KE PRO (DI SIDEBAR) --- */}
+          {!user?.is_premium && (
+            <div className="mt-4 mx-2 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 shadow-sm">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 flex-shrink-0">
+                  <Sparkles size={16} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">Upgrade ke PRO ✨</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Akses fitur premium dan tingkatkan pengalamanmu.</p>
+                </div>
+              </div>
+              <Link href="/upgrade?next=/dashboard" className="block w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-center text-xs font-bold rounded-xl transition-colors shadow-md">
+                Upgrade Sekarang
+              </Link>
+            </div>
+          )}
         </div>
 
-        {/* --- FOOTER SIDEBAR: PROFIL & MENU POPUP --- */}
+        {/* --- FOOTER SIDEBAR: PROFIL & POPUP MENU --- */}
         <div className="p-4 border-t border-slate-100 bg-white relative" ref={profileMenuRef}>
           <button 
             onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-            className="w-full flex items-center gap-3 mb-0 px-2 hover:bg-slate-50 rounded-lg py-2 transition-colors text-left"
+            className="w-full flex items-center gap-3 px-2 hover:bg-slate-50 rounded-lg py-2 transition-colors text-left group"
           >
             <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-500 font-bold flex-shrink-0">
               {user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?'}
@@ -362,9 +384,9 @@ export default function Dashboard() {
             <ChevronRight size={16} className={`text-slate-400 transition-transform duration-200 ${isProfileMenuOpen ? 'rotate-90' : ''}`} />
           </button>
 
-          {/* --- POPUP MENU PROFIL --- */}
+          {/* --- POPUP DROPDOWN MENU PROFIL --- */}
           {isProfileMenuOpen && (
-            <div className="absolute bottom-20 left-4 right-4 bg-white border border-slate-200 rounded-xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="absolute bottom-[calc(100%+8px)] left-4 right-4 bg-white border border-slate-200 rounded-xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
               <div className="px-3 py-2 border-b border-slate-100 mb-1">
                 <p className="text-sm font-semibold text-slate-800">{user?.full_name || 'Pengguna'}</p>
                 <p className="text-xs text-slate-500 truncate">{session.user.email}</p>
@@ -413,18 +435,26 @@ export default function Dashboard() {
               </div>
             </div>
             
-            {/* --- TOMBOL NOTIFIKASI DENGAN BADGE MERAH --- */}
-            <button 
-              onClick={() => { setIsNotificationOpen(true); }}
-              className="relative p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-pulse">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
+            {/* --- AREA IKON (NOTIFIKASI & AVATAR HEADER) --- */}
+            <div className="flex items-center gap-4">
+              {/* Tombol Notifikasi */}
+              <button 
+                onClick={() => { setIsNotificationOpen(true); }}
+                className="relative p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Avatar Header (Visual saja, klik tetap di sidebar bawah) */}
+              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                {user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?'}
+              </div>
+            </div>
           </div>
 
           {/* --- STUDENT PROMO BANNER (HANYA UNTUK NON-PREMIUM) --- */}
@@ -502,7 +532,6 @@ export default function Dashboard() {
               <p className="text-sm text-slate-500 mt-1">Pilih dan kustomisasi 100+ template eksklusif.</p>
             </Link>
 
-            {/* --- KARTU BARU: PROGRAM AFILIASI --- */}
             <Link href="/affiliate" className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-orange-300 transition-all flex flex-col items-start">
               <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
                 <TrendingUp size={24} />
