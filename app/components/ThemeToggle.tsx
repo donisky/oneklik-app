@@ -8,6 +8,7 @@ export default function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
 
+  // Untuk menghindari error hidrasi
   useEffect(() => setMounted(true), []);
 
   if (!mounted) return null;
@@ -19,6 +20,7 @@ export default function ThemeToggle() {
         className={`p-1.5 rounded-full transition-colors ${
           theme === 'light' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
         }`}
+        aria-label="Mode Terang"
       >
         <Sun size={16} />
       </button>
@@ -27,6 +29,7 @@ export default function ThemeToggle() {
         className={`p-1.5 rounded-full transition-colors ${
           theme === 'dark' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
         }`}
+        aria-label="Mode Gelap"
       >
         <Moon size={16} />
       </button>
@@ -35,6 +38,7 @@ export default function ThemeToggle() {
         className={`p-1.5 rounded-full transition-colors ${
           theme === 'system' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
         }`}
+        aria-label="Mode Sistem"
       >
         <Monitor size={16} />
       </button>
