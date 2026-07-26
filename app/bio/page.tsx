@@ -113,7 +113,7 @@ const MiniLineChart = ({ series }: { series: { label: string; views: number; cli
   );
 };
 
-const DonutChart = ({ segments, centerLabel, centerValue }: { segments: { label: string; value: number; color: string }[]; centerLabel: string; centerValue: string | number }) => {
+const DonutChart = ({ segments, centerLabel, centerValue }: any) => {
   const total = segments.reduce((a, s) => a + s.value, 0);
   const r = 60;
   const c = 2 * Math.PI * r;
@@ -140,9 +140,7 @@ const DonutChart = ({ segments, centerLabel, centerValue }: { segments: { label:
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
               {s.label}
             </div>
-            <span className="font-semibold text-slate-700">
-              {total > 0 ? ((s.value / total) * 100).toFixed(1) : '0'}% ({s.value})
-            </span>
+            <span className="font-semibold text-slate-700">{total > 0 ? ((s.value / total) * 100).toFixed(1) : '0'}% ({s.value})</span>
           </div>
         ))}
         {total === 0 && <p className="text-xs text-slate-400">Belum ada data.</p>}
@@ -181,16 +179,14 @@ const ActivityHeatmap = ({ events }: { events: any[] }) => {
 };
 
 /* =========================================================================
-   BIO PREVIEW
+   PREVIEWS
    ========================================================================= */
 
 const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
   const template = templates.find((t: any) => t.id === parseInt(user?.selected_template || '1', 10)) || templates[0];
   const design = user?.design_settings || {};
-
   const bgType = design.bg_type || 'template';
   const customBgUrl = design.bg_custom_url || '';
-
   let backgroundStyle: any = {};
   if (bgType === 'url' || bgType === 'upload') {
     backgroundStyle = { backgroundImage: `url(${customBgUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' };
@@ -199,7 +195,6 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
       ? { backgroundImage: `url(${template.bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
       : { backgroundColor: user?.theme_bg || template?.colors?.bg || '#f3f4f6' };
   }
-
   const buttonColor = user?.theme_primary || (template as any)?.colors?.primary || '#3b82f6';
   const textColor = user?.theme_secondary || template?.colors?.text || '#ffffff';
   const fontFamily = design.font === 'serif' ? 'serif' : design.font === 'mono' ? 'monospace' : 'sans-serif';
@@ -236,11 +231,7 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
 
       <div className="relative z-10 h-full flex flex-col items-center pt-10 px-4 text-center" style={{ fontFamily }}>
         <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-xl border border-white/20 mb-3">
-          {user?.avatar_url ? (
-            <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover rounded-full" />
-          ) : (
-            user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?'
-          )}
+          {user?.avatar_url ? <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover rounded-full" /> : (user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?')}
         </div>
         <h3 className="font-bold text-xl text-white drop-shadow-md">{user?.full_name || 'Nama Kamu'}</h3>
         <p className="text-[10px] mb-5 text-white/70 drop-shadow">@{user?.username || 'username'}</p>
@@ -249,33 +240,13 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
           {links && links.map((link) => {
             const btnStyleObj = getButtonStyles(buttonColor, textColor);
             return (
-              <motion.a
-                key={link.id}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ scale: 1.08, rotate: [0, -3, 3, 0] }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.4, ease: 'easeInOut' }}
-                className="block w-full py-3 px-4 rounded-2xl font-semibold shadow-lg backdrop-blur-sm relative overflow-hidden"
-                style={btnStyleObj}
-              >
+              <motion.a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" whileHover={{ scale: 1.08, rotate: [0, -3, 3, 0] }} whileTap={{ scale: 0.95 }} transition={{ duration: 0.4, ease: 'easeInOut' }} className="block w-full py-3 px-4 rounded-2xl font-semibold shadow-lg backdrop-blur-sm relative overflow-hidden" style={btnStyleObj}>
                 {link.title}
               </motion.a>
             );
           })}
-
           {user?.shop_link && (
-            <motion.a
-              href={user.shop_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              whileHover={{ scale: 1.08, rotate: [0, -3, 3, 0] }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ duration: 0.4, ease: 'easeInOut' }}
-              className="block w-full py-3 px-4 rounded-2xl font-semibold shadow-lg backdrop-blur-sm"
-              style={getButtonStyles('#22c55e', '#ffffff')}
-            >
+            <motion.a href={user.shop_link} target="_blank" rel="noopener noreferrer" whileHover={{ scale: 1.08, rotate: [0, -3, 3, 0] }} whileTap={{ scale: 0.95 }} transition={{ duration: 0.4, ease: 'easeInOut' }} className="block w-full py-3 px-4 rounded-2xl font-semibold shadow-lg backdrop-blur-sm" style={getButtonStyles('#22c55e', '#ffffff')}>
               🛍️ Shop
             </motion.a>
           )}
@@ -287,15 +258,7 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
           {socialLinks.length > 0 && (
             <div className="flex flex-wrap justify-center items-center gap-3 mb-1">
               {socialLinks.map((social, idx) => (
-                <motion.a
-                  key={idx}
-                  href={social.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  whileHover={{ scale: 1.2, y: -2 }}
-                  className="text-white/60 hover:text-white transition-colors bg-white/10 backdrop-blur-sm p-2 rounded-full"
-                  title={social.name}
-                >
+                <motion.a key={idx} href={social.url} target="_blank" rel="noopener noreferrer" whileHover={{ scale: 1.2, y: -2 }} className="text-white/60 hover:text-white transition-colors bg-white/10 backdrop-blur-sm p-2 rounded-full" title={social.name}>
                   {social.icon}
                 </motion.a>
               ))}
@@ -311,10 +274,6 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
     </div>
   );
 };
-
-/* =========================================================================
-   SHOP PREVIEW
-   ========================================================================= */
 
 const ShopPreview = ({ user, products }: { user: any; products: any[] }) => {
   const top = products.slice(0, 3);
@@ -384,13 +343,11 @@ const ShareDropdown = ({ url }: { url: string }) => {
         <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-30 p-2 space-y-1">
           {shareLinks.map((item, idx) => (
             <a key={idx} href={item.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors" onClick={() => setOpen(false)}>
-              {item.icon}
-              <span>{item.name}</span>
+              {item.icon} <span>{item.name}</span>
             </a>
           ))}
           <button onClick={handleCopy} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors w-full text-left">
-            <Copy size={16} />
-            <span>{copied ? 'Disalin!' : 'Copy Link'}</span>
+            <Copy size={16} /> <span>{copied ? 'Disalin!' : 'Copy Link'}</span>
           </button>
         </div>
       )}
@@ -418,9 +375,7 @@ const NotificationModal = ({ isOpen, onClose, notifications, loading, tab, setTa
           ))}
         </div>
         <div className="flex flex-col items-center justify-center py-4 min-h-[200px]">
-          {loading ? (
-            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          ) : filtered.length > 0 ? (
+          {loading ? <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /> : filtered.length > 0 ? (
             <div className="w-full space-y-3">
               {filtered.map((notif: any) => (
                 <div key={notif.id} className="p-3 bg-slate-50 rounded-lg border border-slate-100">
@@ -479,7 +434,17 @@ export default function BioPage() {
 
   const [uploadingBg, setUploadingBg] = useState(false);
 
-  // --- New UI state
+  // --- STATE BARU UNTUK SHOP STATS & ORDERS ---
+  const [orders, setOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [shopStats, setShopStats] = useState({
+    totalRevenue: 0,
+    totalOrders: 0,
+    averageRating: 0,
+    totalReviews: 0,
+  });
+
   const [designSubTab, setDesignSubTab] = useState<'tampilan' | 'tema' | 'warna' | 'tipografi' | 'tombol' | 'lanjutan'>('tampilan');
   const [templateCategory, setTemplateCategory] = useState('Semua Kategori');
   const [templateShowCount, setTemplateShowCount] = useState(8);
@@ -492,7 +457,7 @@ export default function BioPage() {
   const supabase = createClientComponentClient();
   const router = useRouter();
 
-  // --- FETCH DATA ---
+  // --- FETCH DATA USER & LINKS ---
   useEffect(() => {
     const getData = async () => {
       try {
@@ -523,6 +488,7 @@ export default function BioPage() {
     getData();
   }, [supabase]);
 
+  // --- FETCH NOTIFICATIONS ---
   const fetchNotifications = async () => {
     if (!session?.user?.id) return;
     setNotifLoading(true);
@@ -532,6 +498,7 @@ export default function BioPage() {
     setNotifLoading(false);
   };
 
+  // --- FETCH SHOP PRODUCTS ---
   const fetchProducts = async () => {
     if (!session?.user?.id) return;
     const { data, error } = await supabase.from('shop_products').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false });
@@ -539,6 +506,7 @@ export default function BioPage() {
     else setProducts(data || []);
   };
 
+  // --- FETCH ANALYTICS ---
   const fetchAnalytics = async () => {
     if (!session?.user?.id) return;
     setAnalyticsLoading(true);
@@ -548,17 +516,88 @@ export default function BioPage() {
     setAnalyticsLoading(false);
   };
 
+  // --- FETCH ORDERS (BARU) ---
+  const fetchOrders = async () => {
+    if (!session?.user?.id) return;
+    setOrdersLoading(true);
+    try {
+      // Ambil data pesanan yang sudah dibayar/dikirim
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select('*, order_items(*)')
+        .eq('user_id', session.user.id)
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false });
+      if (ordersError) throw ordersError;
+      setOrders(ordersData || []);
+    } catch (err: any) {
+      console.error('Error fetching orders:', err);
+      // Jangan tampilkan error toast jika tabel belum ada, tapi biarkan statistik 0
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  // --- FETCH SHOP STATS (BARU) ---
+  const fetchShopStats = async () => {
+    if (!session?.user?.id) return;
+    try {
+      // Total Penjualan & Pesanan (hanya status delivered/paid)
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select('total_amount')
+        .eq('user_id', session.user.id)
+        .in('status', ['paid', 'delivered']);
+      
+      const totalRevenue = (ordersData || []).reduce((sum, o) => sum + (o.total_amount || 0), 0);
+      const totalOrders = (ordersData || []).length;
+
+      // Rating Toko
+      const { data: reviewsData, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('user_id', session.user.id);
+      
+      let averageRating = 0;
+      let totalReviews = 0;
+      if (!reviewsError && reviewsData) {
+        totalReviews = reviewsData.length;
+        if (totalReviews > 0) {
+          averageRating = reviewsData.reduce((sum, r) => sum + (r.rating || 0), 0) / totalReviews;
+        }
+      }
+
+      setShopStats({
+        totalRevenue,
+        totalOrders,
+        averageRating: parseFloat(averageRating.toFixed(1)),
+        totalReviews,
+      });
+    } catch (err: any) {
+      console.error('Error fetching shop stats:', err);
+    }
+  };
+
+  // --- INISIALISASI DATA DENGAN EFEK ---
   useEffect(() => {
-    if (session?.user?.id) { fetchAnalytics(); fetchProducts(); }
+    if (session?.user?.id) {
+      fetchProducts();
+      fetchAnalytics();
+      fetchOrders();
+      fetchShopStats();
+    }
   }, [session]);
 
   useEffect(() => {
     if (activeTab === 'analytics') fetchAnalytics();
-    if (activeTab === 'shop') fetchProducts();
+    if (activeTab === 'shop') {
+      fetchProducts();
+      fetchOrders();
+      fetchShopStats();
+    }
   }, [activeTab]);
 
-  /* ----------------------------- derived data ----------------------------- */
-
+  /* ----------------------------- DERIVED DATA ----------------------------- */
   const totalViews = useMemo(() => analyticsData.filter((e) => e.event_type === 'profile_view').length, [analyticsData]);
   const totalClicks = useMemo(() => analyticsData.filter((e) => e.event_type === 'link_click').length, [analyticsData]);
   const ctr = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(1) : '0.0';
@@ -602,8 +641,7 @@ export default function BioPage() {
 
   const quickThemeColors = ['#3b82f6', '#22c55e', '#f97316', '#ec4899', '#111827'];
 
-  /* ------------------------------- handlers ------------------------------- */
-
+  /* ------------------------------- HANDLERS ------------------------------- */
   const handleSaveProfile = async () => {
     if (!session?.user?.id || !user?.username) { toast.error('Username wajib diisi!'); return; }
     setSaving(true);
@@ -611,24 +649,13 @@ export default function BioPage() {
       const { data: existingUser } = await supabase.from('users').select('id').eq('username', user.username).neq('id', session.user.id).maybeSingle();
       if (existingUser) { toast.error('Username sudah digunakan!'); setSaving(false); return; }
       const { data: updatedRows, error } = await supabase.from('users').update({
-        username: user.username,
-        full_name: user.full_name,
-        bio: user.bio || '',
-        selected_template: user.selected_template,
-        theme_bg: user.theme_bg,
-        theme_primary: user.theme_primary,
-        theme_secondary: user.theme_secondary,
-        shop_link: user.shop_link || null,
-        design_settings: user.design_settings || {},
-        avatar_url: user.avatar_url || null,
-        social_instagram: user.social_instagram || null,
-        social_tiktok: user.social_tiktok || null,
-        social_youtube: user.social_youtube || null,
-        social_facebook: user.social_facebook || null,
-        social_twitter: user.social_twitter || null,
-        social_linkedin: user.social_linkedin || null,
-        social_whatsapp: user.social_whatsapp || null,
-        social_telegram: user.social_telegram || null,
+        username: user.username, full_name: user.full_name, bio: user.bio || '', selected_template: user.selected_template,
+        theme_bg: user.theme_bg, theme_primary: user.theme_primary, theme_secondary: user.theme_secondary,
+        shop_link: user.shop_link || null, design_settings: user.design_settings || {}, avatar_url: user.avatar_url || null,
+        social_instagram: user.social_instagram || null, social_tiktok: user.social_tiktok || null,
+        social_youtube: user.social_youtube || null, social_facebook: user.social_facebook || null,
+        social_twitter: user.social_twitter || null, social_linkedin: user.social_linkedin || null,
+        social_whatsapp: user.social_whatsapp || null, social_telegram: user.social_telegram || null,
         social_twitch: user.social_twitch || null,
       }).eq('id', session.user.id).select();
       if (error) { toast.error('Gagal menyimpan: ' + error.message); return; }
@@ -646,17 +673,14 @@ export default function BioPage() {
       const fileExt = file.name.split('.').pop();
       const fileName = `avatar-${session.user.id}-${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { cacheControl: '3600', upsert: true });
-      if (uploadError) { console.error('Supabase Storage Error:', uploadError); throw new Error(uploadError.message || 'Gagal mengunggah file. Cek RLS Storage bucket.'); }
+      if (uploadError) throw new Error(uploadError.message || 'Gagal mengunggah file.');
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
       const publicUrl = urlData.publicUrl;
       setUser((prev: any) => ({ ...prev, avatar_url: publicUrl }));
       const { error: updateError } = await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', session.user.id);
       if (updateError) throw new Error(updateError.message || 'Gagal menyimpan URL avatar ke database.');
       toast.success('Foto profil berhasil diunggah!');
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      toast.error('Gagal mengunggah foto: ' + error.message);
-    } finally { setUploadingAvatar(false); setIsAvatarMenuOpen(false); }
+    } catch (error: any) { toast.error('Gagal mengunggah foto: ' + error.message); } finally { setUploadingAvatar(false); setIsAvatarMenuOpen(false); }
   };
 
   const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -672,9 +696,7 @@ export default function BioPage() {
       const publicUrl = urlData.publicUrl;
       setUser((prev: any) => ({ ...prev, design_settings: { ...(prev.design_settings || {}), bg_type: 'upload', bg_custom_url: publicUrl } }));
       toast.success('Background berhasil diunggah!');
-    } catch (error: any) {
-      toast.error('Gagal upload background: ' + error.message);
-    } finally { setUploadingBg(false); }
+    } catch (error: any) { toast.error('Gagal upload background: ' + error.message); } finally { setUploadingBg(false); }
   };
 
   const handleRemoveAvatar = async () => {
@@ -723,15 +745,7 @@ export default function BioPage() {
     const wallpapers = ['fill', 'gradient', 'image'];
     const buttons = ['fill', 'outline', 'ghost'];
     const fonts = ['sans', 'serif', 'mono'];
-    const newDesign = {
-      theme: themes[Math.floor(Math.random() * themes.length)],
-      header: headers[Math.floor(Math.random() * headers.length)],
-      wallpaper: wallpapers[Math.floor(Math.random() * wallpapers.length)],
-      buttons: buttons[Math.floor(Math.random() * buttons.length)],
-      font: fonts[Math.floor(Math.random() * fonts.length)],
-      stickers: 'decorate',
-      footer: 'default',
-    };
+    const newDesign = { theme: themes[Math.floor(Math.random() * themes.length)], header: headers[Math.floor(Math.random() * headers.length)], wallpaper: wallpapers[Math.floor(Math.random() * wallpapers.length)], buttons: buttons[Math.floor(Math.random() * buttons.length)], font: fonts[Math.floor(Math.random() * fonts.length)], stickers: 'decorate', footer: 'default' };
     setUser((prev: any) => ({ ...prev, design_settings: { ...prev.design_settings, ...newDesign } }));
     toast.success('Desain telah disempurnakan!');
   };
@@ -754,14 +768,7 @@ export default function BioPage() {
         const { data: urlData } = supabase.storage.from('products').getPublicUrl(fileName);
         imageUrl = urlData.publicUrl;
       }
-      const { error } = await supabase.from('shop_products').insert({
-        user_id: session.user.id,
-        title: newProduct.title,
-        price: newProduct.price,
-        description: newProduct.description,
-        product_link: newProduct.link, // <--- NEW COLUMN
-        image_url: imageUrl
-      });
+      const { error } = await supabase.from('shop_products').insert({ user_id: session.user.id, title: newProduct.title, price: newProduct.price, description: newProduct.description, product_link: newProduct.link, image_url: imageUrl });
       if (error) throw new Error(error.message);
       toast.success('Produk berhasil ditambahkan!');
       setShowProductModal(false);
@@ -780,10 +787,7 @@ export default function BioPage() {
   const handleEditProduct = async () => {
     if (!editingProduct?.id) return;
     const { error } = await supabase.from('shop_products').update({
-      title: editingProduct.title,
-      price: editingProduct.price,
-      description: editingProduct.description,
-      product_link: editingProduct.product_link, // <--- NEW COLUMN
+      title: editingProduct.title, price: editingProduct.price, description: editingProduct.description, product_link: editingProduct.product_link,
     }).eq('id', editingProduct.id);
     if (error) { toast.error('Gagal memperbarui produk: ' + error.message); return; }
     toast.success('Produk diperbarui!');
@@ -791,7 +795,7 @@ export default function BioPage() {
     fetchProducts();
   };
 
-  /* --------------------------------- render -------------------------------- */
+  /* --------------------------------- RENDER -------------------------------- */
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat dashboard...</div>;
   if (!session) return (
@@ -867,7 +871,7 @@ export default function BioPage() {
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 custom-scrollbar">
           <div className="space-y-1">
-            <div className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider"><span>Menu</span></div>
+            <div className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider"><span>MENU</span></div>
             <Link href="/dashboard"><div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-50 cursor-pointer"><LayoutDashboard className="w-4 h-4" /> Dashboard</div></Link>
             {NAV_ITEMS.map((item) => (
               <button
@@ -878,13 +882,11 @@ export default function BioPage() {
                 {item.icon} {item.label}
               </button>
             ))}
-            {/* --- MENU TEMPLATE TELAH DIHAPUS --- */}
-          </div>
-          <div className="border-t border-slate-100 pt-4">
-            <Link href="/dashboard"><div className="flex items-center gap-3 px-3 py-2.5 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"><ArrowLeft className="w-4 h-4" /> Dashboard</div></Link>
+            {/* Menu TEMPLATES DIHAPUS SESUAI PERMINTAAN */}
           </div>
         </div>
 
+        {/* FOOTER SIDEBAR */}
         <div className="p-4 border-t border-slate-100 bg-white space-y-3">
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-3">
             <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5 mb-1"><Crown size={14} className="text-amber-500" /> Upgrade ke PRO</p>
@@ -921,7 +923,7 @@ export default function BioPage() {
                 <p className="text-xs text-slate-400 mt-0.5">
                   {activeTab === 'links' && 'Kelola semua link bio dan short link Anda dengan mudah.'}
                   {activeTab === 'design' && 'Sesuaikan tampilan bio link Anda agar lebih menarik dan profesional.'}
-                  {activeTab === 'shop' && 'Kelola produk digital dan tingkatkan penjualan Anda.'}
+                  {activeTab === 'shop' && 'Kelola produk digital, pesanan, dan tingkatkan penjualan Anda.'}
                   {activeTab === 'analytics' && 'Pantau performa link Anda secara real-time.'}
                 </p>
               </div>
@@ -933,7 +935,7 @@ export default function BioPage() {
               )}
               {activeTab === 'shop' && (
                 <>
-                  <button onClick={() => toast('Fitur pengelolaan pesanan akan hadir setelah tabel pesanan tersedia.')} className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold transition-all"><ClipboardList size={14} /> Kelola Pesanan</button>
+                  <button onClick={() => setShowOrderModal(true)} className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold transition-all"><ClipboardList size={14} /> Kelola Pesanan</button>
                   <button onClick={() => setShowProductModal(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-md shadow-blue-200 transition-all"><Plus size={16} /> Tambah Produk</button>
                 </>
               )}
@@ -1012,7 +1014,6 @@ export default function BioPage() {
                 </div>
               </div>
 
-              {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                 <div className="bg-white rounded-xl border border-slate-200 p-4">
                   <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Link</p>
@@ -1234,14 +1235,7 @@ export default function BioPage() {
                   <div className="grid grid-cols-3 gap-3">
                     {[{ key: 'fill', label: 'Fill' }, { key: 'outline', label: 'Outline' }, { key: 'ghost', label: 'Ghost' }].map((b) => (
                       <button key={b.key} onClick={() => updateDesign('buttons', b.key)} className={cx('px-4 py-4 rounded-lg border transition-colors flex flex-col items-center gap-2', (user?.design_settings?.buttons || 'fill') === b.key ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50')}>
-                        <span
-                          className="w-full py-2 rounded-lg text-xs font-semibold text-center"
-                          style={
-                            b.key === 'outline' ? { border: `2px solid ${user?.theme_primary || '#3b82f6'}`, color: user?.theme_primary || '#3b82f6' }
-                            : b.key === 'ghost' ? { color: user?.theme_primary || '#3b82f6' }
-                            : { backgroundColor: user?.theme_primary || '#3b82f6', color: user?.theme_secondary || '#fff' }
-                          }
-                        >Link</span>
+                        <span className="w-full py-2 rounded-lg text-xs font-semibold text-center" style={b.key === 'outline' ? { border: `2px solid ${user?.theme_primary || '#3b82f6'}`, color: user?.theme_primary || '#3b82f6' } : b.key === 'ghost' ? { color: user?.theme_primary || '#3b82f6' } : { backgroundColor: user?.theme_primary || '#3b82f6', color: user?.theme_secondary || '#fff' }}>Link</span>
                         <p className="text-[11px] text-slate-500">{b.label}</p>
                       </button>
                     ))}
@@ -1288,6 +1282,51 @@ export default function BioPage() {
           {/* --------------------------------- TAB: SHOP --------------------------------- */}
           {activeTab === 'shop' && (
             <div className="space-y-4">
+              
+              {/* --- MODAL KELOLA PESANAN (BARU) --- */}
+              {showOrderModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                  <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 relative max-h-[80vh] flex flex-col">
+                    <button onClick={() => setShowOrderModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
+                    <h3 className="text-lg font-bold text-slate-800 mb-4">Daftar Pesanan</h3>
+                    <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+                      {ordersLoading ? (
+                        <div className="py-10 text-center text-slate-500">Memuat pesanan...</div>
+                      ) : orders.length > 0 ? (
+                        orders.map((order) => (
+                          <div key={order.id} className="bg-slate-50 border border-slate-100 rounded-lg p-4">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-semibold text-slate-800 text-sm">{order.customer_name || 'Pelanggan'}</p>
+                                <p className="text-xs text-slate-500">{order.customer_email || '-'}</p>
+                              </div>
+                              <span className={cx('px-2 py-0.5 rounded-full text-[10px] font-semibold',
+                                order.status === 'paid' ? 'bg-green-100 text-green-700' :
+                                order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                                order.status === 'delivered' ? 'bg-purple-100 text-purple-700' :
+                                order.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                              )}>
+                                {order.status}
+                              </span>
+                            </div>
+                            <div className="mt-1 text-xs text-slate-400 flex justify-between">
+                              <span>{new Date(order.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                              <span className="font-semibold text-slate-700">Rp {order.total_amount?.toLocaleString() || '0'}</span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="py-10 text-center text-slate-400">
+                          <ClipboardList size={48} className="mx-auto mb-2 text-slate-200" />
+                          <p className="font-medium">Belum ada pesanan.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* --- MODAL TAMBAH/EDIT PRODUK --- */}
               {showProductModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                   <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
@@ -1324,23 +1363,35 @@ export default function BioPage() {
                 </div>
               )}
 
+              {/* --- STATISTIK TOKO (TERHUBUNG KE SUPABASE) --- */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="bg-white rounded-xl border border-slate-200 p-4">
                   <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Produk</p>
                   <p className="text-2xl font-bold text-slate-800">{products.length}</p>
                 </div>
-                {[
-                  { label: 'Total Penjualan' },
-                  { label: 'Total Pesanan' },
-                  { label: 'Rating Toko' },
-                ].map((c) => (
-                  <div key={c.label} className="bg-white rounded-xl border border-slate-200 p-4" title="Butuh tabel pesanan/ulasan untuk menghitung angka ini">
-                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">{c.label}</p>
-                    <p className="text-sm font-semibold text-slate-300 flex items-center gap-1"><Info size={13} /> Segera hadir</p>
+                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Penjualan</p>
+                  <p className="text-2xl font-bold text-green-600">Rp {shopStats.totalRevenue.toLocaleString()}</p>
+                </div>
+                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Pesanan</p>
+                  <p className="text-2xl font-bold text-slate-800">{shopStats.totalOrders}</p>
+                </div>
+                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Rating Toko</p>
+                  <div className="flex items-center gap-1">
+                    <p className="text-2xl font-bold text-yellow-500">{shopStats.averageRating}</p>
+                    <div className="flex text-yellow-400">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star key={star} size={14} fill={star <= Math.round(shopStats.averageRating) ? '#facc15' : 'none'} stroke={star <= Math.round(shopStats.averageRating) ? '#facc15' : '#d1d5db'} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-slate-400 ml-1">({shopStats.totalReviews} ulasan)</span>
                   </div>
-                ))}
+                </div>
               </div>
 
+              {/* --- MANAJEMEN PRODUK --- */}
               <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                 <div className="p-4 border-b border-slate-100 space-y-3">
                   <div className="flex gap-2 overflow-x-auto">
