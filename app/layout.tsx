@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "/app/globals.css";
+import "./globals.css"; // Pastikan path ini benar (relatif)
 import dynamic from 'next/dynamic';
 import { Analytics } from '@vercel/analytics/react';
 import PageViewTracker from "./components/PageViewTracker";
-import { ThemeProvider } from 'next-themes'; // <-- Tambahkan ini
+import { ThemeProvider } from 'next-themes'; // <-- Import ThemeProvider
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -61,9 +61,13 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="id" suppressHydrationWarning> {/* <-- Tambahkan suppressHydrationWarning */}
+    <html lang="id" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        {/* --- PERUBAHAN PENTING DI SINI --- */}
+        {/* defaultTheme="light" agar mode terang menjadi default */}
+        {/* enableSystem={false} agar tidak mengikuti mode sistem perangkat */}
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          
           {/* Schema.org structured data */}
           <script
             type="application/ld+json"
@@ -91,7 +95,7 @@ export default function RootLayout({
           {/* Chatbot akan muncul di pojok kanan bawah */}
           <AIChatWidget />
           
-          {/* Vercel Analytics (opsional, untuk data tambahan) */}
+          {/* Vercel Analytics */}
           <Analytics />
           
           {/* Pelacakan global untuk semua halaman */}

@@ -12,7 +12,6 @@ export default function ThemeToggle() {
 
   if (!mounted) return null;
 
-  // Cek apakah sedang dalam mode gelap
   const isDark = theme === 'dark';
 
   return (
