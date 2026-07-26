@@ -1181,17 +1181,13 @@ export default function BioPage() {
                             }}
                             className={cx(
                               'rounded-xl overflow-hidden border-2 text-left transition-all relative',
-                              active ? 'border-blue-500 ring-2 ring-blue-100' : 'border-transparent',
-                              isLocked ? 'cursor-not-allowed opacity-60 grayscale' : 'cursor-pointer'
+                              active ? 'border-blue-500 ring-2 ring-blue-100' : 'border-transparent'
                             )}
                           >
-                            {/* --- OVERLAY LOCK UNTUK PREMIUM --- */}
+                            {/* --- BADGE PREMIUM DI POJOK KANAN ATAS (TANPA MENGABURKAN GAMBAR) --- */}
                             {isLocked && (
-                              <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center z-10 rounded-xl">
-                                <div className="bg-amber-500 text-white px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg text-[10px] font-bold mb-1">
-                                  <Crown size={14} /> PRO
-                                </div>
-                                <span className="text-[9px] text-white/80">Klik untuk Upgrade</span>
+                              <div className="absolute top-2 right-2 z-10 bg-amber-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1 text-[9px] font-bold shadow-md">
+                                <Crown size={12} /> PRO
                               </div>
                             )}
 
