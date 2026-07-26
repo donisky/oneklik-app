@@ -26,8 +26,6 @@ function fmtDateShort(d: Date) {
   return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
 }
 
-// Builds a day-by-day (last N days) view/click series purely from real
-// analytics_events rows -- no fabricated numbers.
 function computeDailySeries(events: any[], days: number) {
   const today = new Date();
   const buckets: { date: string; label: string; views: number; clicks: number }[] = [];
@@ -46,7 +44,6 @@ function computeDailySeries(events: any[], days: number) {
   return buckets;
 }
 
-// Real day-of-week x hour-of-day activity matrix, derived from created_at.
 function computeHeatmap(events: any[]) {
   const dayLabels = ['Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu', 'Minggu'];
   const matrix = Array.from({ length: 7 }, () => Array(24).fill(0));
@@ -82,7 +79,7 @@ function cx(...parts: Array<string | false | null | undefined>) {
 }
 
 /* =========================================================================
-   MINI CHARTS (lightweight, dependency-free SVG — no new npm packages)
+   MINI CHARTS
    ========================================================================= */
 
 const MiniLineChart = ({ series }: { series: { label: string; views: number; clicks: number }[] }) => {
@@ -116,15 +113,7 @@ const MiniLineChart = ({ series }: { series: { label: string; views: number; cli
   );
 };
 
-const DonutChart = ({
-  segments,
-  centerLabel,
-  centerValue,
-}: {
-  segments: { label: string; value: number; color: string }[];
-  centerLabel: string;
-  centerValue: string | number;
-}) => {
+const DonutChart = ({ segments, centerLabel, centerValue }: { segments: { label: string; value: number; color: string }[]; centerLabel: string; centerValue: string | number }) => {
   const total = segments.reduce((a, s) => a + s.value, 0);
   const r = 60;
   const c = 2 * Math.PI * r;
@@ -138,18 +127,7 @@ const DonutChart = ({
             const frac = s.value / total;
             const dash = frac * c;
             const el = (
-              <circle
-                key={i}
-                cx={80}
-                cy={80}
-                r={r}
-                fill="none"
-                stroke={s.color}
-                strokeWidth={18}
-                strokeDasharray={`${dash} ${c - dash}`}
-                strokeDashoffset={-offset}
-                strokeLinecap="butt"
-              />
+              <circle key={i} cx={80} cy={80} r={r} fill="none" stroke={s.color} strokeWidth={18} strokeDasharray={`${dash} ${c - dash}`} strokeDashoffset={-offset} strokeLinecap="butt" />
             );
             offset += dash;
             return el;
@@ -185,8 +163,7 @@ const ActivityHeatmap = ({ events }: { events: any[] }) => {
             <div className="flex gap-[3px] flex-1">
               {row.map((v, h) => {
                 const intensity = v / max;
-                const bg =
-                  v === 0 ? '#f1f5f9' : `rgba(37, 99, 235, ${0.15 + intensity * 0.75})`;
+                const bg = v === 0 ? '#f1f5f9' : `rgba(37, 99, 235, ${0.15 + intensity * 0.75})`;
                 return <div key={h} className="flex-1 aspect-square rounded-sm" style={{ backgroundColor: bg }} title={`${dayLabels[r]} ${h}:00 — ${v} aktivitas`} />;
               })}
             </div>
@@ -204,7 +181,7 @@ const ActivityHeatmap = ({ events }: { events: any[] }) => {
 };
 
 /* =========================================================================
-   PHONE PREVIEW — bio link mockup (unchanged data contract: user + links)
+   BIO PREVIEW
    ========================================================================= */
 
 const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
@@ -336,11 +313,7 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
 };
 
 /* =========================================================================
-   PHONE PREVIEW — Shop tab. NOTE: today the only real, working "shop" surface
-   is the 🛍️ Shop button on the bio page (it opens `user.shop_link`). There is
-   no separate public storefront route in the code you shared, so this preview
-   is a dashboard-only visual of your product catalogue — it doesn't imply a
-   new public page exists. See the note under the preview.
+   SHOP PREVIEW
    ========================================================================= */
 
 const ShopPreview = ({ user, products }: { user: any; products: any[] }) => {
@@ -426,7 +399,7 @@ const ShareDropdown = ({ url }: { url: string }) => {
 };
 
 /* =========================================================================
-   NOTIFICATION MODAL (unchanged behavior)
+   NOTIFICATION MODAL
    ========================================================================= */
 
 const NotificationModal = ({ isOpen, onClose, notifications, loading, tab, setTab }: any) => {
@@ -506,7 +479,7 @@ export default function BioPage() {
 
   const [uploadingBg, setUploadingBg] = useState(false);
 
-  // --- New, purely additive UI state for the redesign (no schema changes) ---
+  // --- New UI state
   const [designSubTab, setDesignSubTab] = useState<'tampilan' | 'tema' | 'warna' | 'tipografi' | 'tombol' | 'lanjutan'>('tampilan');
   const [templateCategory, setTemplateCategory] = useState('Semua Kategori');
   const [templateShowCount, setTemplateShowCount] = useState(8);
@@ -519,7 +492,7 @@ export default function BioPage() {
   const supabase = createClientComponentClient();
   const router = useRouter();
 
-  // --- FETCH DATA (identical Supabase calls/columns to the original page) ---
+  // --- FETCH DATA ---
   useEffect(() => {
     const getData = async () => {
       try {
@@ -575,19 +548,13 @@ export default function BioPage() {
     setAnalyticsLoading(false);
   };
 
-  // Original code only ever loaded products/analytics reactively in a couple of
-  // spots. The new dashboard shows stats from both on more tabs (Link + Shop),
-  // so we simply trigger the *same* fetch functions a bit earlier — same
-  // tables, same columns, same queries.
   useEffect(() => {
     if (session?.user?.id) { fetchAnalytics(); fetchProducts(); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   useEffect(() => {
     if (activeTab === 'analytics') fetchAnalytics();
     if (activeTab === 'shop') fetchProducts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   /* ----------------------------- derived data ----------------------------- */
@@ -635,11 +602,7 @@ export default function BioPage() {
 
   const quickThemeColors = ['#3b82f6', '#22c55e', '#f97316', '#ec4899', '#111827'];
 
-  /* ------------------------------- handlers -------------------------------
-     Every handler below is copied byte-for-byte from the page you shared —
-     same table names, same columns, same request shapes. I only added
-     handleEditProduct (uses the same `shop_products` table your insert
-     already uses) since the redesign's row-level edit icon needs it. */
+  /* ------------------------------- handlers ------------------------------- */
 
   const handleSaveProfile = async () => {
     if (!session?.user?.id || !user?.username) { toast.error('Username wajib diisi!'); return; }
@@ -648,9 +611,16 @@ export default function BioPage() {
       const { data: existingUser } = await supabase.from('users').select('id').eq('username', user.username).neq('id', session.user.id).maybeSingle();
       if (existingUser) { toast.error('Username sudah digunakan!'); setSaving(false); return; }
       const { data: updatedRows, error } = await supabase.from('users').update({
-        username: user.username, full_name: user.full_name, bio: user.bio || '', selected_template: user.selected_template,
-        theme_bg: user.theme_bg, theme_primary: user.theme_primary, theme_secondary: user.theme_secondary,
-        shop_link: user.shop_link || null, design_settings: user.design_settings || {}, avatar_url: user.avatar_url || null,
+        username: user.username,
+        full_name: user.full_name,
+        bio: user.bio || '',
+        selected_template: user.selected_template,
+        theme_bg: user.theme_bg,
+        theme_primary: user.theme_primary,
+        theme_secondary: user.theme_secondary,
+        shop_link: user.shop_link || null,
+        design_settings: user.design_settings || {},
+        avatar_url: user.avatar_url || null,
         social_instagram: user.social_instagram || null,
         social_tiktok: user.social_tiktok || null,
         social_youtube: user.social_youtube || null,
@@ -784,7 +754,14 @@ export default function BioPage() {
         const { data: urlData } = supabase.storage.from('products').getPublicUrl(fileName);
         imageUrl = urlData.publicUrl;
       }
-      const { error } = await supabase.from('shop_products').insert({ user_id: session.user.id, title: newProduct.title, price: newProduct.price, description: newProduct.description, product_link: newProduct.link, image_url: imageUrl });
+      const { error } = await supabase.from('shop_products').insert({
+        user_id: session.user.id,
+        title: newProduct.title,
+        price: newProduct.price,
+        description: newProduct.description,
+        product_link: newProduct.link, // <--- NEW COLUMN
+        image_url: imageUrl
+      });
       if (error) throw new Error(error.message);
       toast.success('Produk berhasil ditambahkan!');
       setShowProductModal(false);
@@ -800,11 +777,13 @@ export default function BioPage() {
     else { toast.success('Produk dihapus'); fetchProducts(); }
   };
 
-  // Additive: same `shop_products` table/columns as insert above, just an UPDATE.
   const handleEditProduct = async () => {
     if (!editingProduct?.id) return;
     const { error } = await supabase.from('shop_products').update({
-      title: editingProduct.title, price: editingProduct.price, description: editingProduct.description, product_link: editingProduct.product_link,
+      title: editingProduct.title,
+      price: editingProduct.price,
+      description: editingProduct.description,
+      product_link: editingProduct.product_link, // <--- NEW COLUMN
     }).eq('id', editingProduct.id);
     if (error) { toast.error('Gagal memperbarui produk: ' + error.message); return; }
     toast.success('Produk diperbarui!');
@@ -899,7 +878,7 @@ export default function BioPage() {
                 {item.icon} {item.label}
               </button>
             ))}
-            <Link href="/templates"><div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors"><Paintbrush className="w-4 h-4" /> Template</div></Link>
+            {/* --- MENU TEMPLATE TELAH DIHAPUS --- */}
           </div>
           <div className="border-t border-slate-100 pt-4">
             <Link href="/dashboard"><div className="flex items-center gap-3 px-3 py-2.5 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"><ArrowLeft className="w-4 h-4" /> Dashboard</div></Link>
@@ -1033,7 +1012,7 @@ export default function BioPage() {
                 </div>
               </div>
 
-              {/* Stat cards — all four numbers come straight from `links` and analytics_events */}
+              {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                 <div className="bg-white rounded-xl border border-slate-200 p-4">
                   <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Link</p>
@@ -1306,12 +1285,7 @@ export default function BioPage() {
             </div>
           )}
 
-          {/* --------------------------------- TAB: SHOP ---------------------------------
-               Merged from your two Shop mockups: the stat/table layout + tabs from the
-               first, the live-preview + share panel from the second. Fields with no
-               backing column in `shop_products` (status, category, sold-count, rating)
-               are shown as honest placeholders rather than invented numbers — see the
-               note at the end of my reply for what would need a schema change to light up. */}
+          {/* --------------------------------- TAB: SHOP --------------------------------- */}
           {activeTab === 'shop' && (
             <div className="space-y-4">
               {showProductModal && (
@@ -1420,12 +1394,7 @@ export default function BioPage() {
             </div>
           )}
 
-          {/* ------------------------------- TAB: ANALYTICS -------------------------------
-               Stat cards, the click/visit line chart, "Link Teratas" and the activity
-               heatmap are all computed live from `analytics_events` + `links`. Traffic
-               source and device/location breakdowns aren't in the current schema (no
-               referrer/device/geo columns), so those panels say so instead of showing
-               invented percentages. */}
+          {/* ------------------------------- TAB: ANALYTICS ------------------------------- */}
           {activeTab === 'analytics' && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
