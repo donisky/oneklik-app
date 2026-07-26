@@ -7,7 +7,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { 
   Crown, LogOut, FileText, FileCheck, User, Layout, Trash2, AlertTriangle, X, 
   Menu, Home, Wand2, Store, Palette, Bell, ChevronRight, Sparkles,
-  Link as LinkIcon, QrCode, Gift, TrendingUp
+  Link as LinkIcon, QrCode, Gift, TrendingUp, ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -305,13 +305,19 @@ export default function Dashboard() {
           {/* Menu Utama */}
           <div className="space-y-1">
             <div className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              <span>Menu</span>
+              <span>Oneklik</span>
             </div>
             <Link href="/dashboard">
               <div className="bg-blue-50 text-blue-600 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
                 <Home className="w-4 h-4" /> Dashboard
               </div>
             </Link>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <span>Oneklik</span>
+            </div>
             <Link href="/bio">
               <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
                 <Layout className="w-4 h-4" /> Bio Link
@@ -419,9 +425,23 @@ export default function Dashboard() {
 
       {/* --- KONTEN UTAMA --- */}
       <main className="flex-1 h-screen overflow-y-auto bg-[#F8FAFC] p-6 lg:p-10">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto relative">
+          {/* Ilustrasi Dekoratif Header */}
+          <div className="hidden lg:block absolute -top-2 right-0 w-72 h-40 pointer-events-none select-none z-0">
+            <div className="absolute top-2 right-16 w-4 h-4 text-indigo-300">
+              <Sparkles size={18} />
+            </div>
+            <div className="absolute top-8 right-40 w-3 h-3 bg-indigo-300 rounded-full opacity-70" />
+            <div className="absolute top-6 right-6 w-24 h-24 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-[28px] rotate-6 opacity-80" />
+            <div className="absolute top-16 right-24 w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-50 rounded-[24px] -rotate-6" />
+            <div className="absolute top-24 right-2 w-9 h-9 bg-indigo-300 rounded-full opacity-70" />
+            <svg className="absolute top-20 right-8 opacity-60" width="70" height="30" viewBox="0 0 70 30" fill="none">
+              <path d="M2 26 L20 16 L34 20 L50 6 L68 12" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+
           {/* Header Konten */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="relative z-10 flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => setMobileMenuOpen(true)} 
@@ -478,14 +498,19 @@ export default function Dashboard() {
           )}
 
           {/* KARTU STATUS AKUN */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
+          <div className="relative z-10 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
             <div className="flex justify-between items-center flex-wrap gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-800">Status Akun</h2>
-                <p className="text-sm text-slate-500">Email: <strong className="text-slate-700">{session.user.email}</strong></p>
+              <div className="flex items-center gap-4">
+                <div className="w-11 h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <User size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-800">Status Akun</h2>
+                  <p className="text-sm text-slate-500">Email: <a href={`mailto:${session.user.email}`} className="text-blue-600 font-medium hover:underline">{session.user.email}</a></p>
+                </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className={`px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1.5 ${user?.is_premium ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'}`}>
+                <span className={`px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1.5 ${user?.is_premium ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
                   {user?.is_premium ? <><Crown size={14} /> Premium</> : 'Gratis'}
                 </span>
                 {!user?.is_premium && (
@@ -498,47 +523,121 @@ export default function Dashboard() {
           </div>
 
           {/* GRID MENU FITUR */}
-          <h2 className="text-lg font-semibold text-slate-800 mb-4">Akses Cepat Fitur</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            <Link href="/bio" className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all flex flex-col items-start">
-              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <Layout size={24} />
+          <div className="relative z-10 flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-800">Akses Cepat Fitur</h2>
+            <Link href="/templates" className="text-sm text-blue-600 font-medium hover:underline flex items-center gap-0.5">
+              Lihat Semua <ChevronRight size={14} />
+            </Link>
+          </div>
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <Link href="/bio" className="group relative bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all flex flex-col overflow-hidden">
+              <div
+                className="absolute top-3 right-3 w-16 h-16 pointer-events-none"
+                style={{ backgroundImage: 'radial-gradient(#bfdbfe 1.5px, transparent 1.5px)', backgroundSize: '8px 8px' }}
+              />
+              <div className="relative w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                <LinkIcon size={22} />
               </div>
-              <h3 className="font-medium text-slate-800">Kelola Bio Link</h3>
-              <p className="text-sm text-slate-500 mt-1">Atur profil dan semua tautan sosial media Anda.</p>
+              <h3 className="relative font-semibold text-slate-800">Kelola Bio Link</h3>
+              <p className="relative text-sm text-slate-500 mt-1">Atur profil dan semua tautan sosial media Anda.</p>
+              <div className="relative mt-4 flex justify-end">
+                <span className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-colors">
+                  <ArrowRight size={16} />
+                </span>
+              </div>
             </Link>
 
-            <Link href="/tools/cv" className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-green-300 transition-all flex flex-col items-start">
-              <div className="w-12 h-12 bg-green-100 text-green-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <FileCheck size={24} />
+            <Link href="/tools/cv" className="group relative bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-green-300 transition-all flex flex-col overflow-hidden">
+              <div
+                className="absolute top-3 right-3 w-16 h-16 pointer-events-none"
+                style={{ backgroundImage: 'radial-gradient(#bbf7d0 1.5px, transparent 1.5px)', backgroundSize: '8px 8px' }}
+              />
+              <div className="relative w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                <FileCheck size={22} />
               </div>
-              <h3 className="font-medium text-slate-800">Generator CV</h3>
-              <p className="text-sm text-slate-500 mt-1">Buat CV profesional dengan desain siap pakai.</p>
+              <h3 className="relative font-semibold text-slate-800">Generator CV</h3>
+              <p className="relative text-sm text-slate-500 mt-1">Buat CV profesional dengan desain siap pakai.</p>
+              <div className="relative mt-4 flex justify-end">
+                <span className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 group-hover:bg-green-600 group-hover:text-white group-hover:border-green-600 transition-colors">
+                  <ArrowRight size={16} />
+                </span>
+              </div>
             </Link>
 
-            <Link href="/tools/pdf" className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-red-300 transition-all flex flex-col items-start">
-              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <FileText size={24} />
+            <Link href="/tools/pdf" className="group relative bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-red-300 transition-all flex flex-col overflow-hidden">
+              <div
+                className="absolute top-3 right-3 w-16 h-16 pointer-events-none"
+                style={{ backgroundImage: 'radial-gradient(#fecaca 1.5px, transparent 1.5px)', backgroundSize: '8px 8px' }}
+              />
+              <div className="relative w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                <FileText size={22} />
               </div>
-              <h3 className="font-medium text-slate-800">Alat PDF</h3>
-              <p className="text-sm text-slate-500 mt-1">Gabung, kompres, dan konversi file PDF Anda.</p>
+              <h3 className="relative font-semibold text-slate-800">Alat PDF</h3>
+              <p className="relative text-sm text-slate-500 mt-1">Gabung, kompres, dan konversi file PDF Anda.</p>
+              <div className="relative mt-4 flex justify-end">
+                <span className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 group-hover:bg-red-600 group-hover:text-white group-hover:border-red-600 transition-colors">
+                  <ArrowRight size={16} />
+                </span>
+              </div>
             </Link>
 
-            <Link href="/templates" className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-yellow-300 transition-all flex flex-col items-start">
-              <div className="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <Crown size={24} />
+            <Link href="/templates" className="group relative bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-yellow-300 transition-all flex flex-col overflow-hidden">
+              <div
+                className="absolute top-3 right-3 w-16 h-16 pointer-events-none"
+                style={{ backgroundImage: 'radial-gradient(#fde68a 1.5px, transparent 1.5px)', backgroundSize: '8px 8px' }}
+              />
+              <div className="relative w-12 h-12 bg-yellow-100 text-yellow-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                <Crown size={22} />
               </div>
-              <h3 className="font-medium text-slate-800">Galeri Template Premium</h3>
-              <p className="text-sm text-slate-500 mt-1">Pilih dan kustomisasi 100+ template eksklusif.</p>
+              <h3 className="relative font-semibold text-slate-800">Galeri Template Premium</h3>
+              <p className="relative text-sm text-slate-500 mt-1">Pilih dan kustomisasi 100+ template eksklusif.</p>
+              <div className="relative mt-4 flex justify-end">
+                <span className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 group-hover:bg-yellow-600 group-hover:text-white group-hover:border-yellow-600 transition-colors">
+                  <ArrowRight size={16} />
+                </span>
+              </div>
             </Link>
 
-            <Link href="/affiliate" className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-orange-300 transition-all flex flex-col items-start">
-              <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <TrendingUp size={24} />
+            <Link href="/affiliate" className="group relative bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-orange-300 transition-all flex flex-col overflow-hidden">
+              <div
+                className="absolute top-3 right-3 w-16 h-16 pointer-events-none"
+                style={{ backgroundImage: 'radial-gradient(#fed7aa 1.5px, transparent 1.5px)', backgroundSize: '8px 8px' }}
+              />
+              <div className="relative w-12 h-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                <TrendingUp size={22} />
               </div>
-              <h3 className="font-medium text-slate-800">Program Afiliasi</h3>
-              <p className="text-sm text-slate-500 mt-1">Dapatkan komisi 20% dengan membagikan link Oneklik.id.</p>
+              <h3 className="relative font-semibold text-slate-800">Program Afiliasi</h3>
+              <p className="relative text-sm text-slate-500 mt-1">Dapatkan komisi 20% dengan membagikan link Oneklik.id.</p>
+              <div className="relative mt-4 flex justify-end">
+                <span className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 group-hover:bg-orange-600 group-hover:text-white group-hover:border-orange-600 transition-colors">
+                  <ArrowRight size={16} />
+                </span>
+              </div>
             </Link>
+          </div>
+
+          {/* --- BANNER UPGRADE PRO (BAWAH) --- */}
+          <div className="relative z-10 mb-12 bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 border border-indigo-100 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-4">
+              <div className="hidden sm:flex w-14 h-14 bg-white rounded-xl items-center justify-center shadow-sm flex-shrink-0">
+                <Crown className="text-indigo-500" size={26} />
+              </div>
+              <div>
+                <p className="font-bold text-indigo-700">Dapatkan Lebih Banyak dengan Oneklik PRO</p>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  Fitur premium seperti custom domain, analytics <strong>advanced</strong>, dan banyak lagi.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
+              <Link
+                href="/upgrade?next=/dashboard"
+                className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-sm font-semibold rounded-xl shadow-md hover:opacity-90 transition-opacity"
+              >
+                Upgrade Sekarang
+              </Link>
+              <ChevronRight className="text-slate-400 hidden sm:block" size={20} />
+            </div>
           </div>
         </div>
       </main>
