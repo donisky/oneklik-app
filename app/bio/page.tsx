@@ -659,6 +659,38 @@ export default function BioPage() {
 
   const quickThemeColors = ['#3b82f6', '#22c55e', '#f97316', '#ec4899', '#111827'];
 
+  // ============================================================
+  // --- NEW ANALYTICS STATS (REFERRER, DEVICE, LOCATION) ---
+  // ============================================================
+  const referrerStats = useMemo(() => {
+    const map: Record<string, number> = {};
+    analyticsData.forEach((e) => {
+      if (e.referrer) map[e.referrer] = (map[e.referrer] || 0) + 1;
+    });
+    // Warnakan secara bergantian
+    const colors = ['#3b82f6', '#22c55e', '#f97316', '#a855f7', '#ec4899'];
+    return Object.entries(map).map(([key, value], i) => ({ label: key, value, color: colors[i % colors.length] }));
+  }, [analyticsData]);
+
+  const deviceStats = useMemo(() => {
+    const map: Record<string, number> = {};
+    analyticsData.forEach((e) => {
+      if (e.device) map[e.device] = (map[e.device] || 0) + 1;
+    });
+    return Object.entries(map).map(([key, value]) => ({ label: key, value }));
+  }, [analyticsData]);
+
+  const locationStats = useMemo(() => {
+    const map: Record<string, number> = {};
+    analyticsData.forEach((e) => {
+      if (e.location) map[e.location] = (map[e.location] || 0) + 1;
+    });
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1]) // Urutkan dari yang tertinggi
+      .slice(0, 5) // Ambil 5 teratas
+      .map(([key, value]) => ({ label: key, value }));
+  }, [analyticsData]);
+
   /* ------------------------------- HANDLERS ------------------------------- */
   const handleSaveProfile = async () => {
     if (!session?.user?.id || !user?.username) { toast.error('Username wajib diisi!'); return; }
@@ -1524,8 +1556,11 @@ export default function BioPage() {
                 </div>
                 <div className="bg-white rounded-xl border border-slate-200 p-5">
                   <h4 className="text-sm font-bold text-slate-800 mb-1">Sumber Trafik</h4>
-                  <p className="text-[10px] text-slate-400 mb-3 flex items-center gap-1"><Info size={11} /> Perlu kolom referrer untuk mengaktifkan.</p>
-                  <DonutChart segments={[{ label: 'Data belum tersedia', value: 0, color: '#e2e8f0' }]} centerLabel="Total" centerValue={0} />
+                  <DonutChart 
+                    segments={referrerStats.length > 0 ? referrerStats : [{ label: 'Belum ada data', value: 0, color: '#e2e8f0' }]} 
+                    centerLabel="Total" 
+                    centerValue={referrerStats.reduce((sum, s) => sum + s.value, 0)} 
+                  />
                 </div>
               </div>
 
@@ -1547,11 +1582,36 @@ export default function BioPage() {
                 </div>
                 <div className="bg-white rounded-xl border border-slate-200 p-5">
                   <h4 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-1.5"><Monitor size={14} /> Performa Berdasarkan Device</h4>
-                  <p className="text-[10px] text-slate-400 mt-2 flex items-center gap-1"><Info size={11} /> Perlu kolom device di analytics_events.</p>
+                  <div className="space-y-2 mt-2">
+                    {deviceStats.length > 0 ? (
+                      deviceStats.map((d, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <span className="text-slate-600">{d.label}</span>
+                          <span className="font-semibold text-slate-700">{d.value} pengunjung</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-[10px] text-slate-400">Belum ada data device.</p>
+                    )}
+                  </div>
                 </div>
                 <div className="bg-white rounded-xl border border-slate-200 p-5">
                   <h4 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-1.5"><MapPin size={14} /> Lokasi Teratas</h4>
-                  <p className="text-[10px] text-slate-400 mt-2 flex items-center gap-1"><Info size={11} /> Perlu kolom lokasi/IP di analytics_events.</p>
+                  <div className="space-y-2 mt-2">
+                    {locationStats.length > 0 ? (
+                      locationStats.map((l, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-full bg-blue-50 text-blue-600 text-[9px] font-bold flex items-center justify-center">{i + 1}</span>
+                            <span className="text-slate-600">{l.label}</span>
+                          </div>
+                          <span className="font-semibold text-slate-700">{l.value} pengunjung</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-[10px] text-slate-400">Belum ada data lokasi.</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
