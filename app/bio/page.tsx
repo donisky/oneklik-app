@@ -467,6 +467,10 @@ export default function BioPage() {
     totalReviews: 0,
   });
 
+  // --- STATE BARU UNTUK DOMPET DIGITAL ---
+  const [wallet, setWallet] = useState<any>(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+
   const [designSubTab, setDesignSubTab] = useState<'tampilan' | 'tema' | 'warna' | 'tipografi' | 'tombol' | 'lanjutan'>('tampilan');
   const [templateCategory, setTemplateCategory] = useState('Semua Kategori');
   const [templateShowCount, setTemplateShowCount] = useState(8);
@@ -538,7 +542,7 @@ export default function BioPage() {
     setAnalyticsLoading(false);
   };
 
-  // --- FETCH ORDERS (BARU) ---
+  // --- FETCH ORDERS ---
   const fetchOrders = async () => {
     if (!session?.user?.id) return;
     setOrdersLoading(true);
@@ -558,7 +562,7 @@ export default function BioPage() {
     }
   };
 
-  // --- FETCH SHOP STATS (BARU) ---
+  // --- FETCH SHOP STATS ---
   const fetchShopStats = async () => {
     if (!session?.user?.id) return;
     try {
@@ -596,6 +600,26 @@ export default function BioPage() {
     }
   };
 
+  // --- FETCH WALLET (FITUR DOMPET BARU) ---
+  const fetchWallet = async () => {
+    if (!session?.user?.id) return;
+    setWalletLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('wallets')
+        .select('balance, bank_account_name, bank_account_number, bank_name')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      
+      if (error) console.error('Error fetching wallet:', error);
+      else setWallet(data || { balance: 0 });
+    } catch (err) {
+      console.error('Error fetching wallet:', err);
+    } finally {
+      setWalletLoading(false);
+    }
+  };
+
   // --- INISIALISASI DATA DENGAN EFEK ---
   useEffect(() => {
     if (session?.user?.id) {
@@ -603,6 +627,7 @@ export default function BioPage() {
       fetchAnalytics();
       fetchOrders();
       fetchShopStats();
+      fetchWallet(); // <-- Tambahkan fetch wallet
     }
   }, [session]);
 
@@ -638,13 +663,11 @@ export default function BioPage() {
   const filteredProducts = useMemo(() => {
     let list = [...products];
     
-    // Filter berdasarkan Search
     if (shopSearch.trim()) {
       const q = shopSearch.toLowerCase();
       list = list.filter((p) => p.title?.toLowerCase().includes(q));
     }
 
-    // Filter berdasarkan STATUS (Aktif, Habis, Arsip) - Sudah berfungsi!
     if (shopStatusTab === 'aktif') {
       list = list.filter((p) => p.status === 'aktif');
     } else if (shopStatusTab === 'habis') {
@@ -653,7 +676,6 @@ export default function BioPage() {
       list = list.filter((p) => p.status === 'arsip');
     }
 
-    // Sort berdasarkan Harga/Nama/Terbaru
     if (shopSort === 'harga') list.sort((a, b) => parseFloat((a.price || '0').replace(/[^0-9.]/g, '')) - parseFloat((b.price || '0').replace(/[^0-9.]/g, '')));
     else if (shopSort === 'nama') list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
 
@@ -673,9 +695,6 @@ export default function BioPage() {
 
   const quickThemeColors = ['#3b82f6', '#22c55e', '#f97316', '#ec4899', '#111827'];
 
-  // ============================================================
-  // --- NEW ANALYTICS STATS (REFERRER, DEVICE, LOCATION) ---
-  // ============================================================
   const referrerStats = useMemo(() => {
     const map: Record<string, number> = {};
     analyticsData.forEach((e) => {
@@ -788,9 +807,9 @@ export default function BioPage() {
     if (!error) { setLinks(links.filter((l) => l.id !== id)); toast.success('Link berhasil dihapus!'); } else toast.error('Gagal menghapus link: ' + error.message);
   };
 
-  const handleCopyUrl = () => {
-    const url = `${window.location.origin}/${user?.username}`;
-    navigator.clipboard.writeText(url);
+  const handleCopyUrl = (url?: string) => {
+    const targetUrl = url || `${window.location.origin}/${user?.username}`;
+    navigator.clipboard.writeText(targetUrl);
     setCopied(true); setTimeout(() => setCopied(false), 2000);
     toast.success('Link URL berhasil disalin!');
   };
@@ -864,13 +883,14 @@ export default function BioPage() {
   if (!session) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6">
       <h1 className="text-4xl font-extrabold text-blue-600 mb-4">Oneklik.id</h1>
-      <h2 className="text-2xl font-bold mb-6 text-slate-800">Login Diperlukan</h2>
+      <h2 className="text-2xl font-bold mb-6 text-slate-800">Silakan Login</h2>
       <button onClick={handleLogin} className="px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-lg transition-all">Login dengan Google</button>
     </div>
   );
 
   const initials = (user?.full_name ? user.full_name.charAt(0) : (session?.user?.email || '?').charAt(0)).toUpperCase();
   const bioUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/${user?.username || ''}`;
+  const shopUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/${user?.username || ''}/shop`;
 
   const NAV_ITEMS: { key: any; label: string; icon: any }[] = [
     { key: 'links', label: 'Link', icon: <Link2 className="w-4 h-4" /> },
@@ -946,15 +966,50 @@ export default function BioPage() {
               </button>
             ))}
           </div>
+
+          {/* --- CARD UPGRADE KE PRO (DI SIDEBAR) --- */}
+          {!user?.is_premium && (
+            <div className="mt-4 mx-2 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 shadow-sm">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 flex-shrink-0">
+                  <Sparkles size={16} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">Upgrade ke PRO ✨</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Akses fitur premium dan tingkatkan pengalamanmu.</p>
+                </div>
+              </div>
+              <Link href="/upgrade" className="block w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-center text-xs font-bold rounded-xl transition-colors shadow-md">
+                Upgrade Sekarang
+              </Link>
+            </div>
+          )}
+
+          {/* --- CARD DOMPET DIGITAL (FITUR BARU) --- */}
+          {user && (
+            <div className="mt-4 mx-2 p-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Wallet size={14} className="text-blue-600" /> Dompet Digital
+                </p>
+              </div>
+              <div className="text-xl font-bold text-slate-800">
+                {walletLoading ? '...' : `Rp ${(wallet?.balance || 0).toLocaleString('id-ID')}`}
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button className="flex-1 py-1.5 bg-blue-600 text-white text-[10px] font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
+                  Tarik Saldo
+                </button>
+                <button className="flex-1 py-1.5 bg-slate-100 text-slate-600 text-[10px] font-semibold rounded-lg hover:bg-slate-200 transition-colors">
+                  Riwayat
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* FOOTER SIDEBAR */}
         <div className="p-4 border-t border-slate-100 bg-white space-y-3">
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-3">
-            <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5 mb-1"><Crown size={14} className="text-amber-500" /> Upgrade ke PRO</p>
-            <p className="text-[11px] text-slate-500 mb-2.5">Akses semua fitur premium dan tingkatkan pengalamanmu.</p>
-            <Link href="/upgrade"><button className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors">Upgrade Sekarang</button></Link>
-          </div>
           <div className="flex items-center gap-2.5 px-1">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{initials}</div>
             <div className="min-w-0 flex-1">
@@ -1698,10 +1753,10 @@ export default function BioPage() {
             <div className="mt-5 bg-slate-50 rounded-xl border border-slate-100 p-4">
               <p className="text-xs font-bold text-slate-700 mb-2">Bagikan Toko</p>
               <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 mb-3">
-                <span className="text-[11px] text-slate-500 truncate flex-1">{bioUrl}</span>
-                <button onClick={handleCopyUrl}>{copied ? <CheckCircle2 size={14} className="text-green-600" /> : <Copy size={14} className="text-slate-400" />}</button>
+                <span className="text-[11px] text-slate-500 truncate flex-1">{shopUrl}</span>
+                <button onClick={() => handleCopyUrl(shopUrl)}>{copied ? <CheckCircle2 size={14} className="text-green-600" /> : <Copy size={14} className="text-slate-400" />}</button>
               </div>
-              <ShareDropdown url={bioUrl} />
+              <ShareDropdown url={shopUrl} />
             </div>
           </div>
         )}
