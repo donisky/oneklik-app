@@ -25,6 +25,26 @@ function UpgradeContent() {
 
   const supabase = createClientComponentClient();
 
+  // Deklarasi tipe global untuk window.snap
+  declare global {
+    interface Window {
+      snap: {
+        pay: (token: string, options: any) => void;
+      };
+    }
+  }
+
+  useEffect(() => {
+    // Load Midtrans Snap Script jika belum ada
+    if (!document.querySelector('#midtrans-snap-script')) {
+      const script = document.createElement('script');
+      script.id = 'midtrans-snap-script';
+      script.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
+      script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '');
+      document.body.appendChild(script);
+    }
+  }, []);
+
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
@@ -45,6 +65,13 @@ function UpgradeContent() {
 
   const handlePayment = async (plan: 'free' | 'premium') => {
     if (!session || isUpgrading) return;
+    
+    // Validasi data user
+    if (!session.user.id || !session.user.email) {
+      toast.error('Data profil tidak lengkap. Silakan login kembali.');
+      return;
+    }
+
     setIsUpgrading(true);
     
     try {
@@ -58,7 +85,8 @@ function UpgradeContent() {
       const amount = billingCycle === 'monthly' ? 49000 : 499000;
       const orderId = `PR-${session.user.id.slice(0, 8)}-${Date.now()}`;
 
-      const res = await fetch('/api/checkout', {
+      // Panggil API Upgrade Premium (Endpoint baru)
+      const res = await fetch('/api/upgrade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -67,6 +95,7 @@ function UpgradeContent() {
           name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
           email: session.user.email,
           userId: session.user.id,
+          billingCycle, // opsional
         }),
       });
 
@@ -76,10 +105,18 @@ function UpgradeContent() {
         throw new Error(data.error || 'Gagal memproses pembayaran');
       }
 
-      if (data.url) {
-        window.location.href = data.url;
+      // Gunakan snapToken untuk popup pembayaran (konsisten dengan Shop)
+      if (window.snap && data.snapToken) {
+        window.snap.pay(data.snapToken, {
+          onSuccess: () => {
+            toast.success('Upgrade Premium berhasil!');
+            router.push('/dashboard');
+          },
+          onPending: () => toast('Menunggu pembayaran...'),
+          onError: () => toast.error('Pembayaran gagal, coba lagi.'),
+        });
       } else {
-        throw new Error('URL pembayaran tidak ditemukan');
+        throw new Error('Sistem pembayaran belum siap.');
       }
 
     } catch (error: any) {
@@ -140,7 +177,6 @@ function UpgradeContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 text-slate-900 flex flex-col items-center justify-start p-6 pb-12">
       <Toaster position="top-center" />
-
       <div className="w-full max-w-5xl flex justify-between items-center mb-8 pt-4">
         <Link href="/dashboard" className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors font-medium text-sm">
           <ArrowLeft size={18} /> Kembali ke Dashboard
