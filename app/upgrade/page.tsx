@@ -34,12 +34,18 @@ function UpgradeContent() {
 
   const supabase = createClientComponentClient();
 
-  // Load script Snap Midtrans jika belum ada
+  // Load script Snap Midtrans secara dinamis (sesuai environment)
   useEffect(() => {
     if (!document.querySelector('#midtrans-snap-script')) {
       const script = document.createElement('script');
       script.id = 'midtrans-snap-script';
-      script.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
+      
+      // Tentukan URL berdasarkan Environment Variable
+      const isProduction = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true';
+      script.src = isProduction 
+        ? 'https://app.midtrans.com/snap/snap.js' 
+        : 'https://app.sandbox.midtrans.com/snap/snap.js';
+
       script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '');
       document.body.appendChild(script);
     }
