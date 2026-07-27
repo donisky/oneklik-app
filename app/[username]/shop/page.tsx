@@ -101,9 +101,8 @@ export default function PublicShopPage({ params }: { params: { username: string 
         </div>
       </header>
 
-      {/* --- HERO SECTION --- */}
-      <section className="relative w-full h-[50vh] flex flex-col items-center justify-end pb-8 px-4 bg-white">
-        {/* Gunakan background gradient khas Oneklik */}
+      {/* --- HERO SECTION (dengan pt-20 agar tidak tertutup header) --- */}
+      <section className="relative w-full h-[50vh] flex flex-col items-center justify-end pb-8 px-4 bg-white pt-20">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10" />
         <div className="absolute inset-0 bg-white/60 backdrop-blur-sm" />
         
@@ -121,7 +120,6 @@ export default function PublicShopPage({ params }: { params: { username: string 
             {user.bio || 'Temukan produk digital terbaik dari saya di toko ini.'}
           </p>
 
-          {/* Sosial media icons */}
           <div className="flex flex-wrap justify-center gap-3">
             {user.email && (
               <a href={`mailto:${user.email}`} className="w-10 h-10 rounded-full bg-slate-100 hover:bg-blue-50 border border-slate-200 flex items-center justify-center text-slate-600 hover:text-blue-600 transition-colors">
@@ -188,9 +186,14 @@ export default function PublicShopPage({ params }: { params: { username: string 
                 <p className="text-slate-500 text-xs line-clamp-2 h-8 mb-3">{prod.description || 'Produk digital terbaik untuk Anda.'}</p>
                 <div className="flex items-center justify-between mt-auto">
                   <span className="text-xl font-bold text-blue-600">{prod.price}</span>
-                  <a href={prod.product_link || '#'} target="_blank" rel="noopener noreferrer" className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
+                  
+                  {/* --- TOMBOL BELI SEKARANG (Internal Checkout) --- */}
+                  <Link
+                    href={`/checkout/${prod.id}`}
+                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm"
+                  >
                     Beli Sekarang
-                  </a>
+                  </Link>
                 </div>
               </div>
             ))
