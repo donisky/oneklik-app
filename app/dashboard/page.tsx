@@ -430,46 +430,47 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Ilustrasi Dekoratif — tumpukan pita/chevron sesuai desain, dikunci di dalam tinggi baris header (inset-y-0 mengikuti tinggi parent), jadi tidak akan pernah menutupi konten di bawahnya (mis. banner promo student) */}
-            <div className="hidden lg:block absolute inset-y-0 right-24 w-40 pointer-events-none select-none" aria-hidden="true">
-              <div className="relative w-full h-full flex items-center justify-center">
-                <svg width="150" height="100" viewBox="0 0 150 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="dashHeaderFlagGradient" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="#818CF8" />
-                      <stop offset="100%" stopColor="#4F46E5" />
-                    </linearGradient>
-                  </defs>
+            {/* ==================================================================== */}
+            {/* ORNAMEN HEADER KANAN ATAS (CSS MURNI - TANPA SVG) */}
+            {/* ==================================================================== */}
+            <div className="hidden lg:block absolute right-0 top-0 w-[260px] h-[130px] pointer-events-none select-none overflow-hidden">
+              {/* Kartu Kiri (Biru Miring) */}
+              <div className="absolute top-8 left-2 w-[70px] h-[90px] bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl -rotate-6 border border-white/50 shadow-sm">
+                <div className="absolute bottom-4 left-4 w-3 h-6 bg-indigo-300 rounded-full"></div>
+                <div className="absolute bottom-4 left-10 w-3 h-10 bg-indigo-400 rounded-full"></div>
+                <div className="absolute bottom-4 left-16 w-3 h-14 bg-indigo-500 rounded-full"></div>
+              </div>
 
-                  {/* Layer paling belakang - terkecil, paling muda */}
-                  <g transform="rotate(8 112 19)">
-                    <path d="M92,12 A6,6 0 0 1 98,6 L124,6 L132,19 L124,32 L98,32 A6,6 0 0 1 92,26 Z" fill="#DBEAFE" />
-                  </g>
+              {/* Kartu Tengah (Putih Miring Kanan dengan Line Chart) */}
+              <div className="absolute top-0 left-20 w-[90px] h-[110px] bg-white rounded-xl rotate-6 border border-slate-200 shadow-md overflow-hidden">
+                <div className="absolute inset-4 flex flex-col justify-end">
+                  {/* Garis Chart */}
+                  <div className="w-full h-16 relative">
+                    <div className="absolute bottom-0 left-0 w-full h-px bg-slate-200"></div>
+                    <div className="absolute bottom-2 left-2 w-2 h-6 bg-indigo-300 rounded-full"></div>
+                    <div className="absolute bottom-5 left-8 w-2 h-10 bg-indigo-400 rounded-full"></div>
+                    <div className="absolute bottom-3 left-14 w-2 h-8 bg-indigo-300 rounded-full"></div>
+                    <div className="absolute bottom-6 left-20 w-2 h-12 bg-indigo-400 rounded-full"></div>
+                    {/* Titik di ujung garis */}
+                    <div className="absolute bottom-8 right-2 w-2 h-2 bg-indigo-500 rounded-full"></div>
+                  </div>
+                </div>
+              </div>
 
-                  {/* Layer ke-3 */}
-                  <g transform="rotate(-4 93 34)">
-                    <path d="M68,25 A7,7 0 0 1 75,18 L107,18 L118,34 L107,50 L75,50 A7,7 0 0 1 68,43 Z" fill="#C7D2FE" />
-                  </g>
+              {/* Kartu Kanan (Ungu Kecil) */}
+              <div className="absolute top-10 right-0 w-[60px] h-[60px] bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl -rotate-3 border border-white/50 shadow-sm">
+                <div className="absolute bottom-4 left-4 w-2 h-6 bg-indigo-200 rounded-full"></div>
+                <div className="absolute bottom-4 left-10 w-2 h-4 bg-indigo-300 rounded-full"></div>
+                <div className="absolute bottom-4 left-16 w-2 h-8 bg-indigo-200 rounded-full"></div>
+              </div>
 
-                  {/* Layer ke-2 */}
-                  <g transform="rotate(6 73 51)">
-                    <path d="M44,40 A8,8 0 0 1 52,32 L89,32 L102,51 L89,70 L52,70 A8,8 0 0 1 44,62 Z" fill="#A5B4FC" />
-                  </g>
-
-                  {/* Layer paling depan - terbesar, gradasi paling gelap */}
-                  <g transform="rotate(-8 48 68)">
-                    <path d="M14,56 A10,10 0 0 1 24,46 L67,46 L82,68 L67,90 L24,90 A10,10 0 0 1 14,80 Z" fill="url(#dashHeaderFlagGradient)" />
-                  </g>
-
-                  {/* Titik bulat kecil di bawah tumpukan */}
-                  <circle cx="12" cy="92" r="4.5" fill="#818CF8" />
-
-                  {/* Sparkle kecil di pojok kanan atas */}
-                  <path d="M132 4 L134 10 L140 12 L134 14 L132 20 L130 14 L124 12 L130 10 Z" fill="#A5B4FC" />
-                </svg>
+              {/* Sparkle / Bintang */}
+              <div className="absolute top-2 right-12 text-indigo-300 transform rotate-12">
+                <Sparkles size={20} className="fill-indigo-300 text-indigo-300" />
               </div>
             </div>
-            
+            {/* ==================================================================== */}
+
             {/* --- AREA IKON (NOTIFIKASI & AVATAR HEADER) --- */}
             <div className="flex items-center gap-4">
               {/* Tombol Notifikasi */}
@@ -541,7 +542,6 @@ export default function Dashboard() {
           {/* GRID MENU FITUR */}
           <div className="relative z-10 flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-800">Akses Cepat Fitur</h2>
-            {/* Tombol Lihat Semua dihapus karena mengarah ke /templates */}
           </div>
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <Link href="/bio" className="group relative bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all flex flex-col overflow-hidden">
@@ -594,8 +594,6 @@ export default function Dashboard() {
                 </span>
               </div>
             </Link>
-
-            {/* --- KARTU GALERI TEMPLATE PREMIUM DIHAPUS --- */}
 
             <Link href="/tools/url-shortener" className="group relative bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-purple-300 transition-all flex flex-col overflow-hidden">
               <div
