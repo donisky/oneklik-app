@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { ArrowLeft, Package, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// Deklarasi tipe untuk Midtrans Snap
+// Deklarasi tipe global untuk window.snap
 declare global {
   interface Window {
     snap: {
@@ -38,11 +38,20 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
     };
     fetchProduct();
 
-    // Load Midtrans Snap Script
-    const script = document.createElement('script');
-    script.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
-    script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '');
-    document.body.appendChild(script);
+    // --- PERBAIKAN: Load Midtrans Snap Script secara dinamis ---
+    if (!document.querySelector('#midtrans-snap-script')) {
+      const script = document.createElement('script');
+      script.id = 'midtrans-snap-script';
+      
+      // Tentukan mode dari Environment Variable (sama seperti Upgrade)
+      const isProduction = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true';
+      script.src = isProduction 
+        ? 'https://app.midtrans.com/snap/snap.js' 
+        : 'https://app.sandbox.midtrans.com/snap/snap.js';
+
+      script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '');
+      document.body.appendChild(script);
+    }
   }, [supabase, params.id]);
 
   const handleCheckout = async () => {
@@ -52,7 +61,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
     }
 
     setProcessing(true);
-    const response = await fetch('/api/checkout', { // <--- Ini akan memanggil API backend Anda yang sudah ada
+    const response = await fetch('/api/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -85,8 +94,8 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
     setProcessing(false);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-600">Memuat produk...</div>;
-  if (!product) return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-600">Produk tidak ditemukan.</div>;
+  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-600">Memuat produk...</div>;
+  if (!product) return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-600">Produk tidak ditemukan.</div>;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6 pt-10">

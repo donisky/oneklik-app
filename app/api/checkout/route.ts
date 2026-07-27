@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Import midtrans-client (gunakan require karena belum ada tipe resmi)
 const midtransClient = require('midtrans-client');
 
-// Inisialisasi Snap Midtrans
+// Tentukan mode sesuai Environment Variable (sama seperti Upgrade)
+const isProduction = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true';
+
 const snap = new midtransClient.Snap({
-  isProduction: process.env.NODE_ENV === 'production', // Ganti ke true jika sudah live
+  isProduction: isProduction,
   serverKey: process.env.MIDTRANS_SERVER_KEY!,
   clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY!,
 });
 
-// Supabase Admin (untuk bypass RLS saat membuat order)
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -25,7 +25,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    // 1. Ambil data produk untuk mendapatkan harga dan ID penjual
     const { data: product, error: productError } = await supabaseAdmin
       .from('shop_products')
       .select('id, title, price, user_id')
@@ -36,17 +35,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Produk tidak ditemukan' }, { status: 404 });
     }
 
-    // Parsing harga dari string (misal "Rp 49.000" -> 49000)
     const cleanPrice = parseFloat(product.price.replace(/[^0-9.]/g, ''));
     if (isNaN(cleanPrice) || cleanPrice <= 0) {
       return NextResponse.json({ error: 'Harga produk tidak valid' }, { status: 400 });
     }
 
-    // 2. Buat order di database
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .insert({
-        user_id: product.user_id,       // ID penjual
+        user_id: product.user_id,
         customer_name: buyerName,
         customer_email: buyerEmail,
         total_amount: cleanPrice,
@@ -60,10 +57,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Gagal membuat pesanan' }, { status: 500 });
     }
 
-    // 3. Siapkan parameter transaksi Midtrans
     const parameter = {
       transaction_details: {
-        order_id: order.id, // Gunakan UUID order sebagai ID transaksi
+        order_id: order.id,
         gross_amount: cleanPrice,
       },
       customer_details: {
@@ -74,18 +70,15 @@ export async function POST(req: Request) {
         finish: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/success`,
         error: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/error`,
       },
-      // Metadata penting untuk webhook agar tahu siapa penjual dan tipe transaksi
       metadata: {
-        type: 'shop',                    // <-- Penting: menandai transaksi Shop
+        type: 'shop',
         user_id: product.user_id,
         order_id: order.id,
       },
     };
 
-    // 4. Buat transaksi ke Midtrans dan dapatkan snapToken
     const transaction = await snap.createTransaction(parameter);
 
-    // 5. Kembalikan snapToken dan orderId ke frontend
     return NextResponse.json({
       snapToken: transaction.token,
       orderId: order.id,
