@@ -3,7 +3,7 @@ const midtransClient = require('midtrans-client');
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-// Setup Midtrans
+// Setup Midtrans CoreApi (untuk verifikasi notifikasi)
 const coreApi = new midtransClient.CoreApi({
   isProduction: true,
   serverKey: process.env.MIDTRANS_SERVER_KEY!,
@@ -20,28 +20,41 @@ const supabaseAdmin = createClient(
 // Setup Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// 🔴 Ganti dengan ID Admin Anda
+// Ganti dengan ID Admin Anda
 const ADMIN_USER_ID = 'ID_ADMIN_ANDA';
 
 export async function POST(req: Request) {
   const body = await req.json();
 
   try {
+    // 1. Verifikasi notifikasi menggunakan CoreApi (aman)
     const notification = await coreApi.transaction.notification(body);
     const orderId = notification.order_id;
     const transactionStatus = notification.transaction_status;
     const fraudStatus = notification.fraud_status;
-
-    const userId = notification.metadata?.user_id;
     const grossAmount = parseFloat(notification.gross_amount);
 
-    if (!userId) {
-      console.error('❌ User ID tidak ditemukan di metadata Midtrans!');
-      return NextResponse.json({ error: 'User ID missing' }, { status: 400 });
+    // Ambil metadata dari notifikasi
+    const metadata = notification.metadata || {};
+    const userId = metadata.user_id;
+    const type = metadata.type || 'shop'; // default 'shop' jika tidak ada
+
+    // Hanya proses jika sukses
+    if (transactionStatus !== 'settlement' || fraudStatus !== 'accept') {
+      console.log(`ℹ️ Transaksi ${orderId} tidak sukses (${transactionStatus}/${fraudStatus}).`);
+      return NextResponse.json({ status: 'Ignored' });
     }
 
-    if (transactionStatus === 'settlement' && fraudStatus === 'accept') {
-      // 1. Update status Premium User
+    // ============================================================
+    // 🔵 BLOK PREMIUM (jika type === 'premium')
+    // ============================================================
+    if (type === 'premium') {
+      if (!userId) {
+        console.error('❌ User ID tidak ditemukan untuk transaksi Premium!');
+        return NextResponse.json({ error: 'User ID missing' }, { status: 400 });
+      }
+
+      // 2. Update status Premium User
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
 
@@ -56,7 +69,7 @@ export async function POST(req: Request) {
       }
       console.log(`✅ User ${userId} sukses upgrade premium hingga ${expiresAt}`);
 
-      // 2. Ambil data user untuk email & notifikasi
+      // Ambil data user untuk email & notifikasi
       const { data: userProfile } = await supabaseAdmin
         .from('users')
         .select('email, full_name')
@@ -66,9 +79,7 @@ export async function POST(req: Request) {
       const userEmail = userProfile?.email || 'Unknown';
       const userName = userProfile?.full_name || 'User';
 
-      // ==============================================
-      // 3. KIRIM EMAIL KE USER (Ucapan Selamat Upgrade)
-      // ==============================================
+      // 3. Kirim email selamat upgrade
       try {
         await resend.emails.send({
           from: 'Oneklik.id <support@oneklik.my.id>',
@@ -98,9 +109,7 @@ export async function POST(req: Request) {
         console.error('⚠️ Gagal kirim email upgrade:', emailError);
       }
 
-      // ==============================================
-      // 4. NOTIFIKASI IN-APP UNTUK USER (Opsional)
-      // ==============================================
+      // 4. Notifikasi in-app untuk user
       try {
         await supabaseAdmin.from('notifications').insert({
           recipient_type: 'user',
@@ -115,9 +124,7 @@ export async function POST(req: Request) {
         console.error('⚠️ Gagal membuat notifikasi user:', notifError);
       }
 
-      // ==============================================
-      // 5. NOTIFIKASI KE ADMIN
-      // ==============================================
+      // 5. Notifikasi ke admin
       try {
         await supabaseAdmin.from('notifications').insert({
           recipient_type: 'admin',
@@ -132,9 +139,7 @@ export async function POST(req: Request) {
         console.error('⚠️ Gagal mengirim notifikasi admin:', notifError);
       }
 
-      // ==============================================
-      // 6. LOGIKA AFILIASI (20% KOMISI)
-      // ==============================================
+      // 6. Logika Afiliasi (20% komisi)
       const { data: userData } = await supabaseAdmin
         .from('users')
         .select('referrer_code')
@@ -142,7 +147,6 @@ export async function POST(req: Request) {
         .single();
 
       const refCode = userData?.referrer_code;
-
       if (refCode) {
         const { data: existingCommision } = await supabaseAdmin
           .from('affiliate_conversions')
@@ -169,11 +173,64 @@ export async function POST(req: Request) {
         }
       }
 
-    } else {
-      console.log(`ℹ️ Transaksi ${orderId} berstatus ${transactionStatus} / ${fraudStatus}. Tidak ada aksi.`);
+      return NextResponse.json({ status: 'Premium OK' });
     }
 
-    return NextResponse.json({ status: 'OK' });
+    // ============================================================
+    // 🟢 BLOK SHOP (jika type === 'shop' atau tidak ada type)
+    // ============================================================
+    // Logika Shop (escrow + wallet) yang sudah kita buat sebelumnya
+    const { data: order, error: orderError } = await supabaseAdmin
+      .from('orders')
+      .update({ status: 'paid' })
+      .eq('id', orderId) // orderId adalah UUID order dari tabel orders
+      .select()
+      .single();
+
+    if (orderError) {
+      console.error('❌ Gagal update order shop:', orderError);
+      return NextResponse.json({ error: 'Order update failed' }, { status: 500 });
+    }
+
+    // Proses wallet penjual
+    let { data: wallet } = await supabaseAdmin
+      .from('wallets')
+      .select('*')
+      .eq('user_id', order.user_id)
+      .single();
+
+    if (!wallet) {
+      const { data: newWallet } = await supabaseAdmin
+        .from('wallets')
+        .insert({ user_id: order.user_id, balance: 0 })
+        .select()
+        .single();
+      wallet = newWallet;
+    }
+
+    // Insert transaction & update balance
+    const { error: transError } = await supabaseAdmin
+      .from('wallet_transactions')
+      .insert({
+        wallet_id: wallet.id,
+        amount: order.total_amount,
+        type: 'credit',
+        source: 'order_payment',
+        reference_id: order.id,
+        description: `Pembayaran order #${order.id}`,
+      });
+
+    if (transError) throw transError;
+
+    const { error: updateError } = await supabaseAdmin
+      .from('wallets')
+      .update({ balance: wallet.balance + order.total_amount })
+      .eq('id', wallet.id);
+
+    if (updateError) throw updateError;
+
+    console.log(`✅ Order Shop ${order.id} paid, wallet credited.`);
+    return NextResponse.json({ status: 'Shop OK' });
 
   } catch (error) {
     console.error('❌ Webhook error:', error);
