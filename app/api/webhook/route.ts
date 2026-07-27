@@ -3,7 +3,7 @@ const midtransClient = require('midtrans-client');
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-// Setup Midtrans CoreApi (untuk verifikasi notifikasi)
+// Setup Midtrans CoreApi
 const coreApi = new midtransClient.CoreApi({
   isProduction: true,
   serverKey: process.env.MIDTRANS_SERVER_KEY!,
@@ -20,24 +20,23 @@ const supabaseAdmin = createClient(
 // Setup Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Ganti dengan ID Admin Anda
+// 🔴 GANTI DENGAN ID ADMIN ANDA (UUID dari tabel users)
 const ADMIN_USER_ID = 'ID_ADMIN_ANDA';
 
 export async function POST(req: Request) {
   const body = await req.json();
 
   try {
-    // 1. Verifikasi notifikasi menggunakan CoreApi (aman)
+    // 1. Verifikasi notifikasi menggunakan CoreApi
     const notification = await coreApi.transaction.notification(body);
     const orderId = notification.order_id;
     const transactionStatus = notification.transaction_status;
     const fraudStatus = notification.fraud_status;
     const grossAmount = parseFloat(notification.gross_amount);
 
-    // Ambil metadata dari notifikasi
     const metadata = notification.metadata || {};
     const userId = metadata.user_id;
-    const type = metadata.type || 'shop'; // default 'shop' jika tidak ada
+    const type = metadata.type || 'shop';
 
     // Hanya proses jika sukses
     if (transactionStatus !== 'settlement' || fraudStatus !== 'accept') {
@@ -46,7 +45,7 @@ export async function POST(req: Request) {
     }
 
     // ============================================================
-    // 🔵 BLOK PREMIUM (jika type === 'premium')
+    // 🔵 BLOK PREMIUM
     // ============================================================
     if (type === 'premium') {
       if (!userId) {
@@ -54,7 +53,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'User ID missing' }, { status: 400 });
       }
 
-      // 2. Update status Premium User
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
 
@@ -69,54 +67,54 @@ export async function POST(req: Request) {
       }
       console.log(`✅ User ${userId} sukses upgrade premium hingga ${expiresAt}`);
 
-      // Ambil data user untuk email & notifikasi
       const { data: userProfile } = await supabaseAdmin
         .from('users')
         .select('email, full_name')
         .eq('id', userId)
         .single();
 
-      const userEmail = userProfile?.email || 'Unknown';
+      const userEmail = userProfile?.email || '';
       const userName = userProfile?.full_name || 'User';
 
-      // 3. Kirim email selamat upgrade
-      try {
-        await resend.emails.send({
-          from: 'Oneklik.id <support@oneklik.my.id>',
-          to: [userEmail],
-          subject: '🎉 Selamat! Anda Kini Premium di Oneklik.id',
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: auto; background: #f9f9f9; padding: 20px; border-radius: 12px;">
-              <h2 style="color: #2563EB;">Oneklik<span style="color: #60A5FA;">.id</span></h2>
-              <p>Halo <b>${userName}</b>,</p>
-              <p>Selamat! Akun Anda telah berhasil di-upgrade ke <strong>Premium</strong>.</p>
-              <p>Nikmati semua fitur eksklusif:</p>
-              <ul>
-                <li>Custom Slug untuk Short Link</li>
-                <li>Desain QR Code kustom</li>
-                <li>Analitik lanjutan</li>
-                <li>Dan masih banyak lagi!</li>
-              </ul>
-              <div style="background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #ddd; text-align: center; margin: 20px 0;">
-                <a href="https://oneklik.my.id/dashboard" style="background: #2563EB; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: bold;">Buka Dashboard</a>
+      // Kirim email upgrade
+      if (userEmail) {
+        try {
+          console.log(`📨 Mencoba mengirim email Premium ke ${userEmail}`);
+          const { data, error } = await resend.emails.send({
+            from: 'Oneklik.id <support@oneklik.my.id>',
+            to: [userEmail],
+            subject: '🎉 Selamat! Anda Kini Premium di Oneklik.id',
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: auto; background: #f9f9f9; padding: 20px; border-radius: 12px;">
+                <h2 style="color: #2563EB;">Oneklik<span style="color: #60A5FA;">.id</span></h2>
+                <p>Halo <b>${userName}</b>,</p>
+                <p>Selamat! Akun Anda telah berhasil di-upgrade ke <strong>Premium</strong>.</p>
+                <p>Nikmati semua fitur eksklusif yang kami sediakan.</p>
+                <div style="background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #ddd; text-align: center; margin: 20px 0;">
+                  <a href="https://oneklik.my.id/dashboard" style="background: #2563EB; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: bold;">Buka Dashboard</a>
+                </div>
               </div>
-              <p style="font-size: 12px; color: #888;">Terima kasih telah mempercayai Oneklik.id.</p>
-            </div>
-          `,
-        });
-        console.log(`✅ Email upgrade terkirim ke ${userEmail}`);
-      } catch (emailError) {
-        console.error('⚠️ Gagal kirim email upgrade:', emailError);
+            `,
+          });
+
+          if (error) {
+            console.error('❌ Resend Error (Premium):', error);
+          } else {
+            console.log(`✅ Email Premium berhasil dikirim ke ${userEmail} (ID: ${data?.id})`);
+          }
+        } catch (emailError) {
+          console.error('❌ Exception saat kirim email Premium:', emailError);
+        }
       }
 
-      // 4. Notifikasi in-app untuk user
+      // Notifikasi in-app untuk user
       try {
         await supabaseAdmin.from('notifications').insert({
           recipient_type: 'user',
           recipient_id: userId,
           type: 'premium_upgraded',
           title: '🎉 Upgrade Premium Berhasil!',
-          message: 'Selamat! Anda kini telah menjadi pengguna Premium. Nikmati semua fitur eksklusif.',
+          message: 'Selamat! Anda kini telah menjadi pengguna Premium.',
           action_url: '/dashboard',
           is_read: false,
         });
@@ -124,7 +122,7 @@ export async function POST(req: Request) {
         console.error('⚠️ Gagal membuat notifikasi user:', notifError);
       }
 
-      // 5. Notifikasi ke admin
+      // Notifikasi ke admin
       try {
         await supabaseAdmin.from('notifications').insert({
           recipient_type: 'admin',
@@ -139,7 +137,7 @@ export async function POST(req: Request) {
         console.error('⚠️ Gagal mengirim notifikasi admin:', notifError);
       }
 
-      // 6. Logika Afiliasi (20% komisi)
+      // Logika Afiliasi (20% komisi)
       const { data: userData } = await supabaseAdmin
         .from('users')
         .select('referrer_code')
@@ -177,13 +175,12 @@ export async function POST(req: Request) {
     }
 
     // ============================================================
-    // 🟢 BLOK SHOP (jika type === 'shop' atau tidak ada type)
+    // 🟢 BLOK SHOP
     // ============================================================
-    // Logika Shop (escrow + wallet) yang sudah kita buat sebelumnya
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .update({ status: 'paid' })
-      .eq('id', orderId) // orderId adalah UUID order dari tabel orders
+      .eq('id', orderId)
       .select()
       .single();
 
@@ -220,16 +217,60 @@ export async function POST(req: Request) {
         description: `Pembayaran order #${order.id}`,
       });
 
-    if (transError) throw transError;
+    if (transError) {
+      console.error('❌ Gagal insert wallet transaction:', transError);
+      throw transError;
+    }
 
     const { error: updateError } = await supabaseAdmin
       .from('wallets')
       .update({ balance: wallet.balance + order.total_amount })
       .eq('id', wallet.id);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('❌ Gagal update wallet balance:', updateError);
+      throw updateError;
+    }
 
     console.log(`✅ Order Shop ${order.id} paid, wallet credited.`);
+
+    // ============================================================
+    // 🟡 KIRIM EMAIL KONFIRMASI KE PEMBELI
+    // ============================================================
+    if (order.customer_email) {
+      try {
+        console.log(`📨 Mencoba mengirim email konfirmasi Shop ke ${order.customer_email}`);
+        
+        const { data, error } = await resend.emails.send({
+          from: 'Oneklik.id <support@oneklik.my.id>',
+          to: [order.customer_email],
+          subject: '✅ Pembelian Anda Berhasil!',
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; background: #f9f9f9; padding: 20px; border-radius: 12px;">
+              <h2 style="color: #2563EB;">Oneklik<span style="color: #60A5FA;">.id</span></h2>
+              <p>Halo <b>${order.customer_name || 'Pelanggan'}</b>,</p>
+              <p>Pembelian Anda telah berhasil dikonfirmasi!</p>
+              <p><strong>ID Pesanan:</strong> ${order.id}</p>
+              <p><strong>Total Pembayaran:</strong> ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(order.total_amount)}</p>
+              <div style="background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #ddd; text-align: center; margin: 20px 0;">
+                <p style="margin: 0;">Produk akan segera dikirimkan ke email ini atau Anda dapat mengaksesnya di dashboard.</p>
+                <a href="https://oneklik.my.id" style="background: #2563EB; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 10px;">Kunjungi Oneklik.id</a>
+              </div>
+              <p style="font-size: 12px; color: #888;">Jika Anda memiliki pertanyaan, silakan hubungi support.</p>
+            </div>
+          `,
+        });
+
+        if (error) {
+          console.error('❌ Resend Error (Shop):', error);
+        } else {
+          console.log(`✅ Email Shop berhasil dikirim ke ${order.customer_email} (ID: ${data?.id})`);
+        }
+      } catch (emailError) {
+        console.error('❌ Exception saat kirim email Shop:', emailError);
+      }
+    }
+
     return NextResponse.json({ status: 'Shop OK' });
 
   } catch (error) {
