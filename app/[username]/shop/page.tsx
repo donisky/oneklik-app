@@ -101,8 +101,8 @@ export default function PublicShopPage({ params }: { params: { username: string 
         </div>
       </header>
 
-      {/* --- HERO SECTION (dengan pt-20 agar tidak tertutup header) --- */}
-      <section className="relative w-full h-[50vh] flex flex-col items-center justify-end pb-8 px-4 bg-white pt-20">
+      {/* --- HERO SECTION (Dengan pt-24 agar tidak tertutup header) --- */}
+      <section className="relative w-full min-h-[calc(100vh-6rem)] flex flex-col items-center justify-center pb-8 px-4 bg-white pt-24">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10" />
         <div className="absolute inset-0 bg-white/60 backdrop-blur-sm" />
         
