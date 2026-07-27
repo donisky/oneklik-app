@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const midtransClient = require('midtrans-client');
 
-// Tentukan mode sesuai Environment Variable (sama seperti Upgrade)
+// Tentukan mode sesuai Environment Variable
 const isProduction = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true';
 
 const snap = new midtransClient.Snap({
@@ -35,8 +35,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Produk tidak ditemukan' }, { status: 404 });
     }
 
-    const cleanPrice = parseFloat(product.price.replace(/[^0-9.]/g, ''));
+    // --- PERBAIKAN PARSING HARGA ---
+    // Hapus semua karakter yang bukan digit (0-9)
+    const rawPrice = product.price.replace(/[^0-9]/g, '');
+    const cleanPrice = parseFloat(rawPrice);
+
+    console.log(`🔍 Harga asli: "${product.price}" → Clean: "${rawPrice}" → Number: ${cleanPrice}`);
+
     if (isNaN(cleanPrice) || cleanPrice <= 0) {
+      console.error('❌ Harga tidak valid:', product.price);
       return NextResponse.json({ error: 'Harga produk tidak valid' }, { status: 400 });
     }
 
@@ -53,9 +60,11 @@ export async function POST(req: Request) {
       .single();
 
     if (orderError) {
-      console.error('Error creating order:', orderError);
+      console.error('❌ Error creating order:', orderError);
       return NextResponse.json({ error: 'Gagal membuat pesanan' }, { status: 500 });
     }
+
+    console.log(`📦 Order created: ${order.id}, amount: ${cleanPrice}`);
 
     const parameter = {
       transaction_details: {
@@ -78,6 +87,7 @@ export async function POST(req: Request) {
     };
 
     const transaction = await snap.createTransaction(parameter);
+    console.log(`✅ Snap token generated: ${transaction.token}`);
 
     return NextResponse.json({
       snapToken: transaction.token,
@@ -85,7 +95,7 @@ export async function POST(req: Request) {
     });
 
   } catch (error: any) {
-    console.error('Midtrans error:', error);
+    console.error('❌ Midtrans error:', error);
     return NextResponse.json(
       { error: error.message || 'Gagal membuat pembayaran' },
       { status: error.httpStatusCode || 500 }
