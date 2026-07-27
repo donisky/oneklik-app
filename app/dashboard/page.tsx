@@ -430,53 +430,60 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* ==================================================================== */}
-            {/* ORNAMEN HEADER KANAN ATAS (CSS MURNI - TANPA SVG) */}
-            {/* ==================================================================== */}
-            <div className="hidden lg:block absolute right-0 top-0 w-[260px] h-[130px] pointer-events-none select-none overflow-hidden">
-              {/* Kartu Kiri (Biru Miring) */}
-              <div className="absolute top-8 left-2 w-[70px] h-[90px] bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl -rotate-6 border border-white/50 shadow-sm">
-                <div className="absolute bottom-4 left-4 w-3 h-6 bg-indigo-300 rounded-full"></div>
-                <div className="absolute bottom-4 left-10 w-3 h-10 bg-indigo-400 rounded-full"></div>
-                <div className="absolute bottom-4 left-16 w-3 h-14 bg-indigo-500 rounded-full"></div>
-              </div>
+            {/* --- AREA KANAN (Ornamen + Notifikasi + Avatar) --- */}
+            <div className="relative flex items-center gap-4">
+              
+              {/* ==================================================================== */}
+              {/* ORNAMEN HEADER KANAN ATAS (hanya muncul di desktop, tidak akan nutupin promo) */}
+              {/* ==================================================================== */}
+              <div className="hidden lg:block absolute right-0 top-0 h-full w-[180px] pointer-events-none select-none overflow-hidden z-0">
+                <svg viewBox="0 0 180 120" className="w-full h-full">
+                  <defs>
+                    <linearGradient id="ornament-level-blue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#DBEAFE"/>
+                      <stop offset="100%" stopColor="#BFDBFE"/>
+                    </linearGradient>
+                    <linearGradient id="ornament-level-purple" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#EDE9FE"/>
+                      <stop offset="100%" stopColor="#DDD6FE"/>
+                    </linearGradient>
+                  </defs>
 
-              {/* Kartu Tengah (Putih Miring Kanan dengan Line Chart) */}
-              <div className="absolute top-0 left-20 w-[90px] h-[110px] bg-white rounded-xl rotate-6 border border-slate-200 shadow-md overflow-hidden">
-                <div className="absolute inset-4 flex flex-col justify-end">
-                  {/* Garis Chart */}
-                  <div className="w-full h-16 relative">
-                    <div className="absolute bottom-0 left-0 w-full h-px bg-slate-200"></div>
-                    <div className="absolute bottom-2 left-2 w-2 h-6 bg-indigo-300 rounded-full"></div>
-                    <div className="absolute bottom-5 left-8 w-2 h-10 bg-indigo-400 rounded-full"></div>
-                    <div className="absolute bottom-3 left-14 w-2 h-8 bg-indigo-300 rounded-full"></div>
-                    <div className="absolute bottom-6 left-20 w-2 h-12 bg-indigo-400 rounded-full"></div>
-                    {/* Titik di ujung garis */}
-                    <div className="absolute bottom-8 right-2 w-2 h-2 bg-indigo-500 rounded-full"></div>
-                  </div>
-                </div>
-              </div>
+                  {/* Kartu Kiri (Biru Miring) */}
+                  <g transform="rotate(-8 30 60)">
+                    <rect x="10" y="20" width="48" height="60" rx="10" fill="url(#ornament-level-blue)" stroke="white" strokeWidth="1.5" />
+                    <rect x="20" y="54" width="5" height="14" rx="2" fill="#818CF8" />
+                    <rect x="31" y="46" width="5" height="22" rx="2" fill="#6366F1" />
+                    <rect x="42" y="38" width="5" height="30" rx="2" fill="#4F46E5" />
+                  </g>
 
-              {/* Kartu Kanan (Ungu Kecil) */}
-              <div className="absolute top-10 right-0 w-[60px] h-[60px] bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl -rotate-3 border border-white/50 shadow-sm">
-                <div className="absolute bottom-4 left-4 w-2 h-6 bg-indigo-200 rounded-full"></div>
-                <div className="absolute bottom-4 left-10 w-2 h-4 bg-indigo-300 rounded-full"></div>
-                <div className="absolute bottom-4 left-16 w-2 h-8 bg-indigo-200 rounded-full"></div>
-              </div>
+                  {/* Kartu Tengah (Putih Miring Kanan, dengan Line Chart) */}
+                  <g transform="rotate(6 75 55)">
+                    <rect x="55" y="10" width="58" height="72" rx="12" fill="white" stroke="#E0E7FF" strokeWidth="2" />
+                    <line x1="67" y1="28" x2="100" y2="28" stroke="#CBD5E1" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="67" y1="38" x2="92" y2="38" stroke="#E2E8F0" strokeWidth="2" strokeLinecap="round" />
+                    <path d="M67 58 L76 48 L84 52 L93 40 L100 46" stroke="#6366F1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="100" cy="46" r="3.5" fill="#6366F1" />
+                  </g>
 
-              {/* Sparkle / Bintang */}
-              <div className="absolute top-2 right-12 text-indigo-300 transform rotate-12">
-                <Sparkles size={20} className="fill-indigo-300 text-indigo-300" />
-              </div>
-            </div>
-            {/* ==================================================================== */}
+                  {/* Kartu Kanan (Ungu Kecil) */}
+                  <g transform="rotate(-4 130 45)">
+                    <rect x="118" y="20" width="40" height="40" rx="8" fill="url(#ornament-level-purple)" stroke="white" strokeWidth="1" />
+                    <rect x="126" y="40" width="4" height="10" rx="1" fill="#A5B4FC" />
+                    <rect x="134" y="34" width="4" height="16" rx="1" fill="#818CF8" />
+                    <rect x="142" y="38" width="4" height="12" rx="1" fill="#A5B4FC" />
+                  </g>
 
-            {/* --- AREA IKON (NOTIFIKASI & AVATAR HEADER) --- */}
-            <div className="flex items-center gap-4">
-              {/* Tombol Notifikasi */}
+                  {/* Sparkle / Bintang */}
+                  <path d="M160 8 L162 14 L168 15 L162 16 L160 22 L158 16 L152 15 L158 14 Z" fill="#A5B4FC" />
+                </svg>
+              </div>
+              {/* ==================================================================== */}
+
+              {/* Tombol Notifikasi (z-index lebih tinggi agar tetap bisa diklik) */}
               <button 
                 onClick={() => { setIsNotificationOpen(true); }}
-                className="relative p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                className="relative z-10 p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
@@ -484,8 +491,8 @@ export default function Dashboard() {
                 )}
               </button>
 
-              {/* Avatar Header (Visual saja, klik tetap di sidebar bawah) */}
-              <div className="flex items-center gap-1.5">
+              {/* Avatar Header (Klik tetap di sidebar bawah) */}
+              <div className="relative z-10 flex items-center gap-1.5">
                 <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm">
                   {user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?'}
                 </div>
