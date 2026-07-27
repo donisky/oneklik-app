@@ -415,8 +415,8 @@ export default function Dashboard() {
       {/* --- KONTEN UTAMA --- */}
       <main className="flex-1 h-screen overflow-y-auto bg-[#F8FAFC] p-6 lg:p-10">
         <div className="max-w-4xl mx-auto">
-          {/* Header Konten */}
-          <div className="relative flex items-center justify-between mb-8">
+          {/* Header Konten - ditambah min-height agar ornamen besar tidak terpotong */}
+          <div className="relative flex items-center justify-between mb-2 min-h-[90px]">
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => setMobileMenuOpen(true)} 
@@ -434,53 +434,53 @@ export default function Dashboard() {
             <div className="relative flex items-center gap-4">
               
               {/* ==================================================================== */}
-              {/* ORNAMEN HEADER KANAN ATAS (hanya muncul di desktop, tidak akan nutupin promo) */}
+              {/* ORNAMEN HEADER KANAN ATAS (BESAR, TIDAK MENUTUPI BANNER) */}
               {/* ==================================================================== */}
-              <div className="hidden lg:block absolute right-0 top-0 h-full w-[180px] pointer-events-none select-none overflow-hidden z-0">
-                <svg viewBox="0 0 180 120" className="w-full h-full">
+              <div className="hidden lg:block absolute right-0 -top-2 w-[280px] h-[160px] pointer-events-none select-none overflow-visible z-0">
+                <svg viewBox="0 0 280 160" className="w-full h-full">
                   <defs>
-                    <linearGradient id="ornament-level-blue" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="ornament-big-blue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#DBEAFE"/>
                       <stop offset="100%" stopColor="#BFDBFE"/>
                     </linearGradient>
-                    <linearGradient id="ornament-level-purple" x1="0" y1="0" x2="1" y2="1">
+                    <linearGradient id="ornament-big-purple" x1="0" y1="0" x2="1" y2="1">
                       <stop offset="0%" stopColor="#EDE9FE"/>
                       <stop offset="100%" stopColor="#DDD6FE"/>
                     </linearGradient>
                   </defs>
 
                   {/* Kartu Kiri (Biru Miring) */}
-                  <g transform="rotate(-8 30 60)">
-                    <rect x="10" y="20" width="48" height="60" rx="10" fill="url(#ornament-level-blue)" stroke="white" strokeWidth="1.5" />
-                    <rect x="20" y="54" width="5" height="14" rx="2" fill="#818CF8" />
-                    <rect x="31" y="46" width="5" height="22" rx="2" fill="#6366F1" />
-                    <rect x="42" y="38" width="5" height="30" rx="2" fill="#4F46E5" />
+                  <g transform="rotate(-8 40 80)">
+                    <rect x="20" y="30" width="60" height="80" rx="12" fill="url(#ornament-big-blue)" stroke="white" strokeWidth="2" />
+                    <rect x="32" y="74" width="7" height="18" rx="2" fill="#818CF8" />
+                    <rect x="46" y="62" width="7" height="30" rx="2" fill="#6366F1" />
+                    <rect x="60" y="50" width="7" height="42" rx="2" fill="#4F46E5" />
                   </g>
 
-                  {/* Kartu Tengah (Putih Miring Kanan, dengan Line Chart) */}
-                  <g transform="rotate(6 75 55)">
-                    <rect x="55" y="10" width="58" height="72" rx="12" fill="white" stroke="#E0E7FF" strokeWidth="2" />
-                    <line x1="67" y1="28" x2="100" y2="28" stroke="#CBD5E1" strokeWidth="2" strokeLinecap="round" />
-                    <line x1="67" y1="38" x2="92" y2="38" stroke="#E2E8F0" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M67 58 L76 48 L84 52 L93 40 L100 46" stroke="#6366F1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <circle cx="100" cy="46" r="3.5" fill="#6366F1" />
+                  {/* Kartu Tengah (Putih Miring Kanan) */}
+                  <g transform="rotate(6 100 70)">
+                    <rect x="80" y="20" width="70" height="90" rx="14" fill="white" stroke="#E0E7FF" strokeWidth="2.5" />
+                    <line x1="98" y1="44" x2="132" y2="44" stroke="#CBD5E1" strokeWidth="2.5" strokeLinecap="round" />
+                    <line x1="98" y1="56" x2="120" y2="56" stroke="#E2E8F0" strokeWidth="2.5" strokeLinecap="round" />
+                    <path d="M98 80 L108 64 L118 70 L128 54 L135 62" stroke="#6366F1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="135" cy="62" r="4" fill="#6366F1" />
                   </g>
 
                   {/* Kartu Kanan (Ungu Kecil) */}
-                  <g transform="rotate(-4 130 45)">
-                    <rect x="118" y="20" width="40" height="40" rx="8" fill="url(#ornament-level-purple)" stroke="white" strokeWidth="1" />
-                    <rect x="126" y="40" width="4" height="10" rx="1" fill="#A5B4FC" />
-                    <rect x="134" y="34" width="4" height="16" rx="1" fill="#818CF8" />
-                    <rect x="142" y="38" width="4" height="12" rx="1" fill="#A5B4FC" />
+                  <g transform="rotate(-4 170 60)">
+                    <rect x="160" y="25" width="50" height="50" rx="10" fill="url(#ornament-big-purple)" stroke="white" strokeWidth="1.5" />
+                    <rect x="172" y="50" width="5" height="12" rx="2" fill="#A5B4FC" />
+                    <rect x="184" y="42" width="5" height="20" rx="2" fill="#818CF8" />
+                    <rect x="196" y="46" width="5" height="16" rx="2" fill="#A5B4FC" />
                   </g>
 
-                  {/* Sparkle / Bintang */}
-                  <path d="M160 8 L162 14 L168 15 L162 16 L160 22 L158 16 L152 15 L158 14 Z" fill="#A5B4FC" />
+                  {/* Sparkle */}
+                  <path d="M230 10 L233 20 L243 22 L233 24 L230 34 L227 24 L217 22 L227 20 Z" fill="#A5B4FC" />
                 </svg>
               </div>
               {/* ==================================================================== */}
 
-              {/* Tombol Notifikasi (z-index lebih tinggi agar tetap bisa diklik) */}
+              {/* Tombol Notifikasi */}
               <button 
                 onClick={() => { setIsNotificationOpen(true); }}
                 className="relative z-10 p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
@@ -491,7 +491,7 @@ export default function Dashboard() {
                 )}
               </button>
 
-              {/* Avatar Header (Klik tetap di sidebar bawah) */}
+              {/* Avatar Header */}
               <div className="relative z-10 flex items-center gap-1.5">
                 <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm">
                   {user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?'}
@@ -503,7 +503,7 @@ export default function Dashboard() {
 
           {/* --- STUDENT PROMO BANNER (HANYA UNTUK NON-PREMIUM) --- */}
           {!user?.is_premium && (
-            <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="mb-6 mt-2 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-start sm:items-center gap-3">
                 <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center flex-shrink-0">
                   <Crown size={20} />
