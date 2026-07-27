@@ -7,7 +7,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { 
   Crown, LogOut, FileText, FileCheck, User, Layout, Trash2, AlertTriangle, X, 
   Menu, Home, Wand2, Store, Palette, Bell, ChevronRight, ChevronDown, Sparkles,
-  Link as LinkIcon, QrCode, Gift, TrendingUp, ArrowRight, Sun
+  Link as LinkIcon, QrCode, Gift, TrendingUp, ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -431,21 +431,47 @@ export default function Dashboard() {
             </div>
 
             {/* Ilustrasi Dekoratif — dikunci di dalam tinggi baris header (inset-y-0 mengikuti tinggi parent), jadi tidak akan pernah menutupi konten di bawahnya (mis. banner promo student) */}
-            <div className="hidden lg:block absolute inset-y-0 right-28 w-32 pointer-events-none select-none" aria-hidden="true">
+            <div className="hidden lg:block absolute inset-y-0 right-24 w-40 pointer-events-none select-none" aria-hidden="true">
               <div className="relative w-full h-full flex items-center justify-center">
-                <div className="absolute w-9 h-12 bg-indigo-100 rounded-2xl -rotate-6 -translate-x-4" />
-                <div className="absolute w-9 h-14 bg-gradient-to-b from-blue-100 to-indigo-100 rounded-2xl rotate-3 translate-x-2 flex items-start justify-center pt-2">
-                  <svg width="24" height="12" viewBox="0 0 24 12" fill="none">
-                    <path d="M1 10 L7 5 L11 8 L16 3 L23 5" stroke="#6366F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <circle cx="23" cy="5" r="1.8" fill="#6366F1" />
-                  </svg>
-                </div>
-                <div className="absolute w-3 h-3 bg-indigo-400 rounded-full bottom-1 left-3" />
-                <Sparkles size={12} className="absolute text-indigo-300 top-0 right-2" />
+                <svg width="150" height="100" viewBox="0 0 150 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="dashHeaderCardGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#DBEAFE" />
+                      <stop offset="100%" stopColor="#C7D2FE" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Kotak kecil di belakang */}
+                  <rect x="8" y="34" width="30" height="30" rx="9" fill="#E0E7FF" transform="rotate(-8 23 49)" />
+
+                  {/* Kartu tengah dengan mini bar chart */}
+                  <g transform="rotate(6 61 45)">
+                    <rect x="38" y="14" width="46" height="62" rx="14" fill="url(#dashHeaderCardGradient)" />
+                    <rect x="47" y="52" width="5" height="14" rx="1.5" fill="#818CF8" />
+                    <rect x="56" y="46" width="5" height="20" rx="1.5" fill="#6366F1" />
+                    <rect x="65" y="40" width="5" height="26" rx="1.5" fill="#4F46E5" />
+                  </g>
+
+                  {/* Kartu depan dengan line chart */}
+                  <g transform="rotate(-4 95 43)">
+                    <rect x="70" y="10" width="50" height="66" rx="14" fill="#FFFFFF" stroke="#E0E7FF" strokeWidth="1.5" />
+                    <line x1="80" y1="22" x2="108" y2="22" stroke="#CBD5E1" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="80" y1="29" x2="100" y2="29" stroke="#E2E8F0" strokeWidth="2" strokeLinecap="round" />
+                    <path d="M79 62 L88 54 L96 58 L104 46 L112 50" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="112" cy="50" r="3.5" fill="#6366F1" />
+                  </g>
+
+                  {/* Sparkle */}
+                  <path d="M132 10 L134 16 L140 18 L134 20 L132 26 L130 20 L124 18 L130 16 Z" fill="#A5B4FC" />
+                  <path d="M18 78 L19 81 L22 82 L19 83 L18 86 L17 83 L14 82 L17 81 Z" fill="#C7D2FE" />
+
+                  {/* Titik kecil */}
+                  <circle cx="28" cy="70" r="4" fill="#818CF8" />
+                </svg>
               </div>
             </div>
             
-            {/* --- AREA IKON (NOTIFIKASI, TEMA & AVATAR HEADER) --- */}
+            {/* --- AREA IKON (NOTIFIKASI & AVATAR HEADER) --- */}
             <div className="flex items-center gap-4">
               {/* Tombol Notifikasi */}
               <button 
@@ -456,14 +482,6 @@ export default function Dashboard() {
                 {unreadCount > 0 && (
                   <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
                 )}
-              </button>
-
-              {/* Tombol Tema (dekoratif, fitur dark mode belum aktif) */}
-              <button
-                onClick={() => toast('Mode gelap akan segera hadir 🌙')}
-                className="p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
-              >
-                <Sun className="w-5 h-5" />
               </button>
 
               {/* Avatar Header (Visual saja, klik tetap di sidebar bawah) */}
