@@ -305,19 +305,13 @@ export default function Dashboard() {
           {/* Menu Utama */}
           <div className="space-y-1">
             <div className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              <span>Oneklik</span>
+              <span>Menu</span>
             </div>
             <Link href="/dashboard">
               <div className="bg-blue-50 text-blue-600 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
                 <Home className="w-4 h-4" /> Dashboard
               </div>
             </Link>
-          </div>
-
-          <div className="space-y-1">
-            <div className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              <span>Oneklik</span>
-            </div>
             <Link href="/bio">
               <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
                 <Layout className="w-4 h-4" /> Bio Link
@@ -333,11 +327,7 @@ export default function Dashboard() {
                 <FileText className="w-4 h-4" /> Alat PDF
               </div>
             </Link>
-            <Link href="/templates">
-              <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
-                <Palette className="w-4 h-4" /> Templates
-              </div>
-            </Link>
+            {/* --- MENU TEMPLATES DIHAPUS --- */}
             <Link href="/tools/url-shortener">
               <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
                 <LinkIcon className="w-4 h-4" /> Short Link & QR
@@ -524,9 +514,7 @@ export default function Dashboard() {
           {/* GRID MENU FITUR */}
           <div className="relative z-10 flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-800">Akses Cepat Fitur</h2>
-            <Link href="/templates" className="text-sm text-blue-600 font-medium hover:underline flex items-center gap-0.5">
-              Lihat Semua <ChevronRight size={14} />
-            </Link>
+            {/* Tombol Lihat Semua dihapus karena mengarah ke /templates */}
           </div>
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <Link href="/bio" className="group relative bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all flex flex-col overflow-hidden">
@@ -580,22 +568,7 @@ export default function Dashboard() {
               </div>
             </Link>
 
-            <Link href="/templates" className="group relative bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-yellow-300 transition-all flex flex-col overflow-hidden">
-              <div
-                className="absolute top-3 right-3 w-16 h-16 pointer-events-none"
-                style={{ backgroundImage: 'radial-gradient(#fde68a 1.5px, transparent 1.5px)', backgroundSize: '8px 8px' }}
-              />
-              <div className="relative w-12 h-12 bg-yellow-100 text-yellow-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <Crown size={22} />
-              </div>
-              <h3 className="relative font-semibold text-slate-800">Galeri Template Premium</h3>
-              <p className="relative text-sm text-slate-500 mt-1">Pilih dan kustomisasi 100+ template eksklusif.</p>
-              <div className="relative mt-4 flex justify-end">
-                <span className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 group-hover:bg-yellow-600 group-hover:text-white group-hover:border-yellow-600 transition-colors">
-                  <ArrowRight size={16} />
-                </span>
-              </div>
-            </Link>
+            {/* --- KARTU GALERI TEMPLATE PREMIUM DIHAPUS --- */}
 
             <Link href="/affiliate" className="group relative bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-orange-300 transition-all flex flex-col overflow-hidden">
               <div
