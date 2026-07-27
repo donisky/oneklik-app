@@ -90,7 +90,7 @@ const features = [
 const extraFeatures = [
   { title: 'Analitik Real-Time', desc: 'Pantau pengunjung bio link Anda secara langsung.', icon: BarChart3 },
   { title: 'Kustom Domain', desc: 'Gunakan domain Anda sendiri untuk halaman bio.', icon: Globe },
-  { title: 'Template Premium', desc: 'Akses 100+ template desain eksklusif.', icon: Crown },
+  // Fitur "Template Premium" dihapus karena halaman Template sudah tidak ada lagi
   { title: 'Keamanan Enkripsi', desc: 'Data Anda dilindungi dengan enkripsi end-to-end.', icon: ShieldCheck },
 ];
 
@@ -167,7 +167,7 @@ const footerData = {
   community: [
     { label: 'Program Afiliasi', href: '/affiliate' },
     { label: 'Kreator Spotlight', href: '/spotlight' },
-    { label: 'Template Gratis', href: '/templates' },
+    // "Template Gratis" dihapus karena halaman templates sudah tidak ada
     { label: 'Komunitas Pengguna', href: '/community' },
   ],
   support: [
