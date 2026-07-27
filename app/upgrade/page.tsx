@@ -12,6 +12,15 @@ import toast, { Toaster } from 'react-hot-toast';
 
 export const dynamic = 'force-dynamic';
 
+// Deklarasi tipe global untuk window.snap (di luar komponen)
+declare global {
+  interface Window {
+    snap: {
+      pay: (token: string, options: any) => void;
+    };
+  }
+}
+
 // Komponen konten utama yang menggunakan useSearchParams
 function UpgradeContent() {
   const [session, setSession] = useState<any>(null);
@@ -25,17 +34,8 @@ function UpgradeContent() {
 
   const supabase = createClientComponentClient();
 
-  // Deklarasi tipe global untuk window.snap
-  declare global {
-    interface Window {
-      snap: {
-        pay: (token: string, options: any) => void;
-      };
-    }
-  }
-
+  // Load script Snap Midtrans jika belum ada
   useEffect(() => {
-    // Load Midtrans Snap Script jika belum ada
     if (!document.querySelector('#midtrans-snap-script')) {
       const script = document.createElement('script');
       script.id = 'midtrans-snap-script';
@@ -85,7 +85,6 @@ function UpgradeContent() {
       const amount = billingCycle === 'monthly' ? 49000 : 499000;
       const orderId = `PR-${session.user.id.slice(0, 8)}-${Date.now()}`;
 
-      // Panggil API Upgrade Premium (Endpoint baru)
       const res = await fetch('/api/upgrade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -95,7 +94,7 @@ function UpgradeContent() {
           name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
           email: session.user.email,
           userId: session.user.id,
-          billingCycle, // opsional
+          billingCycle,
         }),
       });
 
@@ -105,7 +104,6 @@ function UpgradeContent() {
         throw new Error(data.error || 'Gagal memproses pembayaran');
       }
 
-      // Gunakan snapToken untuk popup pembayaran (konsisten dengan Shop)
       if (window.snap && data.snapToken) {
         window.snap.pay(data.snapToken, {
           onSuccess: () => {
