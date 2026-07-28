@@ -1694,7 +1694,8 @@ export default function BioPage() {
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between mb-6 gap-3 shadow-sm">
               <span className="text-xs text-slate-600 font-medium truncate px-1">{user?.username ? `oneklik.my.id/${user.username}` : 'oneklik.my.id/username'}</span>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <button onClick={handleCopyUrl} className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 p-2 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium">{copied ? <CheckCircle2 size={14} className="text-green-600" /> : <Copy size={14} />}{copied ? 'Disalin' : 'Salin'}</button>
+                {/* --- PERBAIKAN: Arrow function untuk handleCopyUrl --- */}
+                <button onClick={() => handleCopyUrl(bioUrl)} className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 p-2 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium">{copied ? <CheckCircle2 size={14} className="text-green-600" /> : <Copy size={14} />}{copied ? 'Disalin' : 'Salin'}</button>
                 <ShareDropdown url={bioUrl} />
               </div>
             </div>
