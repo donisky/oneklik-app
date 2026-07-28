@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { templates } from '@/app/lib/templateData';
 import {
-  Plus, Trash2, Eye, ArrowLeft, Crown, LogOut,
+  Plus, Trash2, Eye, EyeOff, ArrowLeft, Crown, LogOut,
   Bell, CheckCircle2, Share2, Copy, Paintbrush,
   Facebook, Twitter, Linkedin, MessageCircle, Send,
   Image as ImageIcon, Video, Sparkles, Store, Palette, BarChart3, X,
@@ -16,6 +16,7 @@ import {
   Search, SlidersHorizontal, ChevronDown, Pencil, Download, RefreshCw,
   MapPin, Monitor, TrendingUp, Smartphone, Laptop, Info, Package,
   ShoppingBag, Wallet, ClipboardList, Star, Lightbulb, LayoutGrid,
+  QrCode, Landmark, Clock, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react';
 
 /* =========================================================================
@@ -76,6 +77,16 @@ function exportAnalyticsCSV(events: any[], links: any[]) {
 
 function cx(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(' ');
+}
+
+function fmtCountdown(totalSeconds: number) {
+  const m = Math.max(0, Math.floor(totalSeconds / 60));
+  const s = Math.max(0, totalSeconds % 60);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function fmtRupiah(n: number) {
+  return `Rp ${Math.max(0, Math.round(n || 0)).toLocaleString('id-ID')}`;
 }
 
 /* =========================================================================
@@ -421,6 +432,292 @@ const NotificationModal = ({ isOpen, onClose, notifications, loading, tab, setTa
 };
 
 /* =========================================================================
+   WALLET: TOP UP MODAL (multi-step: nominal -> metode -> bayar -> menunggu -> sukses)
+   ========================================================================= */
+
+const TOPUP_NOMINALS = [10000, 25000, 50000, 100000, 250000, 500000];
+
+const PAYMENT_METHODS = [
+  { key: 'qris', label: 'QRIS', desc: 'Instan', icon: <QrCode size={18} /> },
+  { key: 'va', label: 'Virtual Account', desc: 'Otomatis', icon: <Landmark size={18} /> },
+  { key: 'transfer', label: 'Transfer Bank', desc: 'Otomatis', icon: <Landmark size={18} /> },
+  { key: 'ewallet', label: 'E-Wallet', desc: 'Instan', icon: <Wallet size={18} /> },
+];
+
+const paymentMethodLabel = (key: string) => PAYMENT_METHODS.find((m) => m.key === key)?.label || key;
+
+const TopUpModal = ({
+  isOpen, onClose, step, setStep,
+  nominal, setNominal, customNominal, setCustomNominal,
+  method, setMethod, countdown, vaNumber,
+  currentBalance, topUpAmount, newBalance,
+  onContinueStep1, onContinueStep2, onCheckPayment,
+}: any) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl relative overflow-hidden">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            {step > 1 && step < 4 && (
+              <button onClick={() => setStep(step - 1)} className="text-slate-400 hover:text-slate-700 transition-colors"><ArrowLeft size={18} /></button>
+            )}
+            <h3 className="text-sm font-bold text-slate-800">
+              {step === 1 && 'Top Up Saldo'}
+              {step === 2 && 'Pilih Metode Pembayaran'}
+              {step === 3 && (method === 'qris' ? 'Scan QRIS' : 'Selesaikan Pembayaran')}
+              {step === 4 && 'Menunggu Pembayaran'}
+              {step === 5 && 'Pembayaran Berhasil!'}
+            </h3>
+          </div>
+          {step < 4 && <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors"><X size={20} /></button>}
+        </div>
+
+        <div className="p-5">
+          {/* STEP 1: Pilih Nominal */}
+          {step === 1 && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] text-slate-400 mb-1">Saldo Saat Ini</p>
+                <p className="text-lg font-bold text-slate-800">{fmtRupiah(currentBalance)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-600 mb-2">Pilih Nominal</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {TOPUP_NOMINALS.map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => { setNominal(n); setCustomNominal(''); }}
+                      className={cx('py-2.5 rounded-lg border text-xs font-semibold transition-colors', nominal === n && !customNominal ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}
+                    >
+                      {n >= 1000000 ? `Rp ${n / 1000000}jt` : `Rp ${n / 1000}rb`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-600 mb-1.5">Nominal Lainnya</p>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">Rp</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={customNominal ? Number(customNominal).toLocaleString('id-ID') : ''}
+                    onChange={(e) => { setCustomNominal(e.target.value.replace(/[^0-9]/g, '')); setNominal(null); }}
+                    placeholder="Masukkan nominal"
+                    className="w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              </div>
+              <button onClick={onContinueStep1} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">Lanjutkan</button>
+            </div>
+          )}
+
+          {/* STEP 2: Pilih Metode Pembayaran */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Rekomendasi</p>
+                <button onClick={() => setMethod('qris')} className={cx('w-full flex items-center justify-between px-3 py-3 rounded-lg border transition-colors', method === 'qris' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50')}>
+                  <span className="flex items-center gap-2.5 text-sm font-medium text-slate-700"><QrCode size={18} className="text-blue-600" /> QRIS</span>
+                  <span className="text-[10px] font-semibold text-green-600">Instan</span>
+                </button>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Metode Lainnya</p>
+                <div className="space-y-2">
+                  {PAYMENT_METHODS.filter((m) => m.key !== 'qris').map((m) => (
+                    <button key={m.key} onClick={() => setMethod(m.key)} className={cx('w-full flex items-center justify-between px-3 py-3 rounded-lg border transition-colors', method === m.key ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50')}>
+                      <span className="flex items-center gap-2.5 text-sm font-medium text-slate-700">{m.icon} {m.label}</span>
+                      <span className="text-[10px] font-semibold text-slate-400">{m.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="border-t border-slate-100 pt-3 flex items-center justify-between">
+                <span className="text-xs text-slate-500">Total Bayar</span>
+                <span className="text-base font-bold text-slate-800">{fmtRupiah(topUpAmount)}</span>
+              </div>
+              <button onClick={onContinueStep2} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">Lanjutkan</button>
+            </div>
+          )}
+
+          {/* STEP 3: Instruksi Pembayaran */}
+          {step === 3 && (
+            <div className="text-center space-y-4">
+              {method === 'qris' ? (
+                <>
+                  <p className="text-xs text-slate-500">Scan kode QR berikut dengan aplikasi pembayaran Anda.</p>
+                  <div className="w-44 h-44 mx-auto bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center">
+                    <QrCode size={110} className="text-slate-700" strokeWidth={0.9} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-slate-500">Selesaikan pembayaran melalui {paymentMethodLabel(method)} Anda.</p>
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left">
+                    <p className="text-[10px] text-slate-400 mb-1">Nomor Virtual Account</p>
+                    <p className="text-sm font-mono font-semibold text-slate-800 tracking-wider">{vaNumber}</p>
+                  </div>
+                </>
+              )}
+              <div>
+                <p className="text-[10px] text-slate-400">Total Bayar</p>
+                <p className="text-xl font-bold text-slate-800">{fmtRupiah(topUpAmount)}</p>
+              </div>
+              <p className="text-[11px] text-amber-600 flex items-center justify-center gap-1"><Clock size={12} /> Selesaikan pembayaran dalam {fmtCountdown(countdown)}</p>
+              <button onClick={onCheckPayment} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">Cek Status Pembayaran</button>
+              <p className="text-[10px] text-slate-400">*Simulasi pembayaran — pada produksi, konfirmasi idealnya dikonfirmasi lewat webhook payment gateway.</p>
+            </div>
+          )}
+
+          {/* STEP 4: Menunggu (processing) */}
+          {step === 4 && (
+            <div className="text-center py-8 space-y-3">
+              <div className="w-14 h-14 mx-auto border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+              <p className="text-sm font-medium text-slate-600">Menunggu pembayaran...</p>
+              <p className="text-[11px] text-slate-400">Jangan tutup halaman ini sebelum pembayaran berhasil.</p>
+            </div>
+          )}
+
+          {/* STEP 5: Sukses */}
+          {step === 5 && (
+            <div className="text-center py-2 space-y-3">
+              <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center text-green-600"><CheckCircle2 size={32} /></div>
+              <p className="text-sm font-bold text-slate-800">Top up sebesar</p>
+              <p className="text-2xl font-bold text-green-600">{fmtRupiah(topUpAmount)}</p>
+              <p className="text-xs text-slate-400">berhasil ditambahkan ke saldo Anda.</p>
+              <div className="bg-slate-50 rounded-lg py-2.5">
+                <p className="text-[10px] text-slate-400">Saldo Baru</p>
+                <p className="text-lg font-bold text-slate-800">{fmtRupiah(newBalance)}</p>
+              </div>
+              <button onClick={onClose} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">Tutup</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* =========================================================================
+   WALLET: TARIK SALDO MODAL
+   ========================================================================= */
+
+const WithdrawModal = ({ isOpen, onClose, wallet, amount, setAmount, onSubmit, submitting }: any) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors"><X size={22} /></button>
+        <h3 className="text-sm font-bold text-slate-800 mb-1">Tarik Saldo</h3>
+        <p className="text-xs text-slate-400 mb-4">Saldo tersedia: {fmtRupiah(wallet?.balance || 0)}</p>
+
+        {wallet?.bank_account_number ? (
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4">
+            <p className="text-[10px] text-slate-400">Tujuan Penarikan</p>
+            <p className="text-sm font-semibold text-slate-700">{wallet.bank_name || 'Bank'} • {wallet.bank_account_number}</p>
+            <p className="text-[11px] text-slate-500">{wallet.bank_account_name}</p>
+          </div>
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-[11px] text-amber-700 flex items-start gap-2">
+            <Info size={14} className="flex-shrink-0 mt-0.5" /> Belum ada rekening bank terhubung. Hubungkan rekening bank terlebih dahulu.
+          </div>
+        )}
+
+        <label className="block text-xs font-semibold text-slate-600 mb-1.5">Nominal Penarikan</label>
+        <div className="relative mb-4">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">Rp</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={amount ? Number(amount).toLocaleString('id-ID') : ''}
+            onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ''))}
+            placeholder="0"
+            className="w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
+
+        <button
+          onClick={onSubmit}
+          disabled={submitting || !wallet?.bank_account_number}
+          className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-colors"
+        >
+          {submitting ? 'Memproses...' : 'Ajukan Penarikan'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* =========================================================================
+   WALLET: RIWAYAT TRANSAKSI (DRAWER)
+   ========================================================================= */
+
+const WalletHistoryDrawer = ({ isOpen, onClose, transactions, loading, tab, setTab, summary }: any) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[70] flex items-stretch justify-end bg-black/40 backdrop-blur-sm">
+      <div className="bg-white w-full max-w-sm h-full shadow-2xl p-6 overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold text-slate-800">Riwayat Transaksi</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors"><X size={22} /></button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="bg-slate-50 rounded-lg p-2.5 text-center">
+            <p className="text-[9px] text-slate-400 mb-0.5">Top Up</p>
+            <p className="text-[11px] font-bold text-green-600">+{fmtRupiah(summary?.totalTopup || 0)}</p>
+          </div>
+          <div className="bg-slate-50 rounded-lg p-2.5 text-center">
+            <p className="text-[9px] text-slate-400 mb-0.5">Pengeluaran</p>
+            <p className="text-[11px] font-bold text-red-500">-{fmtRupiah(summary?.totalOut || 0)}</p>
+          </div>
+          <div className="bg-slate-50 rounded-lg p-2.5 text-center">
+            <p className="text-[9px] text-slate-400 mb-0.5">Transaksi</p>
+            <p className="text-[11px] font-bold text-slate-700">{summary?.count || 0}</p>
+          </div>
+        </div>
+
+        <div className="flex gap-1 bg-slate-100 rounded-full p-1 mb-4 w-fit">
+          {[{ k: 'semua', l: 'Semua' }, { k: 'topup', l: 'Top Up' }, { k: 'pengeluaran', l: 'Pengeluaran' }].map((t) => (
+            <button key={t.k} onClick={() => setTab(t.k)} className={cx('px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors', tab === t.k ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500')}>{t.l}</button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="py-14 text-center text-slate-400 text-sm">Memuat transaksi...</div>
+        ) : transactions.length > 0 ? (
+          <div className="space-y-2">
+            {transactions.map((t: any) => (
+              <div key={t.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition-colors">
+                <div className={cx('w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0', t.type === 'topup' ? 'bg-green-50' : 'bg-red-50')}>
+                  {t.type === 'topup' ? <ArrowDownRight size={16} className="text-green-600" /> : <ArrowUpRight size={16} className="text-red-500" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-slate-700 truncate">{t.description || (t.type === 'topup' ? 'Top Up Saldo' : 'Penarikan Saldo')}</p>
+                  <p className="text-[10px] text-slate-400">{t.created_at ? new Date(t.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className={cx('text-xs font-bold', t.type === 'topup' ? 'text-green-600' : 'text-red-500')}>{t.type === 'topup' ? '+' : '-'}{fmtRupiah(t.amount || 0)}</p>
+                  <p className="text-[9px] text-slate-400 capitalize">{t.status || 'berhasil'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-14 text-center text-slate-400">
+            <Clock size={40} className="mx-auto mb-2 text-slate-200" />
+            <p className="text-sm font-medium">Belum ada transaksi</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* =========================================================================
    MAIN PAGE
    ========================================================================= */
 
@@ -470,6 +767,27 @@ export default function BioPage() {
   // --- STATE BARU UNTUK DOMPET DIGITAL ---
   const [wallet, setWallet] = useState<any>(null);
   const [walletLoading, setWalletLoading] = useState(false);
+  const [showWalletBalance, setShowWalletBalance] = useState(true);
+
+  // --- STATE: MODAL TOP UP SALDO (5 langkah) ---
+  const [showTopUpModal, setShowTopUpModal] = useState(false);
+  const [topUpStep, setTopUpStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [topUpNominal, setTopUpNominal] = useState<number | null>(null);
+  const [topUpCustomNominal, setTopUpCustomNominal] = useState('');
+  const [topUpMethod, setTopUpMethod] = useState<'qris' | 'va' | 'transfer' | 'ewallet'>('qris');
+  const [topUpCountdown, setTopUpCountdown] = useState(15 * 60);
+  const [topUpVaNumber] = useState(() => `8808${Math.floor(1000000000 + Math.random() * 8999999999)}`);
+
+  // --- STATE: MODAL TARIK SALDO ---
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
+
+  // --- STATE: DRAWER RIWAYAT TRANSAKSI WALLET ---
+  const [showWalletHistory, setShowWalletHistory] = useState(false);
+  const [walletHistoryTab, setWalletHistoryTab] = useState<'semua' | 'topup' | 'pengeluaran'>('semua');
+  const [walletTransactions, setWalletTransactions] = useState<any[]>([]);
+  const [walletTransactionsLoading, setWalletTransactionsLoading] = useState(false);
 
   const [designSubTab, setDesignSubTab] = useState<'tampilan' | 'tema' | 'warna' | 'tipografi' | 'tombol' | 'lanjutan'>('tampilan');
   const [templateCategory, setTemplateCategory] = useState('Semua Kategori');
@@ -620,6 +938,27 @@ export default function BioPage() {
     }
   };
 
+  // --- FETCH RIWAYAT TRANSAKSI WALLET ---
+  const fetchWalletTransactions = async () => {
+    if (!session?.user?.id) return;
+    setWalletTransactionsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('wallet_transactions')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      setWalletTransactions(data || []);
+    } catch (err) {
+      console.error('Error fetching wallet transactions:', err);
+      setWalletTransactions([]);
+    } finally {
+      setWalletTransactionsLoading(false);
+    }
+  };
+
   // --- INISIALISASI DATA DENGAN EFEK ---
   useEffect(() => {
     if (session?.user?.id) {
@@ -628,8 +967,17 @@ export default function BioPage() {
       fetchOrders();
       fetchShopStats();
       fetchWallet(); // <-- Tambahkan fetch wallet
+      fetchWalletTransactions(); // <-- Riwayat transaksi wallet
     }
   }, [session]);
+
+  // --- COUNTDOWN TIMER UNTUK MODAL TOP UP (step pembayaran) ---
+  useEffect(() => {
+    if (!showTopUpModal || topUpStep !== 3) return;
+    if (topUpCountdown <= 0) return;
+    const t = setInterval(() => setTopUpCountdown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [showTopUpModal, topUpStep, topUpCountdown]);
 
   useEffect(() => {
     if (activeTab === 'analytics') fetchAnalytics();
@@ -722,6 +1070,32 @@ export default function BioPage() {
       .slice(0, 5)
       .map(([key, value]) => ({ label: key, value }));
   }, [analyticsData]);
+
+  // --- DERIVED: WALLET ---
+  const topUpAmount = useMemo(() => {
+    if (topUpCustomNominal) return parseInt(topUpCustomNominal, 10) || 0;
+    return topUpNominal || 0;
+  }, [topUpCustomNominal, topUpNominal]);
+
+  const walletNewBalance = (wallet?.balance || 0) + topUpAmount;
+
+  const filteredWalletTransactions = useMemo(() => {
+    if (walletHistoryTab === 'semua') return walletTransactions;
+    if (walletHistoryTab === 'topup') return walletTransactions.filter((t) => t.type === 'topup');
+    return walletTransactions.filter((t) => t.type !== 'topup');
+  }, [walletTransactions, walletHistoryTab]);
+
+  const walletMonthSummary = useMemo(() => {
+    const now = new Date();
+    const inMonth = walletTransactions.filter((t) => {
+      if (!t.created_at) return false;
+      const d = new Date(t.created_at);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    const totalTopup = inMonth.filter((t) => t.type === 'topup').reduce((s, t) => s + (t.amount || 0), 0);
+    const totalOut = inMonth.filter((t) => t.type !== 'topup').reduce((s, t) => s + (t.amount || 0), 0);
+    return { totalTopup, totalOut, count: inMonth.length };
+  }, [walletTransactions]);
 
   /* ------------------------------- HANDLERS ------------------------------- */
   const handleSaveProfile = async () => {
@@ -877,6 +1251,91 @@ export default function BioPage() {
     fetchProducts();
   };
 
+  /* ----------------------------- HANDLERS: WALLET ----------------------------- */
+  const openTopUpModal = () => {
+    setTopUpStep(1);
+    setTopUpNominal(null);
+    setTopUpCustomNominal('');
+    setTopUpMethod('qris');
+    setShowTopUpModal(true);
+  };
+
+  const closeTopUpModal = () => {
+    setShowTopUpModal(false);
+    setTimeout(() => setTopUpStep(1), 300);
+  };
+
+  const handleTopUpContinueStep1 = () => {
+    if (!topUpAmount || topUpAmount < 10000) { toast.error('Minimal top up Rp 10.000'); return; }
+    setTopUpStep(2);
+  };
+
+  const handleTopUpContinueStep2 = () => {
+    setTopUpCountdown(15 * 60);
+    setTopUpStep(3);
+  };
+
+  // NOTE: Ini simulasi konfirmasi pembayaran di sisi client untuk keperluan UI/demo.
+  // Untuk produksi, saldo idealnya baru dikreditkan setelah menerima notifikasi
+  // webhook dari payment gateway (mengikuti pola dual-write yang sudah dipakai
+  // pada integrasi PayPal), agar tidak bisa dimanipulasi dari sisi client.
+  const handleConfirmTopUpPayment = async () => {
+    if (!session?.user?.id || !topUpAmount) return;
+    setTopUpStep(4);
+    try {
+      const newBalance = (wallet?.balance || 0) + topUpAmount;
+      const { error: walletError } = await supabase
+        .from('wallets')
+        .upsert({ user_id: session.user.id, balance: newBalance }, { onConflict: 'user_id' });
+      if (walletError) throw walletError;
+
+      await supabase.from('wallet_transactions').insert({
+        user_id: session.user.id,
+        type: 'topup',
+        amount: topUpAmount,
+        status: 'berhasil',
+        method: topUpMethod,
+        description: `Top Up via ${paymentMethodLabel(topUpMethod)}`,
+      });
+
+      setWallet((prev: any) => ({ ...(prev || {}), balance: newBalance }));
+      setTimeout(() => {
+        setTopUpStep(5);
+        fetchWalletTransactions();
+      }, 1000);
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Gagal memproses top up: ' + err.message);
+      setTopUpStep(3);
+    }
+  };
+
+  const handleWithdrawSubmit = async () => {
+    const amount = parseInt(withdrawAmount, 10) || 0;
+    if (!amount || amount < 10000) { toast.error('Minimal penarikan Rp 10.000'); return; }
+    if (amount > (wallet?.balance || 0)) { toast.error('Saldo tidak mencukupi'); return; }
+    if (!wallet?.bank_account_number) { toast.error('Lengkapi data rekening bank terlebih dahulu.'); return; }
+    setWithdrawSubmitting(true);
+    try {
+      const { error } = await supabase.from('wallet_transactions').insert({
+        user_id: session.user.id,
+        type: 'tarik',
+        amount,
+        status: 'diproses',
+        description: `Penarikan ke ${wallet.bank_name || 'Bank'} - ${wallet.bank_account_number}`,
+      });
+      if (error) throw error;
+      toast.success('Permintaan penarikan saldo berhasil diajukan!');
+      setShowWithdrawModal(false);
+      setWithdrawAmount('');
+      fetchWalletTransactions();
+    } catch (err: any) {
+      toast.error('Gagal mengajukan penarikan: ' + err.message);
+    } finally {
+      setWithdrawSubmitting(false);
+    }
+  };
+
   /* --------------------------------- RENDER -------------------------------- */
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat dashboard...</div>;
@@ -987,21 +1446,37 @@ export default function BioPage() {
 
           {/* --- CARD DOMPET DIGITAL (FITUR BARU) --- */}
           {user && (
-            <div className="mt-4 mx-2 p-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                  <Wallet size={14} className="text-blue-600" /> Dompet Digital
+            <div className="mt-4 mx-2 p-4 bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 rounded-2xl shadow-lg shadow-blue-200 relative overflow-hidden">
+              <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full pointer-events-none" />
+              <div className="absolute -bottom-8 -left-4 w-20 h-20 bg-white/10 rounded-full pointer-events-none" />
+
+              <div className="relative flex items-center justify-between mb-3">
+                <p className="text-xs font-bold text-white/90 flex items-center gap-1.5">
+                  <Wallet size={14} /> Dompet Digital
                 </p>
+                <button onClick={() => setShowWalletBalance((v) => !v)} className="text-white/70 hover:text-white transition-colors" title={showWalletBalance ? 'Sembunyikan saldo' : 'Tampilkan saldo'}>
+                  {showWalletBalance ? <Eye size={14} /> : <EyeOff size={14} />}
+                </button>
               </div>
-              <div className="text-xl font-bold text-slate-800">
-                {walletLoading ? '...' : `Rp ${(wallet?.balance || 0).toLocaleString('id-ID')}`}
+
+              <p className="relative text-[10px] text-white/60 mb-0.5">Saldo Anda</p>
+              <div className="relative text-2xl font-bold text-white mb-3 tabular-nums">
+                {walletLoading ? '...' : showWalletBalance ? fmtRupiah(wallet?.balance || 0) : 'Rp ••••••'}
               </div>
-              <div className="flex gap-2 mt-3">
-                <button className="flex-1 py-1.5 bg-blue-600 text-white text-[10px] font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
+
+              <div className="relative flex gap-2">
+                <button onClick={openTopUpModal} className="flex-1 py-1.5 bg-white text-blue-700 text-[10px] font-bold rounded-lg hover:bg-blue-50 transition-colors shadow-sm flex items-center justify-center gap-1">
+                  <Plus size={12} /> Top Up
+                </button>
+                <button onClick={() => setShowWithdrawModal(true)} className="flex-1 py-1.5 bg-white/15 text-white text-[10px] font-semibold rounded-lg hover:bg-white/25 transition-colors backdrop-blur-sm">
                   Tarik Saldo
                 </button>
-                <button className="flex-1 py-1.5 bg-slate-100 text-slate-600 text-[10px] font-semibold rounded-lg hover:bg-slate-200 transition-colors">
-                  Riwayat
+                <button
+                  onClick={() => { setShowWalletHistory(true); fetchWalletTransactions(); }}
+                  className="px-2.5 py-1.5 bg-white/15 text-white text-[10px] font-semibold rounded-lg hover:bg-white/25 transition-colors backdrop-blur-sm"
+                  title="Riwayat Transaksi"
+                >
+                  <Clock size={13} />
                 </button>
               </div>
             </div>
