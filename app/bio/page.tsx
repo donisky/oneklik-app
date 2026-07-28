@@ -1,5 +1,33 @@
 'use client';
 
+/**
+ * Oneklik.id — Bio Link Dashboard
+ * ============================================================================
+ * Implementasi ulang UI mengikuti mockup desain (header global, sidebar,
+ * wallet dropdown + panel wallet lengkap, dan detail modal Top Up/Tarik/
+ * Transfer/Voucher/Invoice).
+ *
+ * SEMUA integrasi Supabase yang SUDAH ADA sebelumnya (users, links,
+ * shop_products, orders, reviews, analytics_events, wallets,
+ * wallet_transactions, notifications) TIDAK diubah sama sekali — hanya
+ * ditata ulang tampilannya.
+ *
+ * TODO — integrasi yang perlu disambungkan menyusul (sudah diberi UI +
+ * handler siap pakai, tinggal disesuaikan dengan skema/endpoint Anda):
+ *   1. Midtrans: ganti simulasi di `handleConfirmTopUpPayment` dengan
+ *      Snap token dari server + webhook notification handler.
+ *   2. Transfer Saldo: `handleTransferSubmit` — sambungkan ke RPC/Edge
+ *      Function Supabase agar debit-kredit berjalan atomik.
+ *   3. Voucher & Promo: `handleClaimVoucher` — asumsi ada tabel `vouchers`
+ *      (code, value, expired_at, quota), sesuaikan dengan skema Anda.
+ *   4. Invoice: `InvoiceModal` menampilkan riwayat top up, tombol "Unduh"
+ *      masih placeholder — sambungkan ke generator PDF invoice Anda.
+ *   5. Storage widget di sidebar masih data statis — sambungkan ke
+ *      pemakaian Supabase Storage per user bila tersedia.
+ *   6. Tab "Template" & "Affiliate" baru berupa placeholder "Segera Hadir".
+ * ============================================================================
+ */
+
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -17,6 +45,8 @@ import {
   MapPin, Monitor, TrendingUp, Smartphone, Laptop, Info, Package,
   ShoppingBag, Wallet, ClipboardList, Star, Lightbulb, LayoutGrid,
   QrCode, Landmark, Clock, ArrowUpRight, ArrowDownRight,
+  FileText, Users, HardDrive, ArrowRightLeft, Ticket, Receipt,
+  ChevronRight, Settings, MousePointerClick,
 } from 'lucide-react';
 
 /* =========================================================================
@@ -87,6 +117,52 @@ function fmtCountdown(totalSeconds: number) {
 
 function fmtRupiah(n: number) {
   return `Rp ${Math.max(0, Math.round(n || 0)).toLocaleString('id-ID')}`;
+}
+
+// --- Trend helpers (dipakai kartu statistik "+X% dari minggu lalu") ---
+function computeTrend(dates: Array<string | undefined | null>) {
+  const now = new Date();
+  const c0 = new Date(now); c0.setDate(now.getDate() - 7);
+  const p0 = new Date(now); p0.setDate(now.getDate() - 14);
+  let current = 0;
+  let previous = 0;
+  dates.forEach((ds) => {
+    if (!ds) return;
+    const d = new Date(ds);
+    if (d >= c0) current += 1;
+    else if (d >= p0 && d < c0) previous += 1;
+  });
+  if (previous === 0) return { pct: current > 0 ? 100 : 0, isNew: true };
+  return { pct: Math.round(((current - previous) / previous) * 100), isNew: false };
+}
+
+function computeCtrTrend(events: any[]) {
+  const now = new Date();
+  const c0 = new Date(now); c0.setDate(now.getDate() - 7);
+  const p0 = new Date(now); p0.setDate(now.getDate() - 14);
+  let curViews = 0, curClicks = 0, prevViews = 0, prevClicks = 0;
+  events.forEach((e) => {
+    if (!e.created_at) return;
+    const d = new Date(e.created_at);
+    if (d >= c0) {
+      if (e.event_type === 'profile_view') curViews += 1;
+      else if (e.event_type === 'link_click') curClicks += 1;
+    } else if (d >= p0 && d < c0) {
+      if (e.event_type === 'profile_view') prevViews += 1;
+      else if (e.event_type === 'link_click') prevClicks += 1;
+    }
+  });
+  const curCtr = curViews > 0 ? (curClicks / curViews) * 100 : 0;
+  const prevCtr = prevViews > 0 ? (prevClicks / prevViews) * 100 : 0;
+  if (prevCtr === 0) return { pct: curCtr > 0 ? 100 : 0, isNew: true };
+  return { pct: Math.round(((curCtr - prevCtr) / prevCtr) * 100), isNew: false };
+}
+
+function formatMonthRangeLabel() {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthLabel = now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  return `${first.getDate()} - ${now.getDate()} ${monthLabel}`;
 }
 
 /* =========================================================================
@@ -208,6 +284,23 @@ const ActivityHeatmap = ({ events }: { events: any[] }) => {
         Rendah <span className="w-2.5 h-2.5 rounded-sm bg-slate-100 inline-block" /> <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ backgroundColor: 'rgba(37,99,235,0.9)' }} /> Tinggi
       </div>
     </div>
+  );
+};
+
+/* =========================================================================
+   TREND BADGE (statistik "+X% dari minggu lalu")
+   ========================================================================= */
+
+const TrendBadge = ({ pct, isNew }: { pct: number; isNew?: boolean }) => {
+  if (isNew && pct === 0) {
+    return <span className="text-[10px] font-medium text-slate-300 mt-1 block">Belum ada data</span>;
+  }
+  const positive = pct >= 0;
+  return (
+    <span className={cx('text-[10px] font-medium flex items-center gap-0.5 mt-1', positive ? 'text-green-600' : 'text-red-500')}>
+      {positive ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+      {positive ? '+' : ''}{pct}% dari minggu lalu
+    </span>
   );
 };
 
@@ -432,6 +525,169 @@ const NotificationModal = ({ isOpen, onClose, notifications, loading, tab, setTa
 };
 
 /* =========================================================================
+   WALLET: HEADER DROPDOWN (dipicu dari tombol saldo di top header)
+   ========================================================================= */
+
+const WalletDropdownPanel = ({
+  wallet, walletLoading, onTopUp, onHistory, onWithdraw, onTransfer, onVoucher, onViewAll,
+}: any) => (
+  <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-4">
+    <div className="flex items-center gap-2 mb-3">
+      <span className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0"><Wallet size={14} /></span>
+      <p className="text-sm font-bold text-slate-800">Dompet Digital</p>
+    </div>
+    <p className="text-[10px] text-slate-400">Saldo Anda</p>
+    <p className="text-2xl font-bold text-slate-800 mb-3">{walletLoading ? '...' : fmtRupiah(wallet?.balance || 0)}</p>
+    <button onClick={onTopUp} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 mb-2 transition-colors">
+      <Plus size={14} /> Top Up Saldo
+    </button>
+    <div className="space-y-0.5 mb-1">
+      {[
+        { icon: <Clock size={15} />, label: 'Riwayat Transaksi', onClick: onHistory },
+        { icon: <Wallet size={15} />, label: 'Tarik Saldo', onClick: onWithdraw },
+        { icon: <ArrowRightLeft size={15} />, label: 'Transfer Saldo', onClick: onTransfer },
+        { icon: <Ticket size={15} />, label: 'Voucher & Promo', onClick: onVoucher },
+      ].map((item) => (
+        <button key={item.label} onClick={item.onClick} className="w-full flex items-center justify-between px-2 py-2.5 rounded-lg hover:bg-slate-50 transition-colors text-left">
+          <span className="flex items-center gap-2.5 text-xs font-medium text-slate-600">{item.icon} {item.label}</span>
+          <ChevronRight size={14} className="text-slate-300" />
+        </button>
+      ))}
+    </div>
+    <div className="border-t border-slate-100 pt-2 mt-1">
+      <button onClick={onViewAll} className="w-full text-center text-xs font-semibold text-blue-600 hover:text-blue-700 py-1.5 flex items-center justify-center gap-1">
+        Lihat Semua di Wallet <ArrowUpRight size={13} />
+      </button>
+    </div>
+  </div>
+);
+
+/* =========================================================================
+   WALLET: PANEL LENGKAP (slide-over dari kanan, dibuka lewat "Lihat Semua di Wallet")
+   ========================================================================= */
+
+const WalletPanel = ({
+  isOpen, onClose, wallet, walletLoading, showBalance, setShowBalance,
+  monthSummary, monthRangeLabel, transactions,
+  onTopUp, onWithdraw, onHistory, onTransfer, onVoucher, onInvoice,
+}: any) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[65] flex items-stretch justify-end bg-black/30 backdrop-blur-[2px]">
+      <div className="bg-[#F8FAFC] w-full max-w-sm h-full shadow-2xl overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-slate-100 p-5 flex items-start justify-between z-10">
+          <div>
+            <p className="text-base font-bold text-slate-800 flex items-center gap-2"><Wallet size={17} className="text-blue-600" /> Wallet</p>
+            <p className="text-xs text-slate-400 mt-0.5">Kelola saldo dan semua transaksi Anda.</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors flex-shrink-0"><X size={22} /></button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Saldo Tersedia */}
+          <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 shadow-lg shadow-blue-200">
+            <div className="absolute -top-8 -right-8 w-28 h-28 bg-white/10 rounded-full pointer-events-none" />
+            <div className="absolute -bottom-10 -left-6 w-24 h-24 bg-white/10 rounded-full pointer-events-none" />
+            <div className="relative flex items-center justify-between mb-1">
+              <p className="text-xs font-medium text-white/80">Saldo Tersedia</p>
+              <button onClick={() => setShowBalance((v: boolean) => !v)} className="text-white/70 hover:text-white transition-colors">
+                {showBalance ? <Eye size={15} /> : <EyeOff size={15} />}
+              </button>
+            </div>
+            <p className="relative text-3xl font-bold text-white mb-4 tabular-nums">
+              {walletLoading ? '...' : showBalance ? fmtRupiah(wallet?.balance || 0) : 'Rp ••••••'}
+            </p>
+            <div className="relative flex gap-2">
+              <button onClick={onTopUp} className="flex-1 py-2 bg-white text-blue-700 text-xs font-bold rounded-xl hover:bg-blue-50 transition-colors flex items-center justify-center gap-1">
+                <Plus size={13} /> Top Up
+              </button>
+              <button onClick={onWithdraw} className="flex-1 py-2 bg-white/15 text-white text-xs font-semibold rounded-xl hover:bg-white/25 transition-colors backdrop-blur-sm">
+                Tarik Saldo
+              </button>
+            </div>
+          </div>
+
+          {/* Quick actions */}
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { icon: <Clock size={17} />, label: 'Riwayat', onClick: onHistory },
+              { icon: <ArrowRightLeft size={17} />, label: 'Transfer', onClick: onTransfer },
+              { icon: <Ticket size={17} />, label: 'Voucher', onClick: onVoucher },
+              { icon: <Receipt size={17} />, label: 'Invoice', onClick: onInvoice },
+            ].map((a) => (
+              <button key={a.label} onClick={a.onClick} className="bg-white border border-slate-200 rounded-xl py-3 flex flex-col items-center gap-1.5 hover:bg-slate-50 hover:border-blue-200 transition-colors">
+                <span className="text-blue-600">{a.icon}</span>
+                <span className="text-[10px] font-semibold text-slate-600">{a.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Ringkasan Bulan Ini */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <div className="mb-3">
+              <p className="text-xs font-bold text-slate-800">Ringkasan Bulan Ini</p>
+              <p className="text-[10px] text-slate-400">{monthRangeLabel}</p>
+            </div>
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-2 text-slate-500"><ArrowDownRight size={13} className="text-green-500" /> Top Up</span>
+                <span className="font-semibold text-green-600">+{fmtRupiah(monthSummary?.totalTopup || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-2 text-slate-500"><ArrowUpRight size={13} className="text-red-400" /> Pengeluaran</span>
+                <span className="font-semibold text-red-500">-{fmtRupiah(monthSummary?.totalOut || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-2 text-slate-500"><ClipboardList size={13} className="text-slate-400" /> Transaksi</span>
+                <span className="font-semibold text-slate-700">{monthSummary?.count || 0} Transaksi</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Transaksi Terakhir */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-bold text-slate-800">Transaksi Terakhir</p>
+              <button onClick={onHistory} className="text-[11px] font-semibold text-blue-600 hover:text-blue-700">Lihat Semua</button>
+            </div>
+            {transactions.length > 0 ? (
+              <div className="space-y-3">
+                {transactions.slice(0, 5).map((t: any) => (
+                  <div key={t.id} className="flex items-center gap-2.5">
+                    <div className={cx('w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0', t.type === 'topup' ? 'bg-green-50' : 'bg-red-50')}>
+                      {t.type === 'topup' ? <ArrowDownRight size={14} className="text-green-600" /> : <ArrowUpRight size={14} className="text-red-500" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-semibold text-slate-700 truncate">{t.description || (t.type === 'topup' ? 'Top Up Saldo' : 'Penarikan Saldo')}</p>
+                      <p className="text-[9px] text-slate-400">
+                        {t.created_at ? new Date(t.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                        {t.created_at ? `, ${new Date(t.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className={cx('text-[11px] font-bold', t.type === 'topup' ? 'text-green-600' : 'text-red-500')}>
+                        {t.type === 'topup' ? '+' : '-'}{fmtRupiah(t.amount || 0)}
+                      </p>
+                      <p className="text-[9px] text-green-500 font-medium capitalize">{t.status || 'berhasil'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-400 text-center py-4">Belum ada transaksi.</p>
+            )}
+          </div>
+
+          <button onClick={onHistory} className="w-full py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5">
+            Lihat Semua Transaksi <ArrowUpRight size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* =========================================================================
    WALLET: TOP UP MODAL (multi-step: nominal -> metode -> bayar -> menunggu -> sukses)
    ========================================================================= */
 
@@ -568,7 +824,7 @@ const TopUpModal = ({
               </div>
               <p className="text-[11px] text-amber-600 flex items-center justify-center gap-1"><Clock size={12} /> Selesaikan pembayaran dalam {fmtCountdown(countdown)}</p>
               <button onClick={onCheckPayment} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">Cek Status Pembayaran</button>
-              <p className="text-[10px] text-slate-400">*Simulasi pembayaran — pada produksi, konfirmasi idealnya dikonfirmasi lewat webhook payment gateway.</p>
+              <p className="text-[10px] text-slate-400">*Simulasi pembayaran — pada produksi, konfirmasi idealnya lewat webhook notification Midtrans.</p>
             </div>
           )}
 
@@ -652,10 +908,140 @@ const WithdrawModal = ({ isOpen, onClose, wallet, amount, setAmount, onSubmit, s
 };
 
 /* =========================================================================
+   WALLET: TRANSFER SALDO MODAL (baru)
+   ========================================================================= */
+
+const TransferModal = ({ isOpen, onClose, wallet, recipient, setRecipient, amount, setAmount, note, setNote, onSubmit, submitting }: any) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors"><X size={22} /></button>
+        <div className="w-11 h-11 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 mb-3"><ArrowRightLeft size={20} /></div>
+        <h3 className="text-sm font-bold text-slate-800 mb-1">Transfer Saldo</h3>
+        <p className="text-xs text-slate-400 mb-4">Saldo tersedia: {fmtRupiah(wallet?.balance || 0)}</p>
+
+        <label className="block text-xs font-semibold text-slate-600 mb-1.5">Username / ID Penerima</label>
+        <input
+          value={recipient}
+          onChange={(e) => setRecipient(e.target.value)}
+          placeholder="contoh: budi123"
+          className="w-full mb-4 border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+        />
+
+        <label className="block text-xs font-semibold text-slate-600 mb-1.5">Nominal Transfer</label>
+        <div className="relative mb-4">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">Rp</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={amount ? Number(amount).toLocaleString('id-ID') : ''}
+            onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ''))}
+            placeholder="0"
+            className="w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
+
+        <label className="block text-xs font-semibold text-slate-600 mb-1.5">Catatan (opsional)</label>
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Contoh: bayar jasa desain"
+          className="w-full mb-5 border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+        />
+
+        <button
+          onClick={onSubmit}
+          disabled={submitting}
+          className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition-colors"
+        >
+          {submitting ? 'Memproses...' : 'Kirim Transfer'}
+        </button>
+        <p className="text-[10px] text-slate-400 mt-3 text-center">*Saldo akan terpotong setelah transfer berhasil diverifikasi sistem.</p>
+      </div>
+    </div>
+  );
+};
+
+/* =========================================================================
+   WALLET: VOUCHER & PROMO MODAL (baru)
+   ========================================================================= */
+
+const VoucherModal = ({ isOpen, onClose, code, setCode, onSubmit, submitting }: any) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors"><X size={22} /></button>
+        <div className="w-11 h-11 bg-amber-50 rounded-full flex items-center justify-center text-amber-500 mb-3"><Ticket size={20} /></div>
+        <h3 className="text-sm font-bold text-slate-800 mb-1">Voucher &amp; Promo</h3>
+        <p className="text-xs text-slate-400 mb-4">Masukkan kode voucher untuk klaim saldo bonus atau diskon.</p>
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          placeholder="Contoh: ONEKLIK50K"
+          className="w-full mb-4 border border-slate-300 rounded-lg px-3 py-2.5 text-sm tracking-widest font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+        />
+        <button
+          onClick={onSubmit}
+          disabled={submitting || !code}
+          className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition-colors"
+        >
+          {submitting ? 'Memeriksa...' : 'Klaim Voucher'}
+        </button>
+        <p className="text-[10px] text-slate-400 mt-3 text-center">Belum punya kode voucher? Pantau promo terbaru di halaman Upgrade.</p>
+      </div>
+    </div>
+  );
+};
+
+/* =========================================================================
+   WALLET: INVOICE MODAL (baru)
+   ========================================================================= */
+
+const InvoiceModal = ({ isOpen, onClose, transactions, loading }: any) => {
+  if (!isOpen) return null;
+  const invoices = transactions.filter((t: any) => t.type === 'topup');
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative max-h-[75vh] flex flex-col">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors"><X size={22} /></button>
+        <h3 className="text-sm font-bold text-slate-800 mb-1">Invoice</h3>
+        <p className="text-xs text-slate-400 mb-4">Riwayat invoice top up saldo Anda.</p>
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+          {loading ? (
+            <div className="py-10 text-center text-slate-400 text-sm">Memuat invoice...</div>
+          ) : invoices.length > 0 ? invoices.map((inv: any) => (
+            <div key={inv.id} className="flex items-center gap-3 border border-slate-100 rounded-lg p-3">
+              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0"><Receipt size={16} /></div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-700 truncate">{inv.description || 'Top Up Saldo'}</p>
+                <p className="text-[10px] text-slate-400">{inv.created_at ? new Date(inv.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</p>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-xs font-bold text-slate-700">{fmtRupiah(inv.amount || 0)}</p>
+                <button onClick={() => toast('Fitur unduh invoice akan segera tersedia.')} className="text-[10px] font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-0.5 ml-auto">
+                  Unduh <Download size={11} />
+                </button>
+              </div>
+            </div>
+          )) : (
+            <div className="py-10 text-center text-slate-400">
+              <Receipt size={36} className="mx-auto mb-2 text-slate-200" />
+              <p className="text-sm font-medium">Belum ada invoice.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* =========================================================================
    WALLET: RIWAYAT TRANSAKSI (DRAWER)
    ========================================================================= */
 
-const WalletHistoryDrawer = ({ isOpen, onClose, transactions, loading, tab, setTab, summary }: any) => {
+const WalletHistoryDrawer = ({ isOpen, onClose, transactions, loading, tab, setTab }: any) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[70] flex items-stretch justify-end bg-black/40 backdrop-blur-sm">
@@ -663,21 +1049,6 @@ const WalletHistoryDrawer = ({ isOpen, onClose, transactions, loading, tab, setT
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold text-slate-800">Riwayat Transaksi</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors"><X size={22} /></button>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          <div className="bg-slate-50 rounded-lg p-2.5 text-center">
-            <p className="text-[9px] text-slate-400 mb-0.5">Top Up</p>
-            <p className="text-[11px] font-bold text-green-600">+{fmtRupiah(summary?.totalTopup || 0)}</p>
-          </div>
-          <div className="bg-slate-50 rounded-lg p-2.5 text-center">
-            <p className="text-[9px] text-slate-400 mb-0.5">Pengeluaran</p>
-            <p className="text-[11px] font-bold text-red-500">-{fmtRupiah(summary?.totalOut || 0)}</p>
-          </div>
-          <div className="bg-slate-50 rounded-lg p-2.5 text-center">
-            <p className="text-[9px] text-slate-400 mb-0.5">Transaksi</p>
-            <p className="text-[11px] font-bold text-slate-700">{summary?.count || 0}</p>
-          </div>
         </div>
 
         <div className="flex gap-1 bg-slate-100 rounded-full p-1 mb-4 w-fit">
@@ -727,7 +1098,7 @@ export default function BioPage() {
   const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [links, setLinks] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'links' | 'design' | 'shop' | 'analytics'>('links');
+  const [activeTab, setActiveTab] = useState<'links' | 'design' | 'shop' | 'analytics' | 'template' | 'affiliate'>('links');
   const [showAddLink, setShowAddLink] = useState(false);
   const [newLinkTitle, setNewLinkTitle] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -753,7 +1124,7 @@ export default function BioPage() {
 
   const [uploadingBg, setUploadingBg] = useState(false);
 
-  // --- STATE BARU UNTUK SHOP STATS & ORDERS ---
+  // --- STATE: SHOP STATS & ORDERS ---
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
@@ -764,7 +1135,7 @@ export default function BioPage() {
     totalReviews: 0,
   });
 
-  // --- STATE BARU UNTUK DOMPET DIGITAL ---
+  // --- STATE: DOMPET DIGITAL ---
   const [wallet, setWallet] = useState<any>(null);
   const [walletLoading, setWalletLoading] = useState(false);
   const [showWalletBalance, setShowWalletBalance] = useState(true);
@@ -782,6 +1153,27 @@ export default function BioPage() {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
+
+  // --- STATE: MODAL TRANSFER SALDO (baru) ---
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferRecipient, setTransferRecipient] = useState('');
+  const [transferAmount, setTransferAmount] = useState('');
+  const [transferNote, setTransferNote] = useState('');
+  const [transferSubmitting, setTransferSubmitting] = useState(false);
+
+  // --- STATE: MODAL VOUCHER & PROMO (baru) ---
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
+  const [voucherCode, setVoucherCode] = useState('');
+  const [voucherSubmitting, setVoucherSubmitting] = useState(false);
+
+  // --- STATE: MODAL INVOICE (baru) ---
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+
+  // --- STATE: PANEL WALLET LENGKAP + DROPDOWN HEADER (baru) ---
+  const [showWalletPanel, setShowWalletPanel] = useState(false);
+  const [walletDropdownOpen, setWalletDropdownOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [headerSearch, setHeaderSearch] = useState('');
 
   // --- STATE: DRAWER RIWAYAT TRANSAKSI WALLET ---
   const [showWalletHistory, setShowWalletHistory] = useState(false);
@@ -918,7 +1310,7 @@ export default function BioPage() {
     }
   };
 
-  // --- FETCH WALLET (FITUR DOMPET BARU) ---
+  // --- FETCH WALLET ---
   const fetchWallet = async () => {
     if (!session?.user?.id) return;
     setWalletLoading(true);
@@ -966,8 +1358,8 @@ export default function BioPage() {
       fetchAnalytics();
       fetchOrders();
       fetchShopStats();
-      fetchWallet(); // <-- Tambahkan fetch wallet
-      fetchWalletTransactions(); // <-- Riwayat transaksi wallet
+      fetchWallet();
+      fetchWalletTransactions();
     }
   }, [session]);
 
@@ -993,6 +1385,12 @@ export default function BioPage() {
   const totalClicks = useMemo(() => analyticsData.filter((e) => e.event_type === 'link_click').length, [analyticsData]);
   const ctr = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(1) : '0.0';
   const dailySeries = useMemo(() => computeDailySeries(analyticsData, analyticsRangeDays), [analyticsData, analyticsRangeDays]);
+
+  // Trend "+X% dari minggu lalu" untuk kartu statistik
+  const linksTrend = useMemo(() => computeTrend(links.map((l) => l.created_at)), [links]);
+  const clicksTrend = useMemo(() => computeTrend(analyticsData.filter((e) => e.event_type === 'link_click').map((e) => e.created_at)), [analyticsData]);
+  const viewsTrend = useMemo(() => computeTrend(analyticsData.filter((e) => e.event_type === 'profile_view').map((e) => e.created_at)), [analyticsData]);
+  const ctrTrend = useMemo(() => computeCtrTrend(analyticsData), [analyticsData]);
 
   const clicksByLink = useMemo(() => {
     const map: Record<string, number> = {};
@@ -1096,6 +1494,12 @@ export default function BioPage() {
     const totalOut = inMonth.filter((t) => t.type !== 'topup').reduce((s, t) => s + (t.amount || 0), 0);
     return { totalTopup, totalOut, count: inMonth.length };
   }, [walletTransactions]);
+
+  const walletMonthRangeLabel = useMemo(() => formatMonthRangeLabel(), []);
+
+  // --- DERIVED: STORAGE (placeholder — sambungkan ke Supabase Storage usage) ---
+  const storageLimitGb = user?.is_premium ? 50 : 10;
+  const storageUsedGb = 2.4; // TODO: hitung dari total ukuran file di bucket avatars/products
 
   /* ------------------------------- HANDLERS ------------------------------- */
   const handleSaveProfile = async () => {
@@ -1276,9 +1680,10 @@ export default function BioPage() {
   };
 
   // NOTE: Ini simulasi konfirmasi pembayaran di sisi client untuk keperluan UI/demo.
-  // Untuk produksi, saldo idealnya baru dikreditkan setelah menerima notifikasi
-  // webhook dari payment gateway (mengikuti pola dual-write yang sudah dipakai
-  // pada integrasi PayPal), agar tidak bisa dimanipulasi dari sisi client.
+  // Untuk produksi (integrasi Midtrans), saldo idealnya baru dikreditkan setelah
+  // menerima notifikasi webhook dari Midtrans (Snap/Core API), mengikuti pola
+  // dual-write yang sudah dipakai pada integrasi PayPal, agar tidak bisa
+  // dimanipulasi dari sisi client.
   const handleConfirmTopUpPayment = async () => {
     if (!session?.user?.id || !topUpAmount) return;
     setTopUpStep(4);
@@ -1336,6 +1741,71 @@ export default function BioPage() {
     }
   };
 
+  // --- HANDLER: TRANSFER SALDO (baru, siap diintegrasikan ke RPC Supabase) ---
+  const handleTransferSubmit = async () => {
+    const amount = parseInt(transferAmount, 10) || 0;
+    if (!transferRecipient.trim()) { toast.error('Masukkan username atau ID penerima'); return; }
+    if (!amount || amount < 10000) { toast.error('Minimal transfer Rp 10.000'); return; }
+    if (amount > (wallet?.balance || 0)) { toast.error('Saldo tidak mencukupi'); return; }
+    setTransferSubmitting(true);
+    try {
+      // TODO: idealnya proses debit-kredit dilakukan lewat RPC/Edge Function
+      // Supabase agar atomik. Di sini hanya verifikasi penerima + catat pengajuan.
+      const { data: recipientUser, error: recipientError } = await supabase
+        .from('users')
+        .select('id, username')
+        .eq('username', transferRecipient.trim())
+        .maybeSingle();
+      if (recipientError) throw recipientError;
+      if (!recipientUser) { toast.error('Penerima tidak ditemukan'); setTransferSubmitting(false); return; }
+      if (recipientUser.id === session?.user?.id) { toast.error('Tidak bisa transfer ke diri sendiri'); setTransferSubmitting(false); return; }
+
+      const { error } = await supabase.from('wallet_transactions').insert({
+        user_id: session.user.id,
+        type: 'transfer',
+        amount,
+        status: 'diproses',
+        description: `Transfer ke @${recipientUser.username}${transferNote ? ' - ' + transferNote : ''}`,
+      });
+      if (error) throw error;
+
+      toast.success('Permintaan transfer berhasil diajukan!');
+      setShowTransferModal(false);
+      setTransferRecipient(''); setTransferAmount(''); setTransferNote('');
+      fetchWalletTransactions();
+    } catch (err: any) {
+      toast.error('Gagal memproses transfer: ' + err.message);
+    } finally {
+      setTransferSubmitting(false);
+    }
+  };
+
+  // --- HANDLER: KLAIM VOUCHER (baru, asumsi tabel `vouchers` — sesuaikan skema) ---
+  const handleClaimVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    setVoucherSubmitting(true);
+    try {
+      // TODO: validasi kode voucher ke tabel `vouchers` (masa berlaku, kuota, dsb),
+      // lalu catat klaim di tabel `voucher_redemptions` dan kreditkan saldo/diskon.
+      const { data: voucherData, error: voucherError } = await supabase
+        .from('vouchers')
+        .select('*')
+        .eq('code', voucherCode.trim().toUpperCase())
+        .maybeSingle();
+      if (voucherError) throw voucherError;
+      if (!voucherData) { toast.error('Kode voucher tidak valid atau sudah kedaluwarsa'); setVoucherSubmitting(false); return; }
+
+      toast.success(`Voucher ${voucherData.code} berhasil diklaim!`);
+      setShowVoucherModal(false);
+      setVoucherCode('');
+      fetchWallet();
+    } catch (err: any) {
+      toast.error('Gagal klaim voucher: ' + (err.message || 'tabel vouchers belum tersedia'));
+    } finally {
+      setVoucherSubmitting(false);
+    }
+  };
+
   /* --------------------------------- RENDER -------------------------------- */
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat dashboard...</div>;
@@ -1356,6 +1826,8 @@ export default function BioPage() {
     { key: 'shop', label: 'Shop', icon: <Store className="w-4 h-4" /> },
     { key: 'design', label: 'Design', icon: <Palette className="w-4 h-4" /> },
     { key: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
+    { key: 'template', label: 'Template', icon: <FileText className="w-4 h-4" /> },
+    { key: 'affiliate', label: 'Affiliate', icon: <Users className="w-4 h-4" /> },
   ];
 
   const DesignSubTabs = [
@@ -1389,872 +1861,1065 @@ export default function BioPage() {
     );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col lg:flex-row overflow-hidden">
+    <div className="h-screen bg-[#F8FAFC] text-slate-800 flex flex-col overflow-hidden">
       <Toaster position="top-center" />
 
-      {mobileMenuOpen && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setMobileMenuOpen(false)} />}
+      {/* ===================================================================
+          TOP HEADER BAR (global — logo, search, notifikasi, wallet, profil)
+          =================================================================== */}
+      <header className="flex-shrink-0 sticky top-0 z-40 bg-white border-b border-slate-200 px-4 lg:px-6 h-16 flex items-center gap-3 lg:gap-4">
+        <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"><Menu size={22} /></button>
+        <Link href="/" className="text-xl font-bold text-blue-600 tracking-tight flex-shrink-0 hidden sm:block">Oneklik<span className="text-blue-400">.id</span></Link>
 
-      {/* ------------------------------- SIDEBAR ------------------------------- */}
-      <aside className={cx(
-        'fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out',
-        'lg:relative lg:translate-x-0 lg:w-[260px] lg:flex lg:flex-col lg:h-screen lg:flex-shrink-0',
-        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-      )}>
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-blue-600 tracking-tight">Oneklik<span className="text-blue-400">.id</span></Link>
-          <div className="flex items-center gap-3">
-            <button className="relative" onClick={() => { setIsNotificationOpen(true); fetchNotifications(); }}>
-              <Bell className="w-5 h-5 text-slate-400 hover:text-slate-700 cursor-pointer" />
-              {notifications.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full" />}
+        <div className="flex-1 max-w-md relative hidden md:block">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            value={headerSearch}
+            onChange={(e) => { setHeaderSearch(e.target.value); if (activeTab === 'links') setLinkSearch(e.target.value); }}
+            placeholder="Cari fitur, link, atau template..."
+            className="w-full pl-9 pr-12 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-slate-400 bg-white border border-slate-200 rounded px-1.5 py-0.5 pointer-events-none">⌘K</span>
+        </div>
+
+        <div className="flex items-center gap-1.5 lg:gap-2.5 ml-auto flex-shrink-0">
+          <button onClick={() => { setIsNotificationOpen(true); fetchNotifications(); }} className="relative p-2 text-slate-500 hover:bg-slate-50 rounded-lg transition-colors">
+            <Bell size={19} />
+            {notifications.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />}
+          </button>
+
+          {/* Wallet dropdown trigger */}
+          <div className="relative">
+            <button onClick={() => setWalletDropdownOpen((v) => !v)} className="flex items-center gap-1.5 pl-2 pr-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors">
+              <span className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0"><Wallet size={12} /></span>
+              <span className="text-xs font-bold text-slate-700 hidden sm:inline">{walletLoading ? '...' : fmtRupiah(wallet?.balance || 0)}</span>
+              <ChevronDown size={13} className="text-slate-400" />
             </button>
-            <button onClick={() => setMobileMenuOpen(false)} className="lg:hidden text-slate-600 hover:bg-slate-50 p-1 rounded-lg transition-colors"><X size={20} /></button>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 custom-scrollbar">
-          <div className="space-y-1">
-            <div className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider"><span>MENU</span></div>
-            <Link href="/dashboard"><div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-50 cursor-pointer"><LayoutDashboard className="w-4 h-4" /> Dashboard</div></Link>
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.key}
-                onClick={() => { setActiveTab(item.key); setMobileMenuOpen(false); }}
-                className={cx('flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left', activeTab === item.key ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-50')}
-              >
-                {item.icon} {item.label}
-              </button>
-            ))}
+            {walletDropdownOpen && (
+              <WalletDropdownPanel
+                wallet={wallet}
+                walletLoading={walletLoading}
+                onTopUp={() => { setWalletDropdownOpen(false); openTopUpModal(); }}
+                onHistory={() => { setWalletDropdownOpen(false); setShowWalletHistory(true); fetchWalletTransactions(); }}
+                onWithdraw={() => { setWalletDropdownOpen(false); setShowWithdrawModal(true); }}
+                onTransfer={() => { setWalletDropdownOpen(false); setShowTransferModal(true); }}
+                onVoucher={() => { setWalletDropdownOpen(false); setShowVoucherModal(true); }}
+                onViewAll={() => { setWalletDropdownOpen(false); setShowWalletPanel(true); }}
+              />
+            )}
           </div>
 
-          {/* --- CARD UPGRADE KE PRO (DI SIDEBAR) --- */}
           {!user?.is_premium && (
-            <div className="mt-4 mx-2 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 shadow-sm">
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 flex-shrink-0">
-                  <Sparkles size={16} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">Upgrade ke PRO ✨</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Akses fitur premium dan tingkatkan pengalamanmu.</p>
-                </div>
-              </div>
-              <Link href="/upgrade" className="block w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-center text-xs font-bold rounded-xl transition-colors shadow-md">
-                Upgrade Sekarang
-              </Link>
-            </div>
+            <Link href="/upgrade" className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 text-white rounded-xl text-xs font-bold shadow-sm shadow-purple-200 transition-opacity flex-shrink-0">
+              <Crown size={13} /> Upgrade PRO
+            </Link>
           )}
 
-          {/* --- CARD DOMPET DIGITAL (FITUR BARU) --- */}
-          {user && (
-            <div className="mt-4 mx-2 p-4 bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 rounded-2xl shadow-lg shadow-blue-200 relative overflow-hidden">
-              <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full pointer-events-none" />
-              <div className="absolute -bottom-8 -left-4 w-20 h-20 bg-white/10 rounded-full pointer-events-none" />
-
-              <div className="relative flex items-center justify-between mb-3">
-                <p className="text-xs font-bold text-white/90 flex items-center gap-1.5">
-                  <Wallet size={14} /> Dompet Digital
-                </p>
-                <button onClick={() => setShowWalletBalance((v) => !v)} className="text-white/70 hover:text-white transition-colors" title={showWalletBalance ? 'Sembunyikan saldo' : 'Tampilkan saldo'}>
-                  {showWalletBalance ? <Eye size={14} /> : <EyeOff size={14} />}
-                </button>
+          <div className="relative flex-shrink-0">
+            <button onClick={() => setProfileMenuOpen((v) => !v)} className="flex items-center gap-2 pl-1 pr-2 py-1 hover:bg-slate-50 rounded-xl transition-colors">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold overflow-hidden flex-shrink-0">
+                {user?.avatar_url ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" /> : initials}
               </div>
-
-              <p className="relative text-[10px] text-white/60 mb-0.5">Saldo Anda</p>
-              <div className="relative text-2xl font-bold text-white mb-3 tabular-nums">
-                {walletLoading ? '...' : showWalletBalance ? fmtRupiah(wallet?.balance || 0) : 'Rp ••••••'}
+              <span className="text-xs font-semibold text-slate-700 hidden md:inline">{user?.full_name || 'Developer'}</span>
+              <ChevronDown size={13} className="text-slate-400 hidden md:inline" />
+            </button>
+            {profileMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-lg z-50 p-1.5">
+                <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                  <p className="text-xs font-semibold text-slate-700 truncate">{user?.full_name || 'Pengguna'}</p>
+                  <p className="text-[10px] text-slate-400 truncate">@{user?.username || 'username'}</p>
+                </div>
+                <Link href="/dashboard" className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-50 text-sm text-slate-600 transition-colors"><LayoutDashboard size={15} /> Dashboard</Link>
+                <button onClick={() => toast('Halaman pengaturan akun akan segera hadir.')} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-50 text-sm text-slate-600 text-left transition-colors"><Settings size={15} /> Pengaturan Akun</button>
+                <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-red-50 text-sm text-red-500 text-left transition-colors"><LogOut size={15} /> Keluar</button>
               </div>
+            )}
+          </div>
+        </div>
+      </header>
 
-              <div className="relative flex gap-2">
-                <button onClick={openTopUpModal} className="flex-1 py-1.5 bg-white text-blue-700 text-[10px] font-bold rounded-lg hover:bg-blue-50 transition-colors shadow-sm flex items-center justify-center gap-1">
-                  <Plus size={12} /> Top Up
-                </button>
-                <button onClick={() => setShowWithdrawModal(true)} className="flex-1 py-1.5 bg-white/15 text-white text-[10px] font-semibold rounded-lg hover:bg-white/25 transition-colors backdrop-blur-sm">
-                  Tarik Saldo
-                </button>
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden relative">
+        {mobileMenuOpen && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setMobileMenuOpen(false)} />}
+
+        {/* ------------------------------- SIDEBAR ------------------------------- */}
+        <aside className={cx(
+          'fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out',
+          'lg:relative lg:translate-x-0 lg:w-[260px] lg:flex lg:flex-col lg:h-full lg:flex-shrink-0',
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        )}>
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between lg:hidden">
+            <span className="text-sm font-bold text-blue-600">Oneklik<span className="text-blue-400">.id</span></span>
+            <button onClick={() => setMobileMenuOpen(false)} className="text-slate-600 hover:bg-slate-50 p-1 rounded-lg transition-colors"><X size={20} /></button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 custom-scrollbar">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider"><span>MENU</span></div>
+              <Link href="/dashboard"><div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-50 cursor-pointer"><LayoutDashboard className="w-4 h-4" /> Dashboard</div></Link>
+              {NAV_ITEMS.map((item) => (
                 <button
-                  onClick={() => { setShowWalletHistory(true); fetchWalletTransactions(); }}
-                  className="px-2.5 py-1.5 bg-white/15 text-white text-[10px] font-semibold rounded-lg hover:bg-white/25 transition-colors backdrop-blur-sm"
-                  title="Riwayat Transaksi"
+                  key={item.key}
+                  onClick={() => { setActiveTab(item.key); setMobileMenuOpen(false); }}
+                  className={cx('flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left', activeTab === item.key ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-50')}
                 >
-                  <Clock size={13} />
+                  {item.icon} {item.label}
                 </button>
+              ))}
+            </div>
+
+            {/* --- STORAGE WIDGET (placeholder — sambungkan ke Supabase Storage) --- */}
+            <div className="mx-2 p-4 bg-white rounded-2xl border border-slate-200">
+              <div className="flex items-center gap-2 mb-2 text-slate-500">
+                <HardDrive size={14} />
+                <p className="text-xs font-bold text-slate-700">Storage</p>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* FOOTER SIDEBAR */}
-        <div className="p-4 border-t border-slate-100 bg-white space-y-3">
-          <div className="flex items-center gap-2.5 px-1">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{initials}</div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-slate-700 truncate">{user?.full_name || 'Pengguna'}</p>
-              <p className="text-[10px] text-slate-400 truncate">{session?.user?.email}</p>
-            </div>
-          </div>
-          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 text-xs text-red-500 hover:bg-red-50 py-2 rounded-lg transition-colors"><LogOut size={14} /> Keluar</button>
-        </div>
-      </aside>
-
-      {/* ------------------------------ MAIN CONTENT ------------------------------ */}
-      <main className="flex-1 h-screen overflow-y-auto bg-[#F8FAFC] p-6 lg:p-10">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-start justify-between mb-6 gap-3 flex-wrap">
-            <div className="flex items-center gap-3">
-              <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"><Menu size={24} /></button>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-2xl font-bold text-slate-800">
-                    {activeTab === 'links' && 'Link Management'}
-                    {activeTab === 'design' && 'Design Studio'}
-                    {activeTab === 'shop' && 'Shop Management'}
-                    {activeTab === 'analytics' && 'Analytics'}
-                  </h2>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">Free</span>
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {activeTab === 'links' && 'Kelola semua link bio dan short link Anda dengan mudah.'}
-                  {activeTab === 'design' && 'Sesuaikan tampilan bio link Anda agar lebih menarik dan profesional.'}
-                  {activeTab === 'shop' && 'Kelola produk digital, pesanan, dan tingkatkan penjualan Anda.'}
-                  {activeTab === 'analytics' && 'Pantau performa link Anda secara real-time.'}
-                </p>
+              <p className="text-[11px] text-slate-400 mb-2">{storageUsedGb} GB / {storageLimitGb} GB</p>
+              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-3">
+                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, (storageUsedGb / storageLimitGb) * 100)}%` }} />
               </div>
+              <Link href="/upgrade" className="block w-full py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 text-center text-[11px] font-semibold rounded-lg transition-colors">Upgrade Storage</Link>
             </div>
 
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {activeTab === 'links' && (
-                <button onClick={() => setShowAddLink((v) => !v)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-md shadow-blue-200 transition-all"><Plus size={16} /> Buat Link Baru</button>
-              )}
-              {activeTab === 'shop' && (
-                <>
-                  <button onClick={() => setShowOrderModal(true)} className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold transition-all"><ClipboardList size={14} /> Kelola Pesanan</button>
-                  <button onClick={() => setShowProductModal(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-md shadow-blue-200 transition-all"><Plus size={16} /> Tambah Produk</button>
-                </>
-              )}
-              {activeTab === 'analytics' && (
-                <>
-                  <div className="flex gap-1 bg-white border border-slate-200 rounded-lg p-1">
-                    <button onClick={() => setAnalyticsRangeDays(7)} className={cx('px-2.5 py-1 rounded-md text-xs font-medium', analyticsRangeDays === 7 ? 'bg-blue-50 text-blue-600' : 'text-slate-500')}>7 Hari</button>
-                    <button onClick={() => setAnalyticsRangeDays(30)} className={cx('px-2.5 py-1 rounded-md text-xs font-medium', analyticsRangeDays === 30 ? 'bg-blue-50 text-blue-600' : 'text-slate-500')}>30 Hari</button>
+            {/* --- CARD UPGRADE KE PRO --- */}
+            {!user?.is_premium && (
+              <div className="mx-2 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 shadow-sm">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 flex-shrink-0">
+                    <Sparkles size={16} />
                   </div>
-                  <button onClick={() => exportAnalyticsCSV(analyticsData, links)} className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold transition-all"><Download size={14} /> Export Laporan</button>
-                </>
-              )}
-              <button onClick={handleSaveProfile} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold shadow-sm transition-all">
-                {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
-              </button>
-            </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">Upgrade ke PRO ✨</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Akses fitur premium dan tingkatkan pengalamanmu.</p>
+                  </div>
+                </div>
+                <Link href="/upgrade" className="block w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-center text-xs font-bold rounded-xl transition-colors shadow-md">
+                  Upgrade Sekarang
+                </Link>
+              </div>
+            )}
           </div>
 
-          {/* --------------------------------- TAB: LINKS --------------------------------- */}
-          {activeTab === 'links' && (
-            <>
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4 relative">
-                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-t-xl" />
-                <div className="mt-2 flex items-center gap-4">
-                  <div className="relative">
-                    <button onClick={() => setIsAvatarMenuOpen(!isAvatarMenuOpen)} className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 shadow-md shadow-blue-200 hover:opacity-90 transition-opacity overflow-hidden focus:outline-none">
-                      {user?.avatar_url ? <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" /> : (user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?')}
-                    </button>
-                    {isAvatarMenuOpen && (
-                      <div className="absolute z-[60] top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 space-y-0.5">
-                        <label className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700 transition-colors">
-                          <ImageIcon size={18} className="text-slate-500" /> Upload image or GIF
-                          <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
-                        </label>
-                        <div className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-slate-400 cursor-not-allowed" onClick={() => toast.error('Fitur ini hanya untuk pengguna Premium.')}>
-                          <div className="flex items-center gap-3"><Video size={18} className="text-slate-300" /> Select video</div>
-                          <span className="text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded">Upgrade</span>
-                        </div>
-                        <div className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-slate-400 cursor-not-allowed" onClick={() => toast.error('Fitur ini hanya untuk pengguna Premium.')}>
-                          <div className="flex items-center gap-3"><Sparkles size={18} className="text-slate-300" /> Generate with AI</div>
-                          <span className="text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded">Upgrade</span>
-                        </div>
-                        <a href="https://www.canva.com/create/profile-pictures/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700 transition-colors">
-                          <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center text-[8px] text-white font-bold">C</div> Design with Canva
-                        </a>
-                        {user?.avatar_url && (
-                          <div onClick={handleRemoveAvatar} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 cursor-pointer text-sm text-red-600 transition-colors">
-                            <Trash2 size={18} /> Hapus Foto
-                          </div>
-                        )}
-                      </div>
-                    )}
+          {/* FOOTER SIDEBAR */}
+          <div className="p-4 border-t border-slate-100 bg-white space-y-3">
+            <div className="flex items-center gap-2.5 px-1">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+                {user?.avatar_url ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" /> : initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-700 truncate">{user?.full_name || 'Pengguna'}</p>
+                <p className="text-[10px] text-slate-400 truncate">{session?.user?.email}</p>
+              </div>
+            </div>
+            <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 text-xs text-red-500 hover:bg-red-50 py-2 rounded-lg transition-colors"><LogOut size={14} /> Keluar</button>
+          </div>
+        </aside>
+
+        {/* ------------------------------ MAIN CONTENT ------------------------------ */}
+        <main className="flex-1 h-full overflow-y-auto bg-[#F8FAFC] p-6 lg:p-10">
+          <div className="max-w-2xl mx-auto">
+            <div className="flex items-start justify-between mb-6 gap-3 flex-wrap">
+              <div className="flex items-center gap-3">
+                <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"><Menu size={24} /></button>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-slate-800">
+                      {activeTab === 'links' && 'Link Management'}
+                      {activeTab === 'design' && 'Design Studio'}
+                      {activeTab === 'shop' && 'Shop Management'}
+                      {activeTab === 'analytics' && 'Analytics'}
+                      {activeTab === 'template' && 'Template'}
+                      {activeTab === 'affiliate' && 'Affiliate'}
+                    </h2>
+                    <span className={cx('text-[10px] font-semibold px-2 py-0.5 rounded-full', user?.is_premium ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600')}>{user?.is_premium ? 'PRO' : 'Free'}</span>
                   </div>
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nama Lengkap</label>
-                      <input type="text" value={user?.full_name || ''} onChange={(e) => setUser({ ...user, full_name: e.target.value })} className="w-full border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 bg-transparent outline-none text-lg font-bold text-slate-800 transition-all p-1 -ml-1 placeholder:text-slate-300" placeholder="Nama Kamu" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-2">Username</label>
-                      <div className="flex items-center gap-1 -ml-1">
-                        <span className="text-sm text-slate-400 font-medium select-none">oneklik.my.id/</span>
-                        <input type="text" value={user?.username || ''} onChange={(e) => setUser({ ...user, username: e.target.value })} className="flex-1 border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 bg-transparent outline-none text-base font-semibold text-slate-700 transition-all p-1 placeholder:text-slate-300" placeholder="username" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 border-t border-slate-100 pt-4">
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bio</label>
-                  <textarea value={user?.bio || ''} onChange={(e) => setUser({ ...user, bio: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-lg p-3 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent resize-none placeholder:text-slate-300 transition-all" rows={2} placeholder="Ceritakan sedikit tentang dirimu..." />
-                </div>
-                <div className="mt-4 border-t border-slate-100 pt-4">
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Shop Link</label>
-                  <input type="text" placeholder="https://shop.anda.com" value={user?.shop_link || ''} onChange={(e) => setUser((prev: any) => ({ ...prev, shop_link: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                  <p className="text-[10px] text-slate-400 mt-1">Tambahkan link toko Anda (akan muncul sebagai tombol 🛍️ Shop di bio).</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {activeTab === 'links' && 'Kelola semua link bio dan short link Anda dengan mudah.'}
+                    {activeTab === 'design' && 'Sesuaikan tampilan bio link Anda agar lebih menarik dan profesional.'}
+                    {activeTab === 'shop' && 'Kelola produk digital, pesanan, dan tingkatkan penjualan Anda.'}
+                    {activeTab === 'analytics' && 'Pantau performa link Anda secara real-time.'}
+                    {activeTab === 'template' && 'Jelajahi dan kelola koleksi template bio link Anda.'}
+                    {activeTab === 'affiliate' && 'Ajak teman bergabung dan dapatkan komisi dari setiap referral.'}
+                  </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                <div className="bg-white rounded-xl border border-slate-200 p-4">
-                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Link</p>
-                  <p className="text-2xl font-bold text-slate-800">{links.length}</p>
-                </div>
-                <div className="bg-white rounded-xl border border-slate-200 p-4">
-                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Klik</p>
-                  <p className="text-2xl font-bold text-slate-800">{totalClicks}</p>
-                </div>
-                <div className="bg-white rounded-xl border border-slate-200 p-4">
-                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Pengunjung</p>
-                  <p className="text-2xl font-bold text-slate-800">{totalViews}</p>
-                </div>
-                <div className="bg-white rounded-xl border border-slate-200 p-4">
-                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Rata-rata CTR</p>
-                  <p className="text-2xl font-bold text-slate-800">{ctr}%</p>
-                </div>
-              </div>
-
-              {showAddLink && (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
-                  <div className="flex flex-col sm:flex-row gap-3 mb-3">
-                    <input type="text" value={newLinkTitle} onChange={(e) => setNewLinkTitle(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Judul (misal: Instagram)" />
-                    <input type="text" value={newLinkUrl} onChange={(e) => setNewLinkUrl(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://..." />
-                  </div>
-                  <div className="flex gap-3">
-                    <button onClick={handleAddLink} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">Simpan Tautan</button>
-                    <button onClick={() => setShowAddLink(false)} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium rounded-lg text-sm transition-colors">Batal</button>
-                  </div>
-                </div>
-              )}
-
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                <div className="p-4 border-b border-slate-100 flex items-center gap-3">
-                  <div className="relative flex-1">
-                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input value={linkSearch} onChange={(e) => setLinkSearch(e.target.value)} placeholder="Cari link..." className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                  </div>
-                  <button className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium text-slate-500 hover:bg-slate-50"><SlidersHorizontal size={14} /> Filter</button>
-                </div>
-
-                {filteredLinks.length > 0 ? (
-                  <div className="divide-y divide-slate-100">
-                    <div className="hidden sm:grid grid-cols-[2fr_0.6fr_0.6fr_0.6fr_0.8fr_0.6fr] gap-2 px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                      <span>Link</span><span>Klik</span><span>CTR</span><span>Urutan</span><span>Dibuat</span><span className="text-right">Aksi</span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {activeTab === 'links' && (
+                  <button onClick={() => setShowAddLink((v) => !v)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-md shadow-blue-200 transition-all"><Plus size={16} /> Buat Link Baru</button>
+                )}
+                {activeTab === 'shop' && (
+                  <>
+                    <button onClick={() => setShowOrderModal(true)} className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold transition-all"><ClipboardList size={14} /> Kelola Pesanan</button>
+                    <button onClick={() => setShowProductModal(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-md shadow-blue-200 transition-all"><Plus size={16} /> Tambah Produk</button>
+                  </>
+                )}
+                {activeTab === 'analytics' && (
+                  <>
+                    <div className="flex gap-1 bg-white border border-slate-200 rounded-lg p-1">
+                      <button onClick={() => setAnalyticsRangeDays(7)} className={cx('px-2.5 py-1 rounded-md text-xs font-medium', analyticsRangeDays === 7 ? 'bg-blue-50 text-blue-600' : 'text-slate-500')}>7 Hari</button>
+                      <button onClick={() => setAnalyticsRangeDays(30)} className={cx('px-2.5 py-1 rounded-md text-xs font-medium', analyticsRangeDays === 30 ? 'bg-blue-50 text-blue-600' : 'text-slate-500')}>30 Hari</button>
                     </div>
-                    {filteredLinks.map((link) => {
-                      const clicks = clicksByLink[link.id] || 0;
-                      const rowCtr = totalViews > 0 ? ((clicks / totalViews) * 100).toFixed(1) : '0.0';
-                      return (
-                        <div key={link.id} className="grid grid-cols-2 sm:grid-cols-[2fr_0.6fr_0.6fr_0.6fr_0.8fr_0.6fr] gap-2 items-center px-4 py-3.5 hover:bg-slate-50 transition-colors">
-                          <div className="col-span-2 sm:col-span-1 flex flex-col truncate">
-                            <span className="font-medium text-slate-700 text-sm truncate">{link.title}</span>
-                            <span className="text-[10px] text-slate-400 truncate">{link.url}</span>
-                          </div>
-                          <span className="text-sm text-slate-600">{clicks}</span>
-                          <span className="text-sm text-slate-600">{rowCtr}%</span>
-                          <span className="text-sm text-slate-600">#{(link.position ?? 0) + 1}</span>
-                          <span className="text-xs text-slate-400">{link.created_at ? new Date(link.created_at).toLocaleDateString('id-ID') : '-'}</span>
-                          <div className="flex justify-end">
-                            <button onClick={() => handleDeleteLink(link.id)} className="text-slate-400 hover:text-red-600 transition-colors p-1.5 hover:bg-red-50 rounded-full"><Trash2 size={16} /></button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-14">
-                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300"><Plus className="w-8 h-8" /></div>
-                    <h4 className="text-base font-semibold text-slate-700">{linkSearch ? 'Tidak ada link yang cocok' : 'Tampilkan dirimu ke dunia'}</h4>
-                    <p className="text-sm text-slate-400 mt-1">{linkSearch ? 'Coba kata kunci lain.' : 'Tambahkan tautan untuk memulai.'}</p>
-                  </div>
+                    <button onClick={() => exportAnalyticsCSV(analyticsData, links)} className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold transition-all"><Download size={14} /> Export Laporan</button>
+                  </>
+                )}
+                {(activeTab === 'links' || activeTab === 'design' || activeTab === 'shop') && (
+                  <button onClick={handleSaveProfile} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed text-slate-700 rounded-lg text-sm font-semibold shadow-sm transition-all">
+                    <ArrowUpRight size={15} className="text-slate-400" /> {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+                  </button>
                 )}
               </div>
-            </>
-          )}
+            </div>
 
-          {/* --------------------------------- TAB: DESIGN --------------------------------- */}
-          {activeTab === 'design' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-4 mb-6">
-                {DesignSubTabs.map((t) => (
-                  <button key={t.key} onClick={() => setDesignSubTab(t.key)} className={cx('px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors', designSubTab === t.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200')}>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-
-              {designSubTab === 'tampilan' && (
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-sm font-bold text-slate-800 mb-1">Background</p>
-                    <p className="text-xs text-slate-400 mb-3">Pilih sumber background untuk halaman bio link Anda.</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { key: 'template', label: 'Template', desc: 'Gunakan template siap pakai', icon: <LayoutGrid size={18} /> },
-                        { key: 'url', label: 'URL', desc: 'Gunakan gambar dari link URL', icon: <Link2 size={18} /> },
-                        { key: 'upload', label: 'Upload', desc: 'Upload gambar dari perangkat Anda', icon: <ImageIcon size={18} /> },
-                      ].map((opt) => (
-                        <button key={opt.key} onClick={() => updateDesign('bg_type', opt.key)} className={cx('text-left p-3 rounded-xl border transition-colors', (user?.design_settings?.bg_type || 'template') === opt.key ? 'border-blue-400 bg-blue-50/50' : 'border-slate-200 hover:bg-slate-50')}>
-                          <div className="text-slate-500 mb-1.5">{opt.icon}</div>
-                          <p className="text-xs font-semibold text-slate-700">{opt.label}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">{opt.desc}</p>
-                        </button>
-                      ))}
+            {/* --------------------------------- TAB: LINKS --------------------------------- */}
+            {activeTab === 'links' && (
+              <>
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4 relative">
+                  <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-t-xl" />
+                  <div className="mt-2 flex items-center gap-4">
+                    <div className="relative">
+                      <button onClick={() => setIsAvatarMenuOpen(!isAvatarMenuOpen)} className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 shadow-md shadow-blue-200 hover:opacity-90 transition-opacity overflow-hidden focus:outline-none">
+                        {user?.avatar_url ? <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" /> : (user?.full_name ? user.full_name.charAt(0).toUpperCase() : '?')}
+                      </button>
+                      {isAvatarMenuOpen && (
+                        <div className="absolute z-[60] top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 space-y-0.5">
+                          <label className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700 transition-colors">
+                            <ImageIcon size={18} className="text-slate-500" /> Upload image or GIF
+                            <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+                          </label>
+                          <div className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-slate-400 cursor-not-allowed" onClick={() => toast.error('Fitur ini hanya untuk pengguna Premium.')}>
+                            <div className="flex items-center gap-3"><Video size={18} className="text-slate-300" /> Select video</div>
+                            <span className="text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded">Upgrade</span>
+                          </div>
+                          <div className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-slate-400 cursor-not-allowed" onClick={() => toast.error('Fitur ini hanya untuk pengguna Premium.')}>
+                            <div className="flex items-center gap-3"><Sparkles size={18} className="text-slate-300" /> Generate with AI</div>
+                            <span className="text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded">Upgrade</span>
+                          </div>
+                          <a href="https://www.canva.com/create/profile-pictures/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700 transition-colors">
+                            <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center text-[8px] text-white font-bold">C</div> Design with Canva
+                          </a>
+                          {user?.avatar_url && (
+                            <div onClick={handleRemoveAvatar} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 cursor-pointer text-sm text-red-600 transition-colors">
+                              <Trash2 size={18} /> Hapus Foto
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-
-                    {user?.design_settings?.bg_type === 'url' && (
-                      <input type="text" placeholder="https://example.com/background.jpg" value={user?.design_settings?.bg_custom_url || ''} onChange={(e) => updateDesign('bg_custom_url', e.target.value)} className="w-full mt-3 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                    )}
-                    {user?.design_settings?.bg_type === 'upload' && (
-                      <div className="relative mt-3">
-                        <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleBackgroundUpload} disabled={uploadingBg} />
-                        <div className="w-full border-2 border-dashed border-slate-300 rounded-lg p-3 text-center text-sm text-slate-500 hover:bg-slate-50 transition-colors">
-                          {uploadingBg ? 'Mengupload...' : 'Klik untuk upload Background Image'}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nama Lengkap</label>
+                        <input type="text" value={user?.full_name || ''} onChange={(e) => setUser({ ...user, full_name: e.target.value })} className="w-full border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 bg-transparent outline-none text-lg font-bold text-slate-800 transition-all p-1 -ml-1 placeholder:text-slate-300" placeholder="Nama Kamu" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-2">Username</label>
+                        <div className="flex items-center gap-1 -ml-1">
+                          <span className="text-sm text-slate-400 font-medium select-none">oneklik.my.id/</span>
+                          <input type="text" value={user?.username || ''} onChange={(e) => setUser({ ...user, username: e.target.value })} className="flex-1 border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 bg-transparent outline-none text-base font-semibold text-slate-700 transition-all p-1 placeholder:text-slate-300" placeholder="username" />
+                          <button onClick={() => handleCopyUrl(bioUrl)} className="text-slate-300 hover:text-blue-500 p-1 transition-colors flex-shrink-0" title="Salin URL bio"><Copy size={14} /></button>
                         </div>
                       </div>
-                    )}
+                    </div>
+                  </div>
+                  <div className="mt-4 border-t border-slate-100 pt-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bio</label>
+                      <span className="text-[10px] text-slate-300">{(user?.bio || '').length}/500</span>
+                    </div>
+                    <textarea maxLength={500} value={user?.bio || ''} onChange={(e) => setUser({ ...user, bio: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-lg p-3 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent resize-none placeholder:text-slate-300 transition-all" rows={2} placeholder="Ceritakan sedikit tentang dirimu..." />
+                  </div>
+                  <div className="mt-4 border-t border-slate-100 pt-4">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Shop Link</label>
+                    <div className="relative">
+                      <input type="text" placeholder="https://shop.anda.com" value={user?.shop_link || ''} onChange={(e) => setUser((prev: any) => ({ ...prev, shop_link: e.target.value }))} className="w-full border border-slate-300 rounded-lg pl-3 pr-9 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                      <button onClick={() => handleCopyUrl(user?.shop_link)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-blue-500 transition-colors" title="Salin Shop Link"><Copy size={14} /></button>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Tambahkan link toko Anda (akan muncul sebagai tombol 🛍️ Shop di bio).</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                  <div className="bg-white rounded-xl border border-slate-200 p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Total Link</p>
+                      <Link2 size={14} className="text-blue-300" />
+                    </div>
+                    <p className="text-2xl font-bold text-slate-800">{links.length}</p>
+                    <TrendBadge pct={linksTrend.pct} isNew={linksTrend.isNew} />
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Total Klik</p>
+                      <MousePointerClick size={14} className="text-blue-300" />
+                    </div>
+                    <p className="text-2xl font-bold text-slate-800">{totalClicks}</p>
+                    <TrendBadge pct={clicksTrend.pct} isNew={clicksTrend.isNew} />
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Total Pengunjung</p>
+                      <Users size={14} className="text-blue-300" />
+                    </div>
+                    <p className="text-2xl font-bold text-slate-800">{totalViews}</p>
+                    <TrendBadge pct={viewsTrend.pct} isNew={viewsTrend.isNew} />
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Rata-rata CTR</p>
+                      <BarChart3 size={14} className="text-blue-300" />
+                    </div>
+                    <p className="text-2xl font-bold text-slate-800">{ctr}%</p>
+                    <TrendBadge pct={ctrTrend.pct} isNew={ctrTrend.isNew} />
+                  </div>
+                </div>
+
+                {showAddLink && (
+                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
+                    <div className="flex flex-col sm:flex-row gap-3 mb-3">
+                      <input type="text" value={newLinkTitle} onChange={(e) => setNewLinkTitle(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Judul (misal: Instagram)" />
+                      <input type="text" value={newLinkUrl} onChange={(e) => setNewLinkUrl(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://..." />
+                    </div>
+                    <div className="flex gap-3">
+                      <button onClick={handleAddLink} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">Simpan Tautan</button>
+                      <button onClick={() => setShowAddLink(false)} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium rounded-lg text-sm transition-colors">Batal</button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="p-4 border-b border-slate-100 flex items-center gap-3">
+                    <div className="relative flex-1">
+                      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input value={linkSearch} onChange={(e) => setLinkSearch(e.target.value)} placeholder="Cari link..." className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                    </div>
+                    <button className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium text-slate-500 hover:bg-slate-50"><SlidersHorizontal size={14} /> Filter</button>
                   </div>
 
-                  <div className="border-t border-slate-100 pt-5">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-bold text-slate-800">Pilih Template</p>
-                      <div className="relative">
-                        <select value={templateCategory} onChange={(e) => { setTemplateCategory(e.target.value); setTemplateShowCount(8); }} className="text-xs border border-slate-200 rounded-lg pl-3 pr-7 py-1.5 appearance-none bg-white text-slate-600">
-                          {templateCategories.map((c) => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  {filteredLinks.length > 0 ? (
+                    <div className="divide-y divide-slate-100">
+                      <div className="hidden sm:grid grid-cols-[2fr_0.6fr_0.6fr_0.6fr_0.8fr_0.6fr] gap-2 px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                        <span>Link</span><span>Klik</span><span>CTR</span><span>Urutan</span><span>Dibuat</span><span className="text-right">Aksi</span>
                       </div>
-                    </div>
-                    <p className="text-xs text-slate-400 mb-3">Pilih template yang sesuai dengan gaya Anda.</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {filteredTemplates.slice(0, templateShowCount).map((t: any) => {
-                        const active = String(user?.selected_template) === String(t.id);
-                        const isPremium = t.isPremium || false;
-                        const isLocked = isPremium && !user?.is_premium;
-
+                      {filteredLinks.map((link) => {
+                        const clicks = clicksByLink[link.id] || 0;
+                        const rowCtr = totalViews > 0 ? ((clicks / totalViews) * 100).toFixed(1) : '0.0';
                         return (
-                          <button
-                            key={t.id}
-                            onClick={() => {
-                              if (isLocked) {
-                                toast.error('Template Premium hanya bisa diakses oleh pengguna PRO. Upgrade sekarang!');
-                                router.push('/upgrade');
-                                return;
-                              }
-                              setUser((prev: any) => ({ ...prev, selected_template: String(t.id) }));
-                            }}
-                            className={cx(
-                              'rounded-xl overflow-hidden border-2 text-left transition-all relative',
-                              active ? 'border-blue-500 ring-2 ring-blue-100' : 'border-transparent'
-                            )}
-                          >
-                            {/* --- BADGE PREMIUM DI POJOK KANAN ATAS (TANPA MENGABURKAN GAMBAR) --- */}
-                            {isLocked && (
-                              <div className="absolute top-2 right-2 z-10 bg-amber-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1 text-[9px] font-bold shadow-md">
-                                <Crown size={12} /> PRO
-                              </div>
-                            )}
-
-                            <div
-                              className="relative aspect-[3/4] flex flex-col items-center justify-between p-3"
-                              style={
-                                t.bgImage
-                                  ? { backgroundImage: `url(${t.bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                                  : { backgroundColor: t.colors?.bg || '#e2e8f0' }
-                              }
-                            >
-                              {active && <span className="absolute top-1.5 right-1.5 bg-blue-500 text-white rounded-full p-0.5"><CheckCircle2 size={14} /></span>}
-                              <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white text-xs font-bold border border-white/30 mt-2">B</div>
-                              <div className="w-full space-y-1 mb-1">
-                                <div className="text-center text-white text-[10px] font-semibold drop-shadow">brodi</div>
-                                <div className="rounded-md py-1 text-center text-[8px] font-semibold text-white" style={{ backgroundColor: t.colors?.primary || '#3b82f6' }}>Instagram</div>
-                                <div className="rounded-md py-1 text-center text-[8px] font-semibold text-white bg-green-500">Shop</div>
-                              </div>
+                          <div key={link.id} className="grid grid-cols-2 sm:grid-cols-[2fr_0.6fr_0.6fr_0.6fr_0.8fr_0.6fr] gap-2 items-center px-4 py-3.5 hover:bg-slate-50 transition-colors">
+                            <div className="col-span-2 sm:col-span-1 flex flex-col truncate">
+                              <span className="font-medium text-slate-700 text-sm truncate">{link.title}</span>
+                              <span className="text-[10px] text-slate-400 truncate">{link.url}</span>
                             </div>
-                            <p className="text-[11px] font-medium text-slate-600 px-1 py-1.5 text-center truncate">{t.name || `Template ${t.id}`}</p>
-                          </button>
+                            <span className="text-sm text-slate-600">{clicks}</span>
+                            <span className="text-sm text-slate-600">{rowCtr}%</span>
+                            <span className="text-sm text-slate-600">#{(link.position ?? 0) + 1}</span>
+                            <span className="text-xs text-slate-400">{link.created_at ? new Date(link.created_at).toLocaleDateString('id-ID') : '-'}</span>
+                            <div className="flex justify-end">
+                              <button onClick={() => handleDeleteLink(link.id)} className="text-slate-400 hover:text-red-600 transition-colors p-1.5 hover:bg-red-50 rounded-full"><Trash2 size={16} /></button>
+                            </div>
+                          </div>
                         );
                       })}
                     </div>
-                    {filteredTemplates.length > templateShowCount && (
-                      <button onClick={() => setTemplateShowCount((c) => c + 8)} className="w-full mt-4 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1.5">Muat Lebih Banyak <ChevronDown size={14} /></button>
-                    )}
-                  </div>
+                  ) : (
+                    <div className="text-center py-14">
+                      <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300"><Plus className="w-8 h-8" /></div>
+                      <h4 className="text-base font-semibold text-slate-700">{linkSearch ? 'Tidak ada link yang cocok' : 'Tampilkan dirimu ke dunia'}</h4>
+                      <p className="text-sm text-slate-400 mt-1">{linkSearch ? 'Coba kata kunci lain.' : 'Tambahkan tautan untuk memulai.'}</p>
+                    </div>
+                  )}
                 </div>
-              )}
+              </>
+            )}
 
-              {designSubTab === 'tema' && (
-                <div>
-                  <p className="text-sm font-bold text-slate-800 mb-1">Tema</p>
-                  <p className="text-xs text-slate-400 mb-3">Gaya tampilan menyeluruh untuk halaman bio Anda.</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {['air', 'customize', 'dark', 'light'].map((th) => (
-                      <button key={th} onClick={() => updateDesign('theme', th)} className={cx('px-4 py-3 rounded-lg text-sm font-medium capitalize border transition-colors', (user?.design_settings?.theme || 'air') === th ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>{th}</button>
-                    ))}
-                  </div>
-                  <button onClick={handleEnhance} className="mt-5 flex items-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-700"><Sparkles size={16} /> Acak & sempurnakan desain</button>
+            {/* --------------------------------- TAB: DESIGN --------------------------------- */}
+            {activeTab === 'design' && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-4 mb-6">
+                  {DesignSubTabs.map((t) => (
+                    <button key={t.key} onClick={() => setDesignSubTab(t.key)} className={cx('px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors', designSubTab === t.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200')}>
+                      {t.label}
+                    </button>
+                  ))}
                 </div>
-              )}
 
-              {designSubTab === 'warna' && (
-                <div className="space-y-5">
-                  <p className="text-sm font-bold text-slate-800 -mb-2">Warna</p>
-                  <div className="grid sm:grid-cols-3 gap-4">
-                    {[
-                      { key: 'theme_primary', label: 'Warna Tombol', fallback: '#3b82f6' },
-                      { key: 'theme_secondary', label: 'Warna Teks Tombol', fallback: '#ffffff' },
-                      { key: 'theme_bg', label: 'Warna Latar (fallback)', fallback: '#f3f4f6' },
-                    ].map((c) => (
-                      <div key={c.key} className="flex items-center gap-3 border border-slate-200 rounded-lg p-3">
-                        <input type="color" value={user?.[c.key] || c.fallback} onChange={(e) => setUser((prev: any) => ({ ...prev, [c.key]: e.target.value }))} className="w-10 h-10 rounded-lg cursor-pointer border-0" />
-                        <div>
-                          <p className="text-xs font-semibold text-slate-700">{c.label}</p>
-                          <p className="text-[10px] text-slate-400 uppercase">{user?.[c.key] || c.fallback}</p>
+                {designSubTab === 'tampilan' && (
+                  <div className="space-y-6">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800 mb-1">Background</p>
+                      <p className="text-xs text-slate-400 mb-3">Pilih sumber background untuk halaman bio link Anda.</p>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { key: 'template', label: 'Template', desc: 'Gunakan template siap pakai', icon: <LayoutGrid size={18} /> },
+                          { key: 'url', label: 'URL', desc: 'Gunakan gambar dari link URL', icon: <Link2 size={18} /> },
+                          { key: 'upload', label: 'Upload', desc: 'Upload gambar dari perangkat Anda', icon: <ImageIcon size={18} /> },
+                        ].map((opt) => (
+                          <button key={opt.key} onClick={() => updateDesign('bg_type', opt.key)} className={cx('text-left p-3 rounded-xl border transition-colors', (user?.design_settings?.bg_type || 'template') === opt.key ? 'border-blue-400 bg-blue-50/50' : 'border-slate-200 hover:bg-slate-50')}>
+                            <div className="text-slate-500 mb-1.5">{opt.icon}</div>
+                            <p className="text-xs font-semibold text-slate-700">{opt.label}</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">{opt.desc}</p>
+                          </button>
+                        ))}
+                      </div>
+
+                      {user?.design_settings?.bg_type === 'url' && (
+                        <input type="text" placeholder="https://example.com/background.jpg" value={user?.design_settings?.bg_custom_url || ''} onChange={(e) => updateDesign('bg_custom_url', e.target.value)} className="w-full mt-3 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                      )}
+                      {user?.design_settings?.bg_type === 'upload' && (
+                        <div className="relative mt-3">
+                          <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleBackgroundUpload} disabled={uploadingBg} />
+                          <div className="w-full border-2 border-dashed border-slate-300 rounded-lg p-3 text-center text-sm text-slate-500 hover:bg-slate-50 transition-colors">
+                            {uploadingBg ? 'Mengupload...' : 'Klik untuk upload Background Image'}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-5">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-bold text-slate-800">Pilih Template</p>
+                        <div className="relative">
+                          <select value={templateCategory} onChange={(e) => { setTemplateCategory(e.target.value); setTemplateShowCount(8); }} className="text-xs border border-slate-200 rounded-lg pl-3 pr-7 py-1.5 appearance-none bg-white text-slate-600">
+                            {templateCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                          <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                         </div>
                       </div>
-                    ))}
+                      <p className="text-xs text-slate-400 mb-3">Pilih template yang sesuai dengan gaya Anda.</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {filteredTemplates.slice(0, templateShowCount).map((t: any) => {
+                          const active = String(user?.selected_template) === String(t.id);
+                          const isPremium = t.isPremium || false;
+                          const isLocked = isPremium && !user?.is_premium;
+
+                          return (
+                            <button
+                              key={t.id}
+                              onClick={() => {
+                                if (isLocked) {
+                                  toast.error('Template Premium hanya bisa diakses oleh pengguna PRO. Upgrade sekarang!');
+                                  router.push('/upgrade');
+                                  return;
+                                }
+                                setUser((prev: any) => ({ ...prev, selected_template: String(t.id) }));
+                              }}
+                              className={cx(
+                                'rounded-xl overflow-hidden border-2 text-left transition-all relative',
+                                active ? 'border-blue-500 ring-2 ring-blue-100' : 'border-transparent'
+                              )}
+                            >
+                              {isLocked && (
+                                <div className="absolute top-2 right-2 z-10 bg-amber-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1 text-[9px] font-bold shadow-md">
+                                  <Crown size={12} /> PRO
+                                </div>
+                              )}
+
+                              <div
+                                className="relative aspect-[3/4] flex flex-col items-center justify-between p-3"
+                                style={
+                                  t.bgImage
+                                    ? { backgroundImage: `url(${t.bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                                    : { backgroundColor: t.colors?.bg || '#e2e8f0' }
+                                }
+                              >
+                                {active && <span className="absolute top-1.5 right-1.5 bg-blue-500 text-white rounded-full p-0.5"><CheckCircle2 size={14} /></span>}
+                                <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white text-xs font-bold border border-white/30 mt-2">B</div>
+                                <div className="w-full space-y-1 mb-1">
+                                  <div className="text-center text-white text-[10px] font-semibold drop-shadow">brodi</div>
+                                  <div className="rounded-md py-1 text-center text-[8px] font-semibold text-white" style={{ backgroundColor: t.colors?.primary || '#3b82f6' }}>Instagram</div>
+                                  <div className="rounded-md py-1 text-center text-[8px] font-semibold text-white bg-green-500">Shop</div>
+                                </div>
+                              </div>
+                              <p className="text-[11px] font-medium text-slate-600 px-1 py-1.5 text-center truncate">{t.name || `Template ${t.id}`}</p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {filteredTemplates.length > templateShowCount && (
+                        <button onClick={() => setTemplateShowCount((c) => c + 8)} className="w-full mt-4 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1.5">Muat Lebih Banyak <ChevronDown size={14} /></button>
+                      )}
+                    </div>
                   </div>
+                )}
+
+                {designSubTab === 'tema' && (
                   <div>
-                    <p className="text-xs font-semibold text-slate-500 mb-2">Tema Cepat</p>
-                    <div className="flex gap-2">
-                      {quickThemeColors.map((c) => (
-                        <button key={c} onClick={() => setUser((prev: any) => ({ ...prev, theme_primary: c }))} className="w-8 h-8 rounded-full border-2 border-white shadow ring-1 ring-slate-200" style={{ backgroundColor: c }} />
+                    <p className="text-sm font-bold text-slate-800 mb-1">Tema</p>
+                    <p className="text-xs text-slate-400 mb-3">Gaya tampilan menyeluruh untuk halaman bio Anda.</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {['air', 'customize', 'dark', 'light'].map((th) => (
+                        <button key={th} onClick={() => updateDesign('theme', th)} className={cx('px-4 py-3 rounded-lg text-sm font-medium capitalize border transition-colors', (user?.design_settings?.theme || 'air') === th ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>{th}</button>
+                      ))}
+                    </div>
+                    <button onClick={handleEnhance} className="mt-5 flex items-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-700"><Sparkles size={16} /> Acak & sempurnakan desain</button>
+                  </div>
+                )}
+
+                {designSubTab === 'warna' && (
+                  <div className="space-y-5">
+                    <p className="text-sm font-bold text-slate-800 -mb-2">Warna</p>
+                    <div className="grid sm:grid-cols-3 gap-4">
+                      {[
+                        { key: 'theme_primary', label: 'Warna Tombol', fallback: '#3b82f6' },
+                        { key: 'theme_secondary', label: 'Warna Teks Tombol', fallback: '#ffffff' },
+                        { key: 'theme_bg', label: 'Warna Latar (fallback)', fallback: '#f3f4f6' },
+                      ].map((c) => (
+                        <div key={c.key} className="flex items-center gap-3 border border-slate-200 rounded-lg p-3">
+                          <input type="color" value={user?.[c.key] || c.fallback} onChange={(e) => setUser((prev: any) => ({ ...prev, [c.key]: e.target.value }))} className="w-10 h-10 rounded-lg cursor-pointer border-0" />
+                          <div>
+                            <p className="text-xs font-semibold text-slate-700">{c.label}</p>
+                            <p className="text-[10px] text-slate-400 uppercase">{user?.[c.key] || c.fallback}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 mb-2">Tema Cepat</p>
+                      <div className="flex gap-2">
+                        {quickThemeColors.map((c) => (
+                          <button key={c} onClick={() => setUser((prev: any) => ({ ...prev, theme_primary: c }))} className="w-8 h-8 rounded-full border-2 border-white shadow ring-1 ring-slate-200" style={{ backgroundColor: c }} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {designSubTab === 'tipografi' && (
+                  <div>
+                    <p className="text-sm font-bold text-slate-800 mb-1">Tipografi</p>
+                    <p className="text-xs text-slate-400 mb-3">Jenis huruf untuk nama, bio, dan tombol link.</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[{ key: 'sans', label: 'Sans', style: 'sans-serif' }, { key: 'serif', label: 'Serif', style: 'serif' }, { key: 'mono', label: 'Mono', style: 'monospace' }].map((f) => (
+                        <button key={f.key} onClick={() => updateDesign('font', f.key)} className={cx('px-4 py-4 rounded-lg border text-center transition-colors', (user?.design_settings?.font || 'sans') === f.key ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50')}>
+                          <p className="text-lg text-slate-800" style={{ fontFamily: f.style }}>Aa</p>
+                          <p className="text-[11px] text-slate-500 mt-1">{f.label}</p>
+                        </button>
                       ))}
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {designSubTab === 'tipografi' && (
-                <div>
-                  <p className="text-sm font-bold text-slate-800 mb-1">Tipografi</p>
-                  <p className="text-xs text-slate-400 mb-3">Jenis huruf untuk nama, bio, dan tombol link.</p>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[{ key: 'sans', label: 'Sans', style: 'sans-serif' }, { key: 'serif', label: 'Serif', style: 'serif' }, { key: 'mono', label: 'Mono', style: 'monospace' }].map((f) => (
-                      <button key={f.key} onClick={() => updateDesign('font', f.key)} className={cx('px-4 py-4 rounded-lg border text-center transition-colors', (user?.design_settings?.font || 'sans') === f.key ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50')}>
-                        <p className="text-lg text-slate-800" style={{ fontFamily: f.style }}>Aa</p>
-                        <p className="text-[11px] text-slate-500 mt-1">{f.label}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {designSubTab === 'tombol' && (
-                <div>
-                  <p className="text-sm font-bold text-slate-800 mb-1">Gaya Tombol</p>
-                  <p className="text-xs text-slate-400 mb-3">Terapkan ke semua tombol link di halaman bio Anda.</p>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[{ key: 'fill', label: 'Fill' }, { key: 'outline', label: 'Outline' }, { key: 'ghost', label: 'Ghost' }].map((b) => (
-                      <button key={b.key} onClick={() => updateDesign('buttons', b.key)} className={cx('px-4 py-4 rounded-lg border transition-colors flex flex-col items-center gap-2', (user?.design_settings?.buttons || 'fill') === b.key ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50')}>
-                        <span className="w-full py-2 rounded-lg text-xs font-semibold text-center" style={b.key === 'outline' ? { border: `2px solid ${user?.theme_primary || '#3b82f6'}`, color: user?.theme_primary || '#3b82f6' } : b.key === 'ghost' ? { color: user?.theme_primary || '#3b82f6' } : { backgroundColor: user?.theme_primary || '#3b82f6', color: user?.theme_secondary || '#fff' }}>Link</span>
-                        <p className="text-[11px] text-slate-500">{b.label}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {designSubTab === 'lanjutan' && (
-                <div className="space-y-6">
+                {designSubTab === 'tombol' && (
                   <div>
-                    <p className="text-sm font-bold text-slate-800 mb-1">Stiker &amp; Footer</p>
-                    <div className="flex flex-wrap gap-3 mt-2">
-                      <button onClick={() => updateDesign('stickers', user?.design_settings?.stickers === 'decorate' ? 'none' : 'decorate')} className={cx('px-4 py-2 rounded-lg text-xs font-semibold border transition-colors', user?.design_settings?.stickers === 'decorate' ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-500')}>✨ Stiker Dekorasi</button>
+                    <p className="text-sm font-bold text-slate-800 mb-1">Gaya Tombol</p>
+                    <p className="text-xs text-slate-400 mb-3">Terapkan ke semua tombol link di halaman bio Anda.</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[{ key: 'fill', label: 'Fill' }, { key: 'outline', label: 'Outline' }, { key: 'ghost', label: 'Ghost' }].map((b) => (
+                        <button key={b.key} onClick={() => updateDesign('buttons', b.key)} className={cx('px-4 py-4 rounded-lg border transition-colors flex flex-col items-center gap-2', (user?.design_settings?.buttons || 'fill') === b.key ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50')}>
+                          <span className="w-full py-2 rounded-lg text-xs font-semibold text-center" style={b.key === 'outline' ? { border: `2px solid ${user?.theme_primary || '#3b82f6'}`, color: user?.theme_primary || '#3b82f6' } : b.key === 'ghost' ? { color: user?.theme_primary || '#3b82f6' } : { backgroundColor: user?.theme_primary || '#3b82f6', color: user?.theme_secondary || '#fff' }}>Link</span>
+                          <p className="text-[11px] text-slate-500">{b.label}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {designSubTab === 'lanjutan' && (
+                  <div className="space-y-6">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800 mb-1">Stiker &amp; Footer</p>
+                      <div className="flex flex-wrap gap-3 mt-2">
+                        <button onClick={() => updateDesign('stickers', user?.design_settings?.stickers === 'decorate' ? 'none' : 'decorate')} className={cx('px-4 py-2 rounded-lg text-xs font-semibold border transition-colors', user?.design_settings?.stickers === 'decorate' ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-500')}>✨ Stiker Dekorasi</button>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-4 space-y-2">
+                      <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Sosial Media (Footer Bio)</label>
+                      {[
+                        { key: 'social_instagram', icon: <Instagram size={16} />, ph: 'Link Instagram (opsional)' },
+                        { key: 'social_tiktok', icon: <Music2 size={16} />, ph: 'Link TikTok (opsional)' },
+                        { key: 'social_youtube', icon: <Youtube size={16} />, ph: 'Link YouTube (opsional)' },
+                        { key: 'social_facebook', icon: <Facebook size={16} />, ph: 'Link Facebook (opsional)' },
+                        { key: 'social_twitter', icon: <Twitter size={16} />, ph: 'Link Twitter/X (opsional)' },
+                        { key: 'social_linkedin', icon: <Linkedin size={16} />, ph: 'Link LinkedIn (opsional)' },
+                        { key: 'social_whatsapp', icon: <MessageCircle size={16} />, ph: 'Link WhatsApp (opsional)' },
+                        { key: 'social_telegram', icon: <Send size={16} />, ph: 'Link Telegram (opsional)' },
+                        { key: 'social_twitch', icon: <Twitch size={16} />, ph: 'Link Twitch (opsional)' },
+                      ].map((s) => (
+                        <div key={s.key} className="flex items-center gap-2">
+                          <span className="text-slate-400 flex-shrink-0">{s.icon}</span>
+                          <input type="text" placeholder={s.ph} value={user?.[s.key] || ''} onChange={(e) => setUser((prev: any) => ({ ...prev, [s.key]: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                        </div>
+                      ))}
+                      <p className="text-[10px] text-slate-400">Icon hanya akan muncul di footer bio jika linknya diisi.</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-5 mt-6 border-t border-slate-100 text-xs text-slate-400">*Perubahan akan tersimpan setelah klik Simpan Perubahan.</div>
+              </div>
+            )}
+
+            {/* --------------------------------- TAB: SHOP --------------------------------- */}
+            {activeTab === 'shop' && (
+              <div className="space-y-4">
+                
+                {/* --- MODAL KELOLA PESANAN --- */}
+                {showOrderModal && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 relative max-h-[80vh] flex flex-col">
+                      <button onClick={() => setShowOrderModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
+                      <h3 className="text-lg font-bold text-slate-800 mb-4">Daftar Pesanan</h3>
+                      <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+                        {ordersLoading ? (
+                          <div className="py-10 text-center text-slate-500">Memuat pesanan...</div>
+                        ) : orders.length > 0 ? (
+                          orders.map((order) => (
+                            <div key={order.id} className="bg-slate-50 border border-slate-100 rounded-lg p-4">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-semibold text-slate-800 text-sm">{order.customer_name || 'Pelanggan'}</p>
+                                  <p className="text-xs text-slate-500">{order.customer_email || '-'}</p>
+                                </div>
+                                <span className={cx('px-2 py-0.5 rounded-full text-[10px] font-semibold',
+                                  order.status === 'paid' ? 'bg-green-100 text-green-700' :
+                                  order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                                  order.status === 'delivered' ? 'bg-purple-100 text-purple-700' :
+                                  order.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                                )}>
+                                  {order.status}
+                                </span>
+                              </div>
+                              <div className="mt-1 text-xs text-slate-400 flex justify-between">
+                                <span>{new Date(order.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                <span className="font-semibold text-slate-700">Rp {order.total_amount?.toLocaleString() || '0'}</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="py-10 text-center text-slate-400">
+                            <ClipboardList size={48} className="mx-auto mb-2 text-slate-200" />
+                            <p className="font-medium">Belum ada pesanan.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* --- MODAL TAMBAH PRODUK --- */}
+                {showProductModal && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
+                      <button onClick={() => setShowProductModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
+                      <h3 className="text-lg font-bold text-slate-800 mb-4">Tambah Produk Baru</h3>
+                      <div className="space-y-3">
+                        <input type="text" placeholder="Nama Produk" value={newProduct.title} onChange={(e) => setNewProduct({ ...newProduct, title: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                        <input type="text" placeholder="Harga (misal: Rp 50.000)" value={newProduct.price} onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                        <input type="text" placeholder="Link Produk (opsional)" value={newProduct.link} onChange={(e) => setNewProduct({ ...newProduct, link: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                        <textarea placeholder="Deskripsi (opsional)" value={newProduct.description} onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" rows={2} />
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => document.getElementById('product-image-input')?.click()}>
+                          <input id="product-image-input" type="file" accept="image/*" className="hidden" onChange={(e) => setNewProduct({ ...newProduct, image: e.target.files?.[0] || null })} />
+                          {newProduct.image ? (<div className="flex items-center justify-center gap-2 text-blue-600"><Video size={16} /> <span className="text-sm">{newProduct.image.name}</span></div>) : (<div className="text-slate-400 text-sm">Upload Gambar Produk</div>)}
+                        </div>
+                        <button onClick={handleAddProduct} disabled={uploadingProduct} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex justify-center gap-2">{uploadingProduct ? 'Menyimpan...' : 'Simpan Produk'}</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {editingProduct && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
+                      <button onClick={() => setEditingProduct(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
+                      <h3 className="text-lg font-bold text-slate-800 mb-4">Edit Produk</h3>
+                      <div className="space-y-3">
+                        <input type="text" placeholder="Nama Produk" value={editingProduct.title || ''} onChange={(e) => setEditingProduct({ ...editingProduct, title: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                        <input type="text" placeholder="Harga" value={editingProduct.price || ''} onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                        <input type="text" placeholder="Link Produk" value={editingProduct.product_link || ''} onChange={(e) => setEditingProduct({ ...editingProduct, product_link: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                        <textarea placeholder="Deskripsi" value={editingProduct.description || ''} onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" rows={2} />
+                        <button onClick={handleEditProduct} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">Simpan Perubahan</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* --- STATISTIK TOKO --- */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="bg-white rounded-xl border border-slate-200 p-4">
+                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Produk</p>
+                    <p className="text-2xl font-bold text-slate-800">{products.length}</p>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-4">
+                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Penjualan</p>
+                    <p className="text-2xl font-bold text-green-600">Rp {shopStats.totalRevenue.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-4">
+                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Pesanan</p>
+                    <p className="text-2xl font-bold text-slate-800">{shopStats.totalOrders}</p>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-4">
+                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Rating Toko</p>
+                    <div className="flex items-center gap-1">
+                      <p className="text-2xl font-bold text-yellow-500">{shopStats.averageRating}</p>
+                      <div className="flex text-yellow-400">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star key={star} size={14} fill={star <= Math.round(shopStats.averageRating) ? '#facc15' : 'none'} stroke={star <= Math.round(shopStats.averageRating) ? '#facc15' : '#d1d5db'} />
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-slate-400 ml-1">({shopStats.totalReviews} ulasan)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* --- MANAJEMEN PRODUK --- */}
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="p-4 border-b border-slate-100 space-y-3">
+                    <div className="flex gap-2 overflow-x-auto">
+                      {[{ k: 'semua', l: 'Semua Produk' }, { k: 'aktif', l: 'Produk Aktif' }, { k: 'habis', l: 'Stok Habis' }, { k: 'arsip', l: 'Arsip' }].map((t) => (
+                        <button key={t.k} onClick={() => setShopStatusTab(t.k as any)} className={cx('px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors', shopStatusTab === t.k ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500')}>{t.l}</button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input value={shopSearch} onChange={(e) => setShopSearch(e.target.value)} placeholder="Cari produk..." className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                      </div>
+                      <select value={shopSort} onChange={(e) => setShopSort(e.target.value as any)} className="text-xs border border-slate-200 rounded-lg px-2 py-2 text-slate-600">
+                        <option value="terbaru">Terbaru</option>
+                        <option value="harga">Harga</option>
+                        <option value="nama">Nama</option>
+                      </select>
                     </div>
                   </div>
 
-                  <div className="border-t border-slate-100 pt-4 space-y-2">
-                    <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Sosial Media (Footer Bio)</label>
-                    {[
-                      { key: 'social_instagram', icon: <Instagram size={16} />, ph: 'Link Instagram (opsional)' },
-                      { key: 'social_tiktok', icon: <Music2 size={16} />, ph: 'Link TikTok (opsional)' },
-                      { key: 'social_youtube', icon: <Youtube size={16} />, ph: 'Link YouTube (opsional)' },
-                      { key: 'social_facebook', icon: <Facebook size={16} />, ph: 'Link Facebook (opsional)' },
-                      { key: 'social_twitter', icon: <Twitter size={16} />, ph: 'Link Twitter/X (opsional)' },
-                      { key: 'social_linkedin', icon: <Linkedin size={16} />, ph: 'Link LinkedIn (opsional)' },
-                      { key: 'social_whatsapp', icon: <MessageCircle size={16} />, ph: 'Link WhatsApp (opsional)' },
-                      { key: 'social_telegram', icon: <Send size={16} />, ph: 'Link Telegram (opsional)' },
-                      { key: 'social_twitch', icon: <Twitch size={16} />, ph: 'Link Twitch (opsional)' },
-                    ].map((s) => (
-                      <div key={s.key} className="flex items-center gap-2">
-                        <span className="text-slate-400 flex-shrink-0">{s.icon}</span>
-                        <input type="text" placeholder={s.ph} value={user?.[s.key] || ''} onChange={(e) => setUser((prev: any) => ({ ...prev, [s.key]: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                  {filteredProducts.length > 0 ? (
+                    <div className="divide-y divide-slate-100">
+                      {filteredProducts.map((prod) => (
+                        <div key={prod.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors">
+                          <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0 flex items-center justify-center text-slate-300">
+                            {prod.image_url ? <img src={prod.image_url} alt={prod.title} className="w-full h-full object-cover" /> : <Package size={20} />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-slate-800 truncate">{prod.title}</p>
+                            <p className="text-[11px] text-slate-400 truncate">{prod.description || '—'}</p>
+                          </div>
+                          <span className="text-sm font-semibold text-slate-700 flex-shrink-0 w-24 text-right">{prod.price}</span>
+                          <span className="hidden sm:inline-flex text-[10px] font-semibold px-2 py-1 rounded-full bg-green-50 text-green-600 flex-shrink-0">Aktif</span>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button onClick={() => setEditingProduct(prod)} className="text-slate-400 hover:text-blue-600 p-1.5 hover:bg-blue-50 rounded-full transition-colors"><Pencil size={15} /></button>
+                            <button onClick={() => handleDeleteProduct(prod.id)} className="text-slate-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-full transition-colors"><Trash2 size={15} /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="col-span-2 py-14 text-center text-slate-400 text-sm">
+                      <ShoppingBag size={36} className="mx-auto mb-2 text-slate-200" />
+                      {shopStatusTab === 'semua' ? 'Belum ada produk.' : `Tidak ada produk dengan status "${shopStatusTab}".`}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ------------------------------- TAB: ANALYTICS ------------------------------- */}
+            {activeTab === 'analytics' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                  {[
+                    { label: 'Total Klik', value: totalClicks, color: 'text-blue-600' },
+                    { label: 'Total Pengunjung', value: totalViews, color: 'text-slate-800' },
+                    { label: 'Rata-rata CTR', value: `${ctr}%`, color: 'text-green-600' },
+                    { label: 'Link Aktif', value: links.length, color: 'text-slate-800' },
+                    { label: 'Konversi', value: `${ctr}%`, color: 'text-pink-600' },
+                  ].map((s) => (
+                    <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-4">
+                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">{s.label}</p>
+                      <p className={cx('text-2xl font-bold', s.color)}>{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid lg:grid-cols-[1.6fr_1fr] gap-4">
+                  <div className="bg-white rounded-xl border border-slate-200 p-5">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-bold text-slate-800">Performa Klik</h4>
+                      <div className="flex items-center gap-3 text-[10px] text-slate-500">
+                        <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-blue-600 inline-block" /> Klik</span>
+                        <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-blue-300 inline-block" /> Pengunjung</span>
                       </div>
-                    ))}
-                    <p className="text-[10px] text-slate-400">Icon hanya akan muncul di footer bio jika linknya diisi.</p>
+                    </div>
+                    {analyticsLoading ? <div className="py-16 text-center text-slate-400 text-sm">Memuat data...</div> : <MiniLineChart series={dailySeries} />}
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-5">
+                    <h4 className="text-sm font-bold text-slate-800 mb-1">Sumber Trafik</h4>
+                    <DonutChart 
+                      segments={referrerStats.length > 0 ? referrerStats : [{ label: 'Belum ada data', value: 0, color: '#e2e8f0' }]} 
+                      centerLabel="Total" 
+                      centerValue={referrerStats.reduce((sum, s) => sum + s.value, 0)} 
+                    />
                   </div>
                 </div>
-              )}
 
-              <div className="pt-5 mt-6 border-t border-slate-100 text-xs text-slate-400">*Perubahan akan tersimpan setelah klik Simpan Perubahan.</div>
-            </div>
-          )}
-
-          {/* --------------------------------- TAB: SHOP --------------------------------- */}
-          {activeTab === 'shop' && (
-            <div className="space-y-4">
-              
-              {/* --- MODAL KELOLA PESANAN (BARU) --- */}
-              {showOrderModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                  <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 relative max-h-[80vh] flex flex-col">
-                    <button onClick={() => setShowOrderModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
-                    <h3 className="text-lg font-bold text-slate-800 mb-4">Daftar Pesanan</h3>
-                    <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
-                      {ordersLoading ? (
-                        <div className="py-10 text-center text-slate-500">Memuat pesanan...</div>
-                      ) : orders.length > 0 ? (
-                        orders.map((order) => (
-                          <div key={order.id} className="bg-slate-50 border border-slate-100 rounded-lg p-4">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <p className="font-semibold text-slate-800 text-sm">{order.customer_name || 'Pelanggan'}</p>
-                                <p className="text-xs text-slate-500">{order.customer_email || '-'}</p>
-                              </div>
-                              <span className={cx('px-2 py-0.5 rounded-full text-[10px] font-semibold',
-                                order.status === 'paid' ? 'bg-green-100 text-green-700' :
-                                order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                                order.status === 'delivered' ? 'bg-purple-100 text-purple-700' :
-                                order.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-                              )}>
-                                {order.status}
-                              </span>
-                            </div>
-                            <div className="mt-1 text-xs text-slate-400 flex justify-between">
-                              <span>{new Date(order.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                              <span className="font-semibold text-slate-700">Rp {order.total_amount?.toLocaleString() || '0'}</span>
-                            </div>
+                <div className="grid lg:grid-cols-[1.4fr_1fr_1fr] gap-4">
+                  <div className="bg-white rounded-xl border border-slate-200 p-5">
+                    <h4 className="text-sm font-bold text-slate-800 mb-3">Link Teratas</h4>
+                    <div className="space-y-2">
+                      {topLinks.slice(0, 5).map((l, i) => (
+                        <div key={l.id} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-5 h-5 rounded-md bg-blue-50 text-blue-600 text-[10px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                            <span className="truncate text-slate-700">{l.title}</span>
+                          </div>
+                          <span className="text-slate-400 text-xs flex-shrink-0">{clicksByLink[l.id] || 0} klik</span>
+                        </div>
+                      ))}
+                      {topLinks.length === 0 && <p className="text-xs text-slate-400">Belum ada link.</p>}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-5">
+                    <h4 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-1.5"><Monitor size={14} /> Performa Berdasarkan Device</h4>
+                    <div className="space-y-2 mt-2">
+                      {deviceStats.length > 0 ? (
+                        deviceStats.map((d, i) => (
+                          <div key={i} className="flex items-center justify-between text-xs">
+                            <span className="text-slate-600">{d.label}</span>
+                            <span className="font-semibold text-slate-700">{d.value} pengunjung</span>
                           </div>
                         ))
                       ) : (
-                        <div className="py-10 text-center text-slate-400">
-                          <ClipboardList size={48} className="mx-auto mb-2 text-slate-200" />
-                          <p className="font-medium">Belum ada pesanan.</p>
-                        </div>
+                        <p className="text-[10px] text-slate-400">Belum ada data device.</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-5">
+                    <h4 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-1.5"><MapPin size={14} /> Lokasi Teratas</h4>
+                    <div className="space-y-2 mt-2">
+                      {locationStats.length > 0 ? (
+                        locationStats.map((l, i) => (
+                          <div key={i} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="w-4 h-4 rounded-full bg-blue-50 text-blue-600 text-[9px] font-bold flex items-center justify-center">{i + 1}</span>
+                              <span className="text-slate-600">{l.label}</span>
+                            </div>
+                            <span className="font-semibold text-slate-700">{l.value} pengunjung</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-[10px] text-slate-400">Belum ada data lokasi.</p>
                       )}
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* --- MODAL TAMBAH/EDIT PRODUK --- */}
-              {showProductModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                  <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
-                    <button onClick={() => setShowProductModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
-                    <h3 className="text-lg font-bold text-slate-800 mb-4">Tambah Produk Baru</h3>
-                    <div className="space-y-3">
-                      <input type="text" placeholder="Nama Produk" value={newProduct.title} onChange={(e) => setNewProduct({ ...newProduct, title: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-                      <input type="text" placeholder="Harga (misal: Rp 50.000)" value={newProduct.price} onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-                      <input type="text" placeholder="Link Produk (opsional)" value={newProduct.link} onChange={(e) => setNewProduct({ ...newProduct, link: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-                      <textarea placeholder="Deskripsi (opsional)" value={newProduct.description} onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" rows={2} />
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => document.getElementById('product-image-input')?.click()}>
-                        <input id="product-image-input" type="file" accept="image/*" className="hidden" onChange={(e) => setNewProduct({ ...newProduct, image: e.target.files?.[0] || null })} />
-                        {newProduct.image ? (<div className="flex items-center justify-center gap-2 text-blue-600"><Video size={16} /> <span className="text-sm">{newProduct.image.name}</span></div>) : (<div className="text-slate-400 text-sm">Upload Gambar Produk</div>)}
-                      </div>
-                      <button onClick={handleAddProduct} disabled={uploadingProduct} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex justify-center gap-2">{uploadingProduct ? 'Menyimpan...' : 'Simpan Produk'}</button>
-                    </div>
-                  </div>
-                </div>
-              )}
+            {/* --------------------------------- TAB: TEMPLATE (baru) --------------------------------- */}
+            {activeTab === 'template' && (
+              <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
+                <div className="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500"><LayoutGrid size={26} /></div>
+                <h4 className="text-base font-semibold text-slate-700">Galeri Template Segera Hadir</h4>
+                <p className="text-sm text-slate-400 mt-1 max-w-sm mx-auto">Halaman khusus untuk menjelajahi seluruh koleksi template akan segera tersedia. Untuk saat ini, pilih template lewat tab Design.</p>
+                <button onClick={() => setActiveTab('design')} className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">Buka Tab Design</button>
+              </div>
+            )}
 
-              {editingProduct && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                  <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
-                    <button onClick={() => setEditingProduct(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
-                    <h3 className="text-lg font-bold text-slate-800 mb-4">Edit Produk</h3>
-                    <div className="space-y-3">
-                      <input type="text" placeholder="Nama Produk" value={editingProduct.title || ''} onChange={(e) => setEditingProduct({ ...editingProduct, title: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-                      <input type="text" placeholder="Harga" value={editingProduct.price || ''} onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-                      <input type="text" placeholder="Link Produk" value={editingProduct.product_link || ''} onChange={(e) => setEditingProduct({ ...editingProduct, product_link: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-                      <textarea placeholder="Deskripsi" value={editingProduct.description || ''} onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" rows={2} />
-                      <button onClick={handleEditProduct} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">Simpan Perubahan</button>
-                    </div>
-                  </div>
-                </div>
-              )}
+            {/* --------------------------------- TAB: AFFILIATE (baru) --------------------------------- */}
+            {activeTab === 'affiliate' && (
+              <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
+                <div className="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-500"><Users size={26} /></div>
+                <h4 className="text-base font-semibold text-slate-700">Program Affiliate Segera Hadir</h4>
+                <p className="text-sm text-slate-400 mt-1 max-w-sm mx-auto">Ajak teman menggunakan Oneklik.id dan dapatkan komisi dari setiap pengguna yang upgrade ke PRO.</p>
+              </div>
+            )}
+          </div>
+        </main>
 
-              {/* --- STATISTIK TOKO (TERHUBUNG KE SUPABASE) --- */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="bg-white rounded-xl border border-slate-200 p-4">
-                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Produk</p>
-                  <p className="text-2xl font-bold text-slate-800">{products.length}</p>
+        {/* -------------------------- RIGHT PREVIEW PANEL -------------------------- */}
+        <aside className="flex flex-col w-full lg:w-[380px] bg-white border-t lg:border-t-0 lg:border-l border-slate-200 h-auto lg:h-full p-6 flex-shrink-0 overflow-y-auto">
+          {activeTab === 'links' && (
+            <div className="flex-1 flex flex-col justify-center">
+              <p className="text-sm font-bold text-slate-800 mb-1">Preview Link</p>
+              <p className="text-xs text-slate-400 mb-4">Lihat tampilan link Anda di berbagai device.</p>
+              <DevicePicker />
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between mb-6 gap-3 shadow-sm">
+                <span className="text-xs text-slate-600 font-medium truncate px-1">{user?.username ? `oneklik.my.id/${user.username}` : 'oneklik.my.id/username'}</span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button onClick={() => handleCopyUrl(bioUrl)} className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 p-2 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium">{copied ? <CheckCircle2 size={14} className="text-green-600" /> : <Copy size={14} />}{copied ? 'Disalin' : 'Salin'}</button>
+                  <ShareDropdown url={bioUrl} />
                 </div>
-                <div className="bg-white rounded-xl border border-slate-200 p-4">
-                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Penjualan</p>
-                  <p className="text-2xl font-bold text-green-600">Rp {shopStats.totalRevenue.toLocaleString()}</p>
-                </div>
-                <div className="bg-white rounded-xl border border-slate-200 p-4">
-                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Pesanan</p>
-                  <p className="text-2xl font-bold text-slate-800">{shopStats.totalOrders}</p>
-                </div>
-                <div className="bg-white rounded-xl border border-slate-200 p-4">
-                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Rating Toko</p>
-                  <div className="flex items-center gap-1">
-                    <p className="text-2xl font-bold text-yellow-500">{shopStats.averageRating}</p>
-                    <div className="flex text-yellow-400">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star key={star} size={14} fill={star <= Math.round(shopStats.averageRating) ? '#facc15' : 'none'} stroke={star <= Math.round(shopStats.averageRating) ? '#facc15' : '#d1d5db'} />
-                      ))}
-                    </div>
-                    <span className="text-[10px] text-slate-400 ml-1">({shopStats.totalReviews} ulasan)</span>
-                  </div>
+              </div>
+              <FramedPreview><BioPreview user={user} links={links} /></FramedPreview>
+              <div className="mt-4 text-center text-[10px] text-slate-400">*Mockup menyesuaikan Template &amp; Desain yang dipilih.</div>
+            </div>
+          )}
+
+          {activeTab === 'design' && (
+            <div className="flex-1 flex flex-col">
+              <p className="text-sm font-bold text-slate-800 mb-1">Preview Tampilan</p>
+              <p className="text-xs text-slate-400 mb-4">Lihat bagaimana bio link Anda akan terlihat.</p>
+              <DevicePicker />
+              <FramedPreview><BioPreview user={user} links={links} /></FramedPreview>
+
+              <div className="mt-6 bg-slate-50 rounded-xl border border-slate-100 p-4">
+                <p className="text-xs font-bold text-slate-700 mb-1">Tema Cepat</p>
+                <p className="text-[10px] text-slate-400 mb-3">Terapkan tema warna secara instan.</p>
+                <div className="flex gap-2">
+                  {quickThemeColors.map((c) => (
+                    <button key={c} onClick={() => setUser((prev: any) => ({ ...prev, theme_primary: c }))} className={cx('w-9 h-9 rounded-full border-2 shadow', user?.theme_primary === c ? 'border-blue-500' : 'border-white')} style={{ backgroundColor: c }} />
+                  ))}
                 </div>
               </div>
 
-              {/* --- MANAJEMEN PRODUK --- */}
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                <div className="p-4 border-b border-slate-100 space-y-3">
-                  <div className="flex gap-2 overflow-x-auto">
-                    {[{ k: 'semua', l: 'Semua Produk' }, { k: 'aktif', l: 'Produk Aktif' }, { k: 'habis', l: 'Stok Habis' }, { k: 'arsip', l: 'Arsip' }].map((t) => (
-                      <button key={t.k} onClick={() => setShopStatusTab(t.k as any)} className={cx('px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors', shopStatusTab === t.k ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500')}>{t.l}</button>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input value={shopSearch} onChange={(e) => setShopSearch(e.target.value)} placeholder="Cari produk..." className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                    </div>
-                    <select value={shopSort} onChange={(e) => setShopSort(e.target.value as any)} className="text-xs border border-slate-200 rounded-lg px-2 py-2 text-slate-600">
-                      <option value="terbaru">Terbaru</option>
-                      <option value="harga">Harga</option>
-                      <option value="nama">Nama</option>
-                    </select>
-                  </div>
-                </div>
-
-                {filteredProducts.length > 0 ? (
-                  <div className="divide-y divide-slate-100">
-                    {filteredProducts.map((prod) => (
-                      <div key={prod.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors">
-                        <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0 flex items-center justify-center text-slate-300">
-                          {prod.image_url ? <img src={prod.image_url} alt={prod.title} className="w-full h-full object-cover" /> : <Package size={20} />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-slate-800 truncate">{prod.title}</p>
-                          <p className="text-[11px] text-slate-400 truncate">{prod.description || '—'}</p>
-                        </div>
-                        <span className="text-sm font-semibold text-slate-700 flex-shrink-0 w-24 text-right">{prod.price}</span>
-                        <span className="hidden sm:inline-flex text-[10px] font-semibold px-2 py-1 rounded-full bg-green-50 text-green-600 flex-shrink-0">Aktif</span>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <button onClick={() => setEditingProduct(prod)} className="text-slate-400 hover:text-blue-600 p-1.5 hover:bg-blue-50 rounded-full transition-colors"><Pencil size={15} /></button>
-                          <button onClick={() => handleDeleteProduct(prod.id)} className="text-slate-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-full transition-colors"><Trash2 size={15} /></button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="col-span-2 py-14 text-center text-slate-400 text-sm">
-                    <ShoppingBag size={36} className="mx-auto mb-2 text-slate-200" />
-                    {shopStatusTab === 'semua' ? 'Belum ada produk.' : `Tidak ada produk dengan status "${shopStatusTab}".`}
-                  </div>
-                )}
+              <div className="mt-4 bg-white rounded-xl border border-slate-100 p-4">
+                <p className="text-xs font-bold text-slate-700 mb-1">Reset</p>
+                <p className="text-[10px] text-slate-400 mb-3">Kembalikan semua pengaturan ke default.</p>
+                <button onClick={handleResetDesign} className="w-full flex items-center justify-center gap-1.5 py-2 border border-red-200 text-red-500 rounded-lg text-xs font-semibold hover:bg-red-50 transition-colors"><RefreshCw size={13} /> Reset ke Default</button>
               </div>
             </div>
           )}
 
-          {/* ------------------------------- TAB: ANALYTICS ------------------------------- */}
+          {activeTab === 'shop' && (
+            <div className="flex-1 flex flex-col">
+              <p className="text-sm font-bold text-slate-800 mb-1">Preview Toko Anda</p>
+              <p className="text-xs text-slate-400 mb-4">Begini tampilan produk Anda di halaman bio.</p>
+
+              <div className="bg-slate-50 rounded-xl border border-slate-100 p-3 mb-4">
+                <p className="text-xs font-bold text-slate-700 mb-2">Produk Terbaru</p>
+                <div className="space-y-2">
+                  {products.slice(0, 3).map((p, i) => (
+                    <div key={p.id} className="flex items-center gap-2 text-xs">
+                      <span className="w-5 h-5 rounded-md bg-amber-50 text-amber-600 font-bold flex items-center justify-center flex-shrink-0 text-[10px]">{i + 1}</span>
+                      <span className="truncate flex-1 text-slate-700">{p.title}</span>
+                      <span className="text-slate-400 flex-shrink-0">{p.price}</span>
+                    </div>
+                  ))}
+                  {products.length === 0 && <p className="text-[11px] text-slate-400">Belum ada produk.</p>}
+                </div>
+              </div>
+
+              <ShopPreview user={user} products={products} />
+              <p className="mt-3 text-center text-[10px] text-slate-400">Produk tampil lewat tombol 🛍️ Shop di halaman bio Anda saat ini — bukan halaman toko terpisah.</p>
+
+              <div className="mt-5 bg-slate-50 rounded-xl border border-slate-100 p-4">
+                <p className="text-xs font-bold text-slate-700 mb-2">Bagikan Toko</p>
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 mb-3">
+                  <span className="text-[11px] text-slate-500 truncate flex-1">{shopUrl}</span>
+                  <button onClick={() => handleCopyUrl(shopUrl)}>{copied ? <CheckCircle2 size={14} className="text-green-600" /> : <Copy size={14} className="text-slate-400" />}</button>
+                </div>
+                <ShareDropdown url={shopUrl} />
+              </div>
+            </div>
+          )}
+
           {activeTab === 'analytics' && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                {[
-                  { label: 'Total Klik', value: totalClicks, color: 'text-blue-600' },
-                  { label: 'Total Pengunjung', value: totalViews, color: 'text-slate-800' },
-                  { label: 'Rata-rata CTR', value: `${ctr}%`, color: 'text-green-600' },
-                  { label: 'Link Aktif', value: links.length, color: 'text-slate-800' },
-                  { label: 'Konversi', value: `${ctr}%`, color: 'text-pink-600' },
-                ].map((s) => (
-                  <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-4">
-                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">{s.label}</p>
-                    <p className={cx('text-2xl font-bold', s.color)}>{s.value}</p>
-                  </div>
-                ))}
+            <div className="flex-1 flex flex-col">
+              <p className="text-sm font-bold text-slate-800 mb-1">Preview Link</p>
+              <p className="text-xs text-slate-400 mb-4">Lihat tampilan link Anda di berbagai device.</p>
+              <FramedPreview><BioPreview user={user} links={links} /></FramedPreview>
+
+              <div className="mt-6 bg-slate-50 rounded-xl border border-slate-100 p-4">
+                <p className="text-xs font-bold text-slate-700 mb-3">Waktu Aktif Pengunjung</p>
+                <ActivityHeatmap events={analyticsData} />
               </div>
 
-              <div className="grid lg:grid-cols-[1.6fr_1fr] gap-4">
-                <div className="bg-white rounded-xl border border-slate-200 p-5">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-bold text-slate-800">Performa Klik</h4>
-                    <div className="flex items-center gap-3 text-[10px] text-slate-500">
-                      <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-blue-600 inline-block" /> Klik</span>
-                      <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-blue-300 inline-block" /> Pengunjung</span>
-                    </div>
-                  </div>
-                  {analyticsLoading ? <div className="py-16 text-center text-slate-400 text-sm">Memuat data...</div> : <MiniLineChart series={dailySeries} />}
-                </div>
-                <div className="bg-white rounded-xl border border-slate-200 p-5">
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">Sumber Trafik</h4>
-                  <DonutChart 
-                    segments={referrerStats.length > 0 ? referrerStats : [{ label: 'Belum ada data', value: 0, color: '#e2e8f0' }]} 
-                    centerLabel="Total" 
-                    centerValue={referrerStats.reduce((sum, s) => sum + s.value, 0)} 
-                  />
-                </div>
-              </div>
-
-              <div className="grid lg:grid-cols-[1.4fr_1fr_1fr] gap-4">
-                <div className="bg-white rounded-xl border border-slate-200 p-5">
-                  <h4 className="text-sm font-bold text-slate-800 mb-3">Link Teratas</h4>
-                  <div className="space-y-2">
-                    {topLinks.slice(0, 5).map((l, i) => (
-                      <div key={l.id} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="w-5 h-5 rounded-md bg-blue-50 text-blue-600 text-[10px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
-                          <span className="truncate text-slate-700">{l.title}</span>
-                        </div>
-                        <span className="text-slate-400 text-xs flex-shrink-0">{clicksByLink[l.id] || 0} klik</span>
-                      </div>
-                    ))}
-                    {topLinks.length === 0 && <p className="text-xs text-slate-400">Belum ada link.</p>}
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl border border-slate-200 p-5">
-                  <h4 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-1.5"><Monitor size={14} /> Performa Berdasarkan Device</h4>
-                  <div className="space-y-2 mt-2">
-                    {deviceStats.length > 0 ? (
-                      deviceStats.map((d, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs">
-                          <span className="text-slate-600">{d.label}</span>
-                          <span className="font-semibold text-slate-700">{d.value} pengunjung</span>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-[10px] text-slate-400">Belum ada data device.</p>
-                    )}
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl border border-slate-200 p-5">
-                  <h4 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-1.5"><MapPin size={14} /> Lokasi Teratas</h4>
-                  <div className="space-y-2 mt-2">
-                    {locationStats.length > 0 ? (
-                      locationStats.map((l, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="w-4 h-4 rounded-full bg-blue-50 text-blue-600 text-[9px] font-bold flex items-center justify-center">{i + 1}</span>
-                            <span className="text-slate-600">{l.label}</span>
-                          </div>
-                          <span className="font-semibold text-slate-700">{l.value} pengunjung</span>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-[10px] text-slate-400">Belum ada data lokasi.</p>
-                    )}
-                  </div>
-                </div>
+              <div className="mt-4 bg-blue-50 rounded-xl border border-blue-100 p-4 flex gap-2.5">
+                <Lightbulb size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                <p className="text-[11px] text-blue-700">Posting link Anda saat jam kunjungan tertinggi (lihat heatmap di atas) untuk mendapatkan klik lebih banyak!</p>
               </div>
             </div>
           )}
-        </div>
-      </main>
 
-      {/* -------------------------- RIGHT PREVIEW PANEL -------------------------- */}
-      <aside className="flex flex-col w-full lg:w-[380px] bg-white border-t lg:border-t-0 lg:border-l border-slate-200 h-auto lg:h-screen p-6 flex-shrink-0 overflow-y-auto">
-        {activeTab === 'links' && (
-          <div className="flex-1 flex flex-col justify-center">
-            <p className="text-sm font-bold text-slate-800 mb-1">Preview Link</p>
-            <p className="text-xs text-slate-400 mb-4">Lihat tampilan link Anda di berbagai device.</p>
-            <DevicePicker />
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between mb-6 gap-3 shadow-sm">
-              <span className="text-xs text-slate-600 font-medium truncate px-1">{user?.username ? `oneklik.my.id/${user.username}` : 'oneklik.my.id/username'}</span>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {/* --- PERBAIKAN: Arrow function untuk handleCopyUrl --- */}
-                <button onClick={() => handleCopyUrl(bioUrl)} className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 p-2 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium">{copied ? <CheckCircle2 size={14} className="text-green-600" /> : <Copy size={14} />}{copied ? 'Disalin' : 'Salin'}</button>
-                <ShareDropdown url={bioUrl} />
-              </div>
+          {(activeTab === 'template' || activeTab === 'affiliate') && (
+            <div className="flex-1 flex items-center justify-center text-center text-sm text-slate-400 p-10">
+              Preview tidak tersedia untuk halaman ini.
             </div>
-            <FramedPreview><BioPreview user={user} links={links} /></FramedPreview>
-            <div className="mt-4 text-center text-[10px] text-slate-400">*Mockup menyesuaikan Template &amp; Desain yang dipilih.</div>
-          </div>
-        )}
+          )}
+        </aside>
+      </div>
 
-        {activeTab === 'design' && (
-          <div className="flex-1 flex flex-col">
-            <p className="text-sm font-bold text-slate-800 mb-1">Preview Tampilan</p>
-            <p className="text-xs text-slate-400 mb-4">Lihat bagaimana bio link Anda akan terlihat.</p>
-            <DevicePicker />
-            <FramedPreview><BioPreview user={user} links={links} /></FramedPreview>
+      {/* ===================================================================
+          WALLET: PANEL LENGKAP (slide-over)
+          =================================================================== */}
+      <WalletPanel
+        isOpen={showWalletPanel}
+        onClose={() => setShowWalletPanel(false)}
+        wallet={wallet}
+        walletLoading={walletLoading}
+        showBalance={showWalletBalance}
+        setShowBalance={setShowWalletBalance}
+        monthSummary={walletMonthSummary}
+        monthRangeLabel={walletMonthRangeLabel}
+        transactions={walletTransactions}
+        onTopUp={openTopUpModal}
+        onWithdraw={() => setShowWithdrawModal(true)}
+        onHistory={() => { setShowWalletHistory(true); fetchWalletTransactions(); }}
+        onTransfer={() => setShowTransferModal(true)}
+        onVoucher={() => setShowVoucherModal(true)}
+        onInvoice={() => setShowInvoiceModal(true)}
+      />
 
-            <div className="mt-6 bg-slate-50 rounded-xl border border-slate-100 p-4">
-              <p className="text-xs font-bold text-slate-700 mb-1">Tema Cepat</p>
-              <p className="text-[10px] text-slate-400 mb-3">Terapkan tema warna secara instan.</p>
-              <div className="flex gap-2">
-                {quickThemeColors.map((c) => (
-                  <button key={c} onClick={() => setUser((prev: any) => ({ ...prev, theme_primary: c }))} className={cx('w-9 h-9 rounded-full border-2 shadow', user?.theme_primary === c ? 'border-blue-500' : 'border-white')} style={{ backgroundColor: c }} />
-                ))}
-              </div>
-            </div>
+      {/* ===================================================================
+          MODALS
+          =================================================================== */}
+      <TopUpModal
+        isOpen={showTopUpModal}
+        onClose={closeTopUpModal}
+        step={topUpStep}
+        setStep={setTopUpStep}
+        nominal={topUpNominal}
+        setNominal={setTopUpNominal}
+        customNominal={topUpCustomNominal}
+        setCustomNominal={setTopUpCustomNominal}
+        method={topUpMethod}
+        setMethod={setTopUpMethod}
+        countdown={topUpCountdown}
+        vaNumber={topUpVaNumber}
+        currentBalance={wallet?.balance || 0}
+        topUpAmount={topUpAmount}
+        newBalance={walletNewBalance}
+        onContinueStep1={handleTopUpContinueStep1}
+        onContinueStep2={handleTopUpContinueStep2}
+        onCheckPayment={handleConfirmTopUpPayment}
+      />
 
-            <div className="mt-4 bg-white rounded-xl border border-slate-100 p-4">
-              <p className="text-xs font-bold text-slate-700 mb-1">Reset</p>
-              <p className="text-[10px] text-slate-400 mb-3">Kembalikan semua pengaturan ke default.</p>
-              <button onClick={handleResetDesign} className="w-full flex items-center justify-center gap-1.5 py-2 border border-red-200 text-red-500 rounded-lg text-xs font-semibold hover:bg-red-50 transition-colors"><RefreshCw size={13} /> Reset ke Default</button>
-            </div>
-          </div>
-        )}
+      <WithdrawModal
+        isOpen={showWithdrawModal}
+        onClose={() => setShowWithdrawModal(false)}
+        wallet={wallet}
+        amount={withdrawAmount}
+        setAmount={setWithdrawAmount}
+        onSubmit={handleWithdrawSubmit}
+        submitting={withdrawSubmitting}
+      />
 
-        {activeTab === 'shop' && (
-          <div className="flex-1 flex flex-col">
-            <p className="text-sm font-bold text-slate-800 mb-1">Preview Toko Anda</p>
-            <p className="text-xs text-slate-400 mb-4">Begini tampilan produk Anda di halaman bio.</p>
+      <TransferModal
+        isOpen={showTransferModal}
+        onClose={() => setShowTransferModal(false)}
+        wallet={wallet}
+        recipient={transferRecipient}
+        setRecipient={setTransferRecipient}
+        amount={transferAmount}
+        setAmount={setTransferAmount}
+        note={transferNote}
+        setNote={setTransferNote}
+        onSubmit={handleTransferSubmit}
+        submitting={transferSubmitting}
+      />
 
-            <div className="bg-slate-50 rounded-xl border border-slate-100 p-3 mb-4">
-              <p className="text-xs font-bold text-slate-700 mb-2">Produk Terbaru</p>
-              <div className="space-y-2">
-                {products.slice(0, 3).map((p, i) => (
-                  <div key={p.id} className="flex items-center gap-2 text-xs">
-                    <span className="w-5 h-5 rounded-md bg-amber-50 text-amber-600 font-bold flex items-center justify-center flex-shrink-0 text-[10px]">{i + 1}</span>
-                    <span className="truncate flex-1 text-slate-700">{p.title}</span>
-                    <span className="text-slate-400 flex-shrink-0">{p.price}</span>
-                  </div>
-                ))}
-                {products.length === 0 && <p className="text-[11px] text-slate-400">Belum ada produk.</p>}
-              </div>
-            </div>
+      <VoucherModal
+        isOpen={showVoucherModal}
+        onClose={() => setShowVoucherModal(false)}
+        code={voucherCode}
+        setCode={setVoucherCode}
+        onSubmit={handleClaimVoucher}
+        submitting={voucherSubmitting}
+      />
 
-            <ShopPreview user={user} products={products} />
-            <p className="mt-3 text-center text-[10px] text-slate-400">Produk tampil lewat tombol 🛍️ Shop di halaman bio Anda saat ini — bukan halaman toko terpisah.</p>
+      <InvoiceModal
+        isOpen={showInvoiceModal}
+        onClose={() => setShowInvoiceModal(false)}
+        transactions={walletTransactions}
+        loading={walletTransactionsLoading}
+      />
 
-            <div className="mt-5 bg-slate-50 rounded-xl border border-slate-100 p-4">
-              <p className="text-xs font-bold text-slate-700 mb-2">Bagikan Toko</p>
-              <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 mb-3">
-                <span className="text-[11px] text-slate-500 truncate flex-1">{shopUrl}</span>
-                <button onClick={() => handleCopyUrl(shopUrl)}>{copied ? <CheckCircle2 size={14} className="text-green-600" /> : <Copy size={14} className="text-slate-400" />}</button>
-              </div>
-              <ShareDropdown url={shopUrl} />
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'analytics' && (
-          <div className="flex-1 flex flex-col">
-            <p className="text-sm font-bold text-slate-800 mb-1">Preview Link</p>
-            <p className="text-xs text-slate-400 mb-4">Lihat tampilan link Anda di berbagai device.</p>
-            <FramedPreview><BioPreview user={user} links={links} /></FramedPreview>
-
-            <div className="mt-6 bg-slate-50 rounded-xl border border-slate-100 p-4">
-              <p className="text-xs font-bold text-slate-700 mb-3">Waktu Aktif Pengunjung</p>
-              <ActivityHeatmap events={analyticsData} />
-            </div>
-
-            <div className="mt-4 bg-blue-50 rounded-xl border border-blue-100 p-4 flex gap-2.5">
-              <Lightbulb size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
-              <p className="text-[11px] text-blue-700">Posting link Anda saat jam kunjungan tertinggi (lihat heatmap di atas) untuk mendapatkan klik lebih banyak!</p>
-            </div>
-          </div>
-        )}
-      </aside>
+      <WalletHistoryDrawer
+        isOpen={showWalletHistory}
+        onClose={() => setShowWalletHistory(false)}
+        transactions={filteredWalletTransactions}
+        loading={walletTransactionsLoading}
+        tab={walletHistoryTab}
+        setTab={setWalletHistoryTab}
+      />
 
       <NotificationModal isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} notifications={notifications} loading={notifLoading} tab={notifTab} setTab={setNotifTab} />
     </div>
