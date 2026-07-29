@@ -313,7 +313,7 @@ export default function Home() {
             </div>
 
             <Link href="#pricing" className="hover:text-blue-600 transition-colors">Harga</Link>
-            <Link href="/panduan" className="hover:text-blue-600 transition-colors">Panduan</Link>
+            <Link href="/getting-started" className="hover:text-blue-600 transition-colors">Panduan</Link>
             <Link href="/blog" className="hover:text-blue-600 transition-colors">Blog</Link>
           </nav>
 
@@ -1096,9 +1096,9 @@ export default function Home() {
             <div className="lg:col-span-1 space-y-4">
               <h4 className="font-bold text-white text-base tracking-wide">Bantuan</h4>
               <ul className="space-y-3 text-sm text-slate-400">
-                <li><Link href="/panduan" className="hover:text-blue-400 transition-colors">Panduan</Link></li>
+                <li><Link href="/getting-started" className="hover:text-blue-400 transition-colors">Panduan</Link></li>
                 <li><Link href="/faq" className="hover:text-blue-400 transition-colors">FAQ</Link></li>
-                <li><Link href="/laporkan-masalah" className="hover:text-blue-400 transition-colors">Laporkan Masalah</Link></li>
+                <li><Link href="/report" className="hover:text-blue-400 transition-colors">Laporkan Masalah</Link></li>
                 <li><Link href="/terms" className="hover:text-blue-400 transition-colors">Syarat & Ketentuan</Link></li>
                 <li><Link href="/privacy" className="hover:text-blue-400 transition-colors">Kebijakan Privasi</Link></li>
               </ul>
