@@ -275,12 +275,19 @@ export default function Home() {
       <header className="fixed top-0 left-0 w-full z-50 bg-white/95 border-b border-slate-100/80 shadow-[0_4px_20px_rgba(0,0,0,0.02)] transition-all will-change-transform">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           
-          {/* Logo */}
-          <Link href="/" className="text-2xl font-black text-blue-600 tracking-tight flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-gradient-to-tr from-blue-600 via-indigo-600 to-blue-500 rounded-xl flex items-center justify-center text-white shadow-md shadow-blue-500/30">
-              <Zap size={18} className="fill-white" />
-            </div>
-            Oneklik<span className="text-blue-400">.id</span>
+          {/* LOGO GRADASI BIRU-UNGU (IKON SVG + TEKS HTML) */}
+          <Link href="/" className="flex items-center gap-2.5">
+            <Image 
+              src="/icon-oneklik.svg" 
+              alt="Ikon Oneklik"
+              width={36}
+              height={36}
+              className="h-9 w-9 object-contain"
+              priority
+            />
+            <span className="text-2xl font-black tracking-tight bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent">
+              Oneklik.id
+            </span>
           </Link>
           
           {/* Navigasi Tengah */}
@@ -454,88 +461,91 @@ export default function Home() {
             </div>
           </motion.div>
 
-          {/* Kanan (Hero 3D ukuran penuh) */}
+          {/* Kanan (Hero 3D ukuran penuh) - Shifted slightly towards center */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.95, y: 30 }} 
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             transition={{ duration: 0.8, delay: 0.2 }}
             className="lg:col-span-5 relative flex justify-center items-center w-full h-[580px] sm:h-[680px] lg:h-[780px] select-none overflow-visible z-20 will-change-transform"
           >
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center -z-10 overflow-visible">
-              <svg viewBox="0 0 600 600" className="w-[140%] h-[140%] max-w-none opacity-85 md:animate-pulse" style={{ animationDuration: '6s' }} xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="trailCyan" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#22d3ee" stopOpacity="0" /><stop offset="50%" stopColor="#38bdf8" stopOpacity="0.8" /><stop offset="100%" stopColor="#818cf8" stopOpacity="0" /></linearGradient>
-                  <linearGradient id="trailPurple" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#a855f7" stopOpacity="0" /><stop offset="50%" stopColor="#c084fc" stopOpacity="0.75" /><stop offset="100%" stopColor="#38bdf8" stopOpacity="0" /></linearGradient>
-                  <linearGradient id="trailWhite" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#ffffff" stopOpacity="0" /><stop offset="50%" stopColor="#ffffff" stopOpacity="0.9" /><stop offset="100%" stopColor="#60a5fa" stopOpacity="0" /></linearGradient>
-                  <filter id="glowTrail" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="4" result="blur" /><feComposite in="SourceGraphic" in2="blur" operator="over" /></filter>
-                </defs>
-                <path d="M 60 420 C 120 180, 380 120, 540 280 C 620 360, 480 500, 300 480" fill="none" stroke="url(#trailCyan)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glowTrail)" />
-                <path d="M 520 160 C 400 80, 150 180, 100 360 C 70 460, 220 540, 440 450" fill="none" stroke="url(#trailPurple)" strokeWidth="3" strokeLinecap="round" filter="url(#glowTrail)" />
-                <path d="M 160 500 C 80 340, 260 140, 480 220" fill="none" stroke="url(#trailWhite)" strokeWidth="1.8" strokeLinecap="round" strokeDasharray="8 6" filter="url(#glowTrail)" />
-              </svg>
-            </div>
+            {/* INNER WRAPPER TO SHIFT EVERYTHING TOGETHER TOWARDS THE CENTER */}
+            <div className="relative w-full h-full flex justify-center items-center lg:-ml-10">
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center -z-10 overflow-visible">
+                <svg viewBox="0 0 600 600" className="w-[140%] h-[140%] max-w-none opacity-85 md:animate-pulse" style={{ animationDuration: '6s' }} xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="trailCyan" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#22d3ee" stopOpacity="0" /><stop offset="50%" stopColor="#38bdf8" stopOpacity="0.8" /><stop offset="100%" stopColor="#818cf8" stopOpacity="0" /></linearGradient>
+                    <linearGradient id="trailPurple" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#a855f7" stopOpacity="0" /><stop offset="50%" stopColor="#c084fc" stopOpacity="0.75" /><stop offset="100%" stopColor="#38bdf8" stopOpacity="0" /></linearGradient>
+                    <linearGradient id="trailWhite" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#ffffff" stopOpacity="0" /><stop offset="50%" stopColor="#ffffff" stopOpacity="0.9" /><stop offset="100%" stopColor="#60a5fa" stopOpacity="0" /></linearGradient>
+                    <filter id="glowTrail" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="4" result="blur" /><feComposite in="SourceGraphic" in2="blur" operator="over" /></filter>
+                  </defs>
+                  <path d="M 60 420 C 120 180, 380 120, 540 280 C 620 360, 480 500, 300 480" fill="none" stroke="url(#trailCyan)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glowTrail)" />
+                  <path d="M 520 160 C 400 80, 150 180, 100 360 C 70 460, 220 540, 440 450" fill="none" stroke="url(#trailPurple)" strokeWidth="3" strokeLinecap="round" filter="url(#glowTrail)" />
+                  <path d="M 160 500 C 80 340, 260 140, 480 220" fill="none" stroke="url(#trailWhite)" strokeWidth="1.8" strokeLinecap="round" strokeDasharray="8 6" filter="url(#glowTrail)" />
+                </svg>
+              </div>
 
-            {/* Efek Cahaya Podium bawah */}
-            <div className="absolute bottom-[6%] lg:bottom-[8%] left-1/2 -translate-x-1/2 w-[90%] lg:w-[110%] h-36 lg:h-44 pointer-events-none -z-5 flex items-center justify-center">
-              <div className="absolute w-full h-full rounded-[100%] border-[3px] border-cyan-400/70 shadow-[0_0_30px_rgba(34,211,238,0.8),inset_0_0_15px_rgba(56,189,248,0.6)] md:shadow-[0_0_60px_rgba(34,211,238,0.8),inset_0_0_30px_rgba(56,189,248,0.6)] opacity-95 md:animate-pulse" />
-              <div className="absolute w-[86%] h-[78%] rounded-[100%] border-[2px] border-purple-400/80 shadow-[0_0_35px_rgba(168,85,247,0.7),inset_0_0_15px_rgba(192,132,252,0.7)] md:shadow-[0_0_70px_rgba(168,85,247,0.7),inset_0_0_35px_rgba(192,132,252,0.7)]" />
-              <div className="absolute w-[70%] h-[55%] bg-gradient-to-r from-cyan-400/50 via-blue-500/60 to-fuchsia-500/50 rounded-[100%] blur-xl" />
-            </div>
+              {/* Efek Cahaya Podium bawah */}
+              <div className="absolute bottom-[6%] lg:bottom-[8%] left-1/2 -translate-x-1/2 w-[90%] lg:w-[110%] h-36 lg:h-44 pointer-events-none -z-5 flex items-center justify-center">
+                <div className="absolute w-full h-full rounded-[100%] border-[3px] border-cyan-400/70 shadow-[0_0_30px_rgba(34,211,238,0.8),inset_0_0_15px_rgba(56,189,248,0.6)] md:shadow-[0_0_60px_rgba(34,211,238,0.8),inset_0_0_30px_rgba(56,189,248,0.6)] opacity-95 md:animate-pulse" />
+                <div className="absolute w-[86%] h-[78%] rounded-[100%] border-[2px] border-purple-400/80 shadow-[0_0_35px_rgba(168,85,247,0.7),inset_0_0_15px_rgba(192,132,252,0.7)] md:shadow-[0_0_70px_rgba(168,85,247,0.7),inset_0_0_35px_rgba(192,132,252,0.7)]" />
+                <div className="absolute w-[70%] h-[55%] bg-gradient-to-r from-cyan-400/50 via-blue-500/60 to-fuchsia-500/50 rounded-[100%] blur-xl" />
+              </div>
 
-            {/* Komponen Hero3D */}
-            <div className="relative w-full h-full flex justify-center items-center z-10 transform scale-[1.85] sm:scale-[1.75] lg:scale-[1.95] mt-4 sm:mt-0">
-              <Hero3D />
-            </div>
+              {/* Komponen Hero3D */}
+              <div className="relative w-full h-full flex justify-center items-center z-10 transform scale-[1.85] sm:scale-[1.75] lg:scale-[1.95] mt-4 sm:mt-0">
+                <Hero3D />
+              </div>
 
-            {/* Bayangan Podium */}
-            <div className="absolute bottom-[1%] lg:bottom-[2%] left-1/2 -translate-x-1/2 w-[85%] lg:w-[95%] h-16 lg:h-20 pointer-events-none -z-20 flex flex-col items-center justify-center">
-              <div className="absolute w-full h-full bg-gradient-to-r from-purple-600/40 via-blue-500/50 to-cyan-400/40 rounded-full blur-[20px] md:blur-[40px]" />
-              <div className="absolute w-[72%] h-7 bg-slate-950/30 rounded-full blur-md" />
-            </div>
+              {/* Bayangan Podium */}
+              <div className="absolute bottom-[1%] lg:bottom-[2%] left-1/2 -translate-x-1/2 w-[85%] lg:w-[95%] h-16 lg:h-20 pointer-events-none -z-20 flex flex-col items-center justify-center">
+                <div className="absolute w-full h-full bg-gradient-to-r from-purple-600/40 via-blue-500/50 to-cyan-400/40 rounded-full blur-[20px] md:blur-[40px]" />
+                <div className="absolute w-[72%] h-7 bg-slate-950/30 rounded-full blur-md" />
+              </div>
 
-            {/* ICONS MELAYANG: Ditambahkan will-change-transform */}
-            <div className="absolute inset-0 z-30 pointer-events-none flex justify-center items-center overflow-visible">
-              
-              {/* ZAP (Top Left) */}
-              <motion.div animate={{ y: [0, -12, 0], rotateZ: [-6, 6, -6], rotateY: [-5, 5, -5] }} transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }} 
-                className="absolute top-[4%] sm:top-[6%] left-[0%] sm:left-[3%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
-                <div className="w-20 h-20 sm:w-28 sm:h-28 lg:w-32 lg:h-32 flex items-center justify-center">
-                  <Image src="/icon-zap.png" alt="Zap" width={140} height={140} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" priority />
-                </div>
-              </motion.div>
-              
-              {/* USERS (Top Right) */}
-              <motion.div animate={{ y: [0, -14, 0], rotateY: [10, -10, 10], rotateZ: [-3, 3, -3] }} transition={{ duration: 4.0, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} 
-                className="absolute top-[10%] sm:top-[12%] right-[0%] sm:right-[3%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
-                <div className="w-20 h-20 sm:w-28 sm:h-28 lg:w-32 lg:h-32 flex items-center justify-center">
-                  <Image src="/icon-users.png" alt="Users" width={140} height={140} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" priority />
-                </div>
-              </motion.div>
-              
-              {/* QR (Mid Left) */}
-              <motion.div animate={{ y: [0, 14, 0], rotateZ: [8, -4, 8], rotateX: [5, -5, 5] }} transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut", delay: 0.8 }} 
-                className="absolute top-[38%] sm:top-[40%] left-[-2%] sm:left-[1%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
-                <div className="w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 flex items-center justify-center">
-                  <Image src="/icon-qr.png" alt="QR" width={120} height={120} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" />
-                </div>
-              </motion.div>
-              
-              {/* LINK (Mid Right) */}
-              <motion.div animate={{ y: [0, 12, 0], rotateZ: [-12, 6, -12], rotateY: [8, -8, 8] }} transition={{ duration: 5.8, repeat: Infinity, ease: "easeInOut", delay: 1.2 }} 
-                className="absolute top-[44%] sm:top-[46%] right-[-2%] sm:right-[1%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
-                <div className="w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 flex items-center justify-center">
-                  <Image src="/icon-link.png" alt="Link" width={120} height={120} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" />
-                </div>
-              </motion.div>
-              
-              {/* SMALL ZAP (Bottom Right) */}
-              <motion.div animate={{ y: [0, -8, 0], rotateY: [15, -15, 15] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} 
-                className="absolute bottom-[22%] sm:bottom-[24%] right-[10%] sm:right-[14%] transform-gpu will-change-transform drop-shadow-md md:drop-shadow-xl z-30" style={{ transform: 'translateZ(60px)' }}>
-                <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 flex items-center justify-center">
-                  <Image src="/icon-petir-kecil.png" alt="Small Zap" width={80} height={80} className="object-contain w-full h-full drop-shadow-md md:drop-shadow-xl" />
-                </div>
-              </motion.div>
+              {/* ICONS MELAYANG */}
+              <div className="absolute inset-0 z-30 pointer-events-none flex justify-center items-center overflow-visible">
+                
+                {/* ZAP (Top Left) */}
+                <motion.div animate={{ y: [0, -12, 0], rotateZ: [-6, 6, -6], rotateY: [-5, 5, -5] }} transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }} 
+                  className="absolute top-[4%] sm:top-[6%] left-[0%] sm:left-[3%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                  <div className="w-20 h-20 sm:w-28 sm:h-28 lg:w-32 lg:h-32 flex items-center justify-center">
+                    <Image src="/icon-zap.png" alt="Zap" width={140} height={140} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" priority />
+                  </div>
+                </motion.div>
+                
+                {/* USERS (Top Right) */}
+                <motion.div animate={{ y: [0, -14, 0], rotateY: [10, -10, 10], rotateZ: [-3, 3, -3] }} transition={{ duration: 4.0, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} 
+                  className="absolute top-[10%] sm:top-[12%] right-[0%] sm:right-[3%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                  <div className="w-20 h-20 sm:w-28 sm:h-28 lg:w-32 lg:h-32 flex items-center justify-center">
+                    <Image src="/icon-users.png" alt="Users" width={140} height={140} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" priority />
+                  </div>
+                </motion.div>
+                
+                {/* QR (Mid Left) */}
+                <motion.div animate={{ y: [0, 14, 0], rotateZ: [8, -4, 8], rotateX: [5, -5, 5] }} transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut", delay: 0.8 }} 
+                  className="absolute top-[38%] sm:top-[40%] left-[-2%] sm:left-[1%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                  <div className="w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 flex items-center justify-center">
+                    <Image src="/icon-qr.png" alt="QR" width={120} height={120} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" />
+                  </div>
+                </motion.div>
+                
+                {/* LINK (Mid Right) */}
+                <motion.div animate={{ y: [0, 12, 0], rotateZ: [-12, 6, -12], rotateY: [8, -8, 8] }} transition={{ duration: 5.8, repeat: Infinity, ease: "easeInOut", delay: 1.2 }} 
+                  className="absolute top-[44%] sm:top-[46%] right-[-2%] sm:right-[1%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                  <div className="w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 flex items-center justify-center">
+                    <Image src="/icon-link.png" alt="Link" width={120} height={120} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" />
+                  </div>
+                </motion.div>
+                
+                {/* SMALL ZAP (Bottom Right) */}
+                <motion.div animate={{ y: [0, -8, 0], rotateY: [15, -15, 15] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} 
+                  className="absolute bottom-[22%] sm:bottom-[24%] right-[10%] sm:right-[14%] transform-gpu will-change-transform drop-shadow-md md:drop-shadow-xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 flex items-center justify-center">
+                    <Image src="/icon-petir-kecil.png" alt="Small Zap" width={80} height={80} className="object-contain w-full h-full drop-shadow-md md:drop-shadow-xl" />
+                  </div>
+                </motion.div>
 
+              </div>
             </div>
           </motion.div>
 
@@ -1069,7 +1079,21 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
             <div className="lg:col-span-1 space-y-5">
-              <Link href="/" className="text-2xl font-black text-white tracking-tight flex items-center gap-2.5"><div className="w-9 h-9 bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-blue-500/30"><Zap size={18} className="fill-white" /></div>Oneklik<span className="text-blue-400">.id</span></Link>
+              
+              {/* LOGO FOOTER GRADASI BIRU-UNGU */}
+              <Link href="/" className="flex items-center gap-2">
+                <Image 
+                  src="/icon-oneklik.svg" 
+                  alt="Ikon Oneklik"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 object-contain"
+                />
+                <span className="text-2xl font-black tracking-tight bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                  Oneklik.id
+                </span>
+              </Link>
+              
               <p className="text-sm leading-relaxed text-slate-400 max-w-xs font-normal">Platform all-in-one untuk semua kebutuhan digital kamu. Praktis, cepat, dan terpercaya.</p>
               
               {/* === SOCIAL MEDIA ICONS FOOTER === */}

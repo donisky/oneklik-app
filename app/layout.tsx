@@ -47,6 +47,14 @@ export const metadata: Metadata = {
     title: 'Oneklik.id - Platform Digital All-in-One',
     description: 'Bio Link, Short Link, QR Code, dan Alat PDF canggih dalam satu platform.',
   },
+  // ==========================================================
+  // --- FAVICON GRADASI BIRU-UNGU BARU ---
+  // ==========================================================
+  icons: {
+    icon: '/favicon-gradient.svg',      // Favicon utama tab browser
+    shortcut: '/favicon-gradient.svg',  // Shortcut icon
+    apple: '/favicon-gradient.svg',     // Icon Home Screen Apple
+  },
 };
 
 export const viewport = {

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-// --- Modal Notifikasi (Dengan Logic Real Data) ---
+// --- Modal Notifikasi ---
 const NotificationModal = ({ isOpen, onClose, notifications, loading, unreadCount, onMarkAllRead }: any) => {
   if (!isOpen) return null;
 
@@ -262,12 +262,26 @@ export default function Dashboard() {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat dashboard...</div>;
+  
   if (!session) {
-    return <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6">
-      <h1 className="text-4xl font-extrabold text-blue-600 mb-4">Oneklik.id</h1>
-      <h2 className="text-2xl font-bold mb-6 text-slate-800">Silakan Login</h2>
-      <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })} className="px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-lg transition-all">Login dengan Google</button>
-    </div>;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6">
+        {/* --- LOGO DENGAN IKON + GRADASI BIRU-UNGU --- */}
+        <div className="flex items-center gap-3 mb-4">
+          <img src="/icon-oneklik.svg" alt="Oneklik" className="w-12 h-12" />
+          <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Oneklik<span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">.id</span>
+          </h1>
+        </div>
+        <h2 className="text-2xl font-bold mb-6 text-slate-800">Silakan Login</h2>
+        <button 
+          onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })} 
+          className="px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-lg transition-all"
+        >
+          Login dengan Google
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -292,7 +306,13 @@ export default function Dashboard() {
         `}
       >
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-blue-600 tracking-tight">Oneklik<span className="text-blue-400">.id</span></Link>
+          {/* --- LOGO SIDEBAR DENGAN IKON + GRADASI BIRU-UNGU --- */}
+          <Link href="/" className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            <img src="/icon-oneklik.svg" alt="Oneklik" className="w-8 h-8" />
+            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Oneklik<span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">.id</span>
+            </span>
+          </Link>
           <button 
             onClick={() => setMobileMenuOpen(false)} 
             className="lg:hidden text-slate-600 hover:bg-slate-50 p-1 rounded-lg transition-colors"
@@ -327,7 +347,6 @@ export default function Dashboard() {
                 <FileText className="w-4 h-4" /> Alat PDF
               </div>
             </Link>
-            {/* --- MENU TEMPLATES DIHAPUS --- */}
             <Link href="/tools/url-shortener">
               <div className="text-slate-600 hover:bg-slate-50 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors">
                 <LinkIcon className="w-4 h-4" /> Short Link & QR
@@ -380,7 +399,7 @@ export default function Dashboard() {
             <ChevronRight size={16} className={`text-slate-400 transition-transform duration-200 ${isProfileMenuOpen ? 'rotate-90' : ''}`} />
           </button>
 
-          {/* --- POPUP DROPDOWN MENU PROFIL (Hapus Akun saja, Keluar dipisah sesuai desain) --- */}
+          {/* --- POPUP DROPDOWN MENU PROFIL --- */}
           {isProfileMenuOpen && (
             <div className="absolute bottom-[calc(100%+8px)] left-4 right-4 bg-white border border-slate-200 rounded-xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
               <div className="px-3 py-2 border-b border-slate-100 mb-1">
@@ -402,7 +421,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* --- TOMBOL KELUAR (Berdiri sendiri, di luar dropdown, sesuai desain) --- */}
+          {/* --- TOMBOL KELUAR --- */}
           <button
             onClick={handleLogout}
             className="mt-1 w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
@@ -415,7 +434,7 @@ export default function Dashboard() {
       {/* --- KONTEN UTAMA --- */}
       <main className="flex-1 h-screen overflow-y-auto bg-[#F8FAFC] p-6 lg:p-10">
         <div className="max-w-4xl mx-auto">
-          {/* Header Konten - ditambah min-height agar ornamen besar tidak terpotong */}
+          {/* Header Konten */}
           <div className="relative flex items-center justify-between mb-2 min-h-[90px]">
             <div className="flex items-center gap-3">
               <button 
@@ -433,9 +452,7 @@ export default function Dashboard() {
             {/* --- AREA KANAN (Ornamen + Notifikasi + Avatar) --- */}
             <div className="relative flex items-center gap-4">
               
-              {/* ==================================================================== */}
-              {/* ORNAMEN HEADER KANAN ATAS (BESAR, TIDAK MENUTUPI BANNER) */}
-              {/* ==================================================================== */}
+              {/* ORNAMEN HEADER KANAN ATAS */}
               <div className="hidden lg:block absolute right-0 -top-2 w-[280px] h-[160px] pointer-events-none select-none overflow-visible z-0">
                 <svg viewBox="0 0 280 160" className="w-full h-full">
                   <defs>
@@ -478,7 +495,6 @@ export default function Dashboard() {
                   <path d="M230 10 L233 20 L243 22 L233 24 L230 34 L227 24 L217 22 L227 20 Z" fill="#A5B4FC" />
                 </svg>
               </div>
-              {/* ==================================================================== */}
 
               {/* Tombol Notifikasi */}
               <button 
@@ -501,7 +517,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* --- STUDENT PROMO BANNER (HANYA UNTUK NON-PREMIUM) --- */}
+          {/* --- STUDENT PROMO BANNER --- */}
           {!user?.is_premium && (
             <div className="mb-6 mt-2 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-start sm:items-center gap-3">
