@@ -5,12 +5,12 @@
  * ============================================================================
  * Implementasi ulang UI mengikuti mockup desain (header global, sidebar,
  * wallet dropdown + panel wallet lengkap, dan detail modal Top Up/Tarik/
- * Transfer/Voucher/Invoice) dengan pembaruan Logo dan Icon modern.
+ * Transfer/Voucher/Invoice) dengan pembaruan logo (icon-oneklik.svg),
+ * teks gradasi biru-ungu, dan penghapusan menu affiliate & template.
  *
  * SEMUA integrasi Supabase yang SUDAH ADA sebelumnya (users, links,
  * shop_products, orders, reviews, analytics_events, wallets,
- * wallet_transactions, notifications) TIDAK diubah sama sekali — hanya
- * ditata ulang tampilannya.
+ * wallet_transactions, notifications) TIDAK diubah sama sekali.
  * ============================================================================
  */
 
@@ -32,20 +32,18 @@ import {
   ShoppingBag, Wallet, ClipboardList, Star, Lightbulb, LayoutGrid,
   QrCode, Landmark, Clock, ArrowUpRight, ArrowDownRight,
   FileText, Users, HardDrive, ArrowRightLeft, Ticket, Receipt,
-  ChevronRight, Settings, MousePointerClick, Zap,
+  ChevronRight, Settings, MousePointerClick,
 } from 'lucide-react';
 
 /* =========================================================================
-   NEW BRAND LOGO COMPONENT
+   UPDATED BRAND LOGO COMPONENT
    ========================================================================= */
 
-const OneklikLogo = ({ className = "w-8 h-8", textClassName = "text-xl font-extrabold text-slate-800" }: { className?: string; textClassName?: string }) => (
+const OneklikLogo = ({ className = "w-8 h-8", textClassName = "text-xl font-extrabold" }: { className?: string; textClassName?: string }) => (
   <div className="flex items-center gap-2.5">
-    <div className={`relative flex items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-blue-500 shadow-md shadow-blue-500/25 text-white flex-shrink-0 ${className}`}>
-      <Zap className="w-4 h-4 fill-white/20 text-white" />
-    </div>
-    <span className={`tracking-tight ${textClassName}`}>
-      Oneklik<span className="text-blue-600">.id</span>
+    <img src="/icon-oneklik.svg" alt="Oneklik.id Logo" className={`flex-shrink-0 object-contain ${className}`} />
+    <span className={`tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent ${textClassName}`}>
+      Oneklik.id
     </span>
   </div>
 );
@@ -1043,7 +1041,7 @@ export default function BioPage() {
   const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [links, setLinks] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'links' | 'design' | 'shop' | 'analytics' | 'template' | 'affiliate'>('links');
+  const [activeTab, setActiveTab] = useState<'links' | 'design' | 'shop' | 'analytics'>('links');
   const [showAddLink, setShowAddLink] = useState(false);
   const [newLinkTitle, setNewLinkTitle] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -1718,7 +1716,7 @@ export default function BioPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat dashboard...</div>;
   if (!session) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6">
-      <div className="mb-6"><OneklikLogo className="w-12 h-12" textClassName="text-3xl font-extrabold text-slate-800" /></div>
+      <div className="mb-6"><OneklikLogo className="w-12 h-12" textClassName="text-3xl font-extrabold" /></div>
       <h2 className="text-2xl font-bold mb-6 text-slate-800">Silakan Login</h2>
       <button onClick={handleLogin} className="px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-lg transition-all">Login dengan Google</button>
     </div>
@@ -1733,8 +1731,6 @@ export default function BioPage() {
     { key: 'shop', label: 'Shop', icon: <Store className="w-4 h-4" /> },
     { key: 'design', label: 'Design', icon: <Palette className="w-4 h-4" /> },
     { key: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
-    { key: 'template', label: 'Template', icon: <FileText className="w-4 h-4" /> },
-    { key: 'affiliate', label: 'Affiliate', icon: <Users className="w-4 h-4" /> },
   ];
 
   const DesignSubTabs = [
@@ -1774,7 +1770,7 @@ export default function BioPage() {
       <header className="flex-shrink-0 sticky top-0 z-40 bg-white border-b border-slate-200 px-4 lg:px-6 h-16 flex items-center gap-3 lg:gap-4">
         <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"><Menu size={22} /></button>
         <div className="hidden sm:block flex-shrink-0">
-          <Link href="/"><OneklikLogo className="w-8 h-8" textClassName="text-xl font-extrabold text-slate-800" /></Link>
+          <Link href="/"><OneklikLogo className="w-8 h-8" textClassName="text-xl font-extrabold" /></Link>
         </div>
 
         <div className="flex-1 max-w-md relative hidden md:block">
@@ -1852,7 +1848,7 @@ export default function BioPage() {
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         )}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between lg:hidden">
-            <OneklikLogo className="w-7 h-7" textClassName="text-sm font-bold text-slate-800" />
+            <OneklikLogo className="w-7 h-7" textClassName="text-sm font-bold" />
             <button onClick={() => setMobileMenuOpen(false)} className="text-slate-600 hover:bg-slate-50 p-1 rounded-lg transition-colors"><X size={20} /></button>
           </div>
 
@@ -1927,8 +1923,6 @@ export default function BioPage() {
                       {activeTab === 'design' && 'Design Studio'}
                       {activeTab === 'shop' && 'Shop Management'}
                       {activeTab === 'analytics' && 'Analytics'}
-                      {activeTab === 'template' && 'Template'}
-                      {activeTab === 'affiliate' && 'Affiliate'}
                     </h2>
                     <span className={cx('text-[10px] font-semibold px-2 py-0.5 rounded-full', user?.is_premium ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600')}>{user?.is_premium ? 'PRO' : 'Free'}</span>
                   </div>
@@ -1937,8 +1931,6 @@ export default function BioPage() {
                     {activeTab === 'design' && 'Sesuaikan tampilan bio link Anda agar lebih menarik dan profesional.'}
                     {activeTab === 'shop' && 'Kelola produk digital, pesanan, dan tingkatkan penjualan Anda.'}
                     {activeTab === 'analytics' && 'Pantau performa link Anda secara real-time.'}
-                    {activeTab === 'template' && 'Jelajahi dan kelola koleksi template bio link Anda.'}
-                    {activeTab === 'affiliate' && 'Ajak teman bergabung dan dapatkan komisi dari setiap referral.'}
                   </p>
                 </div>
               </div>
@@ -2593,23 +2585,6 @@ export default function BioPage() {
                 </div>
               </div>
             )}
-
-            {activeTab === 'template' && (
-              <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
-                <div className="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500"><LayoutGrid size={26} /></div>
-                <h4 className="text-base font-semibold text-slate-700">Galeri Template Segera Hadir</h4>
-                <p className="text-sm text-slate-400 mt-1 max-w-sm mx-auto">Halaman khusus untuk menjelajahi seluruh koleksi template akan segera tersedia.</p>
-                <button onClick={() => setActiveTab('design')} className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">Buka Tab Design</button>
-              </div>
-            )}
-
-            {activeTab === 'affiliate' && (
-              <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
-                <div className="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-500"><Users size={26} /></div>
-                <h4 className="text-base font-semibold text-slate-700">Program Affiliate Segera Hadir</h4>
-                <p className="text-sm text-slate-400 mt-1 max-w-sm mx-auto">Ajak teman menggunakan Oneklik.id dan dapatkan komisi dari setiap referral.</p>
-              </div>
-            )}
           </div>
         </main>
 
@@ -2697,12 +2672,6 @@ export default function BioPage() {
                 <p className="text-xs font-bold text-slate-700 mb-3">Waktu Aktif Pengunjung</p>
                 <ActivityHeatmap events={analyticsData} />
               </div>
-            </div>
-          )}
-
-          {(activeTab === 'template' || activeTab === 'affiliate') && (
-            <div className="flex-1 flex items-center justify-center text-center text-sm text-slate-400 p-10">
-              Preview tidak tersedia untuk halaman ini.
             </div>
           )}
         </aside>
