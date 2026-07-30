@@ -104,7 +104,7 @@ export default function PDFToolsDashboard() {
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600 relative">
             <Link href="/" className="hover:text-blue-600 transition-colors">Beranda</Link>
             
-            {/* DROPDOWN TOOLS */}
+            {/* DROPDOWN TOOLS (3 ALAT PDF) */}
             <div 
               className="relative"
               onMouseEnter={() => setToolsDropdownOpen(true)}
@@ -123,17 +123,15 @@ export default function PDFToolsDashboard() {
                     transition={{ duration: 0.15 }}
                     className="absolute top-full left-0 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-100 p-2 py-3 z-50 space-y-1"
                   >
-                    <Link href="/bio" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Link Bio</Link>
-                    <Link href="/tools/pdf" className="block px-4 py-2 bg-blue-50 text-blue-600 rounded-xl transition-colors font-semibold text-xs">Alat PDF Canggih</Link>
-                    <Link href="/tools/cv" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Generator CV</Link>
-                    <Link href="/tools/url-shortener" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">URL Shortener</Link>
-                    <Link href="/tools/file-qr" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">File to QR Code</Link>
+                    <Link href="/tools/pdf/merge" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Gabung PDF</Link>
+                    <Link href="/tools/pdf/compress" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Kompres PDF</Link>
+                    <Link href="/tools/pdf/convert" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Konversi PDF</Link>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            {/* DROPDOWN FITUR */}
+            {/* DROPDOWN FITUR (SELURUH FITUR ONEKLIK) */}
             <div 
               className="relative"
               onMouseEnter={() => setFiturDropdownOpen(true)}
@@ -150,8 +148,13 @@ export default function PDFToolsDashboard() {
                     animate={{ opacity: 1, y: 0 }} 
                     exit={{ opacity: 0, y: 10 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute top-full left-0 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-100 p-2 py-3 z-50 space-y-1"
+                    className="absolute top-full left-0 w-64 bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-100 p-2 py-3 z-50 space-y-1"
                   >
+                    <Link href="/bio" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Link Bio</Link>
+                    <Link href="/tools/pdf" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Alat PDF Canggih</Link>
+                    <Link href="/tools/cv" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Generator CV</Link>
+                    <Link href="/tools/url-shortener" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">URL Shortener</Link>
+                    <Link href="/tools/file-qr" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">File to QR Code</Link>
                     <Link href="/analytics" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Analitik Real-Time</Link>
                     <Link href="/tools/domain" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Kustom Domain</Link>
                     <Link href="/security" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Keamanan Enkripsi</Link>

@@ -272,7 +272,7 @@ export default function Home() {
     <div className={`${jakarta.variable} ${inter.variable} min-h-screen bg-[#f8fafc] text-slate-800 font-sans selection:bg-blue-600 selection:text-white overflow-x-hidden`}>
       
       {/* --- NAVBAR FIXED --- */}
-      <header className="fixed top-0 left-0 w-full z-50 bg-white/95 border-b border-slate-100/80 shadow-[0_4px_20px_rgba(0,0,0,0.02)] transition-all">
+      <header className="fixed top-0 left-0 w-full z-50 bg-white/95 border-b border-slate-100/80 shadow-[0_4px_20px_rgba(0,0,0,0.02)] transition-all will-change-transform">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           
           {/* Logo */}
@@ -300,7 +300,7 @@ export default function Home() {
                     animate={{ opacity: 1, y: 0 }} 
                     exit={{ opacity: 0, y: 10 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute top-full left-0 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-100 p-2 py-3 z-50 space-y-1"
+                    className="absolute top-full left-0 w-56 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-100 p-2 py-3 z-50 space-y-1"
                   >
                     <Link href="/bio" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Link Bio</Link>
                     <Link href="/tools/pdf" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">PDF Tools</Link>
@@ -341,7 +341,7 @@ export default function Home() {
                   </button>
                   <button 
                     onClick={handleLogin}
-                    className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-2.5 rounded-full font-bold text-xs shadow-lg shadow-blue-500/30 transition-all hover:scale-105"
+                    className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-2.5 rounded-full font-bold text-xs shadow-lg shadow-blue-500/30 transition-all hover:scale-105 will-change-transform"
                   >
                     Daftar Gratis
                   </button>
@@ -358,7 +358,7 @@ export default function Home() {
         {/* Mobile Menu */}
         <AnimatePresence>
           {mobileMenuOpen && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="md:hidden bg-white border-b border-slate-100 px-6 py-6 space-y-4 shadow-xl">
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="md:hidden bg-white border-b border-slate-100 px-6 py-6 space-y-4 shadow-xl will-change-transform">
               <Link href="/" className="block font-semibold text-blue-600 py-1">Beranda</Link>
               <div className="py-1 space-y-2 border-l-2 border-blue-100 pl-3">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Fitur</p>
@@ -396,15 +396,15 @@ export default function Home() {
         {/* --- HERO SECTION --- */}
         <section className="relative max-w-7xl mx-auto px-6 pt-0 pb-0 md:pb-0 overflow-visible grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-4 items-center">
           
-          <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-blue-300/40 via-indigo-200/30 to-purple-200/40 rounded-full blur-[120px] -z-10 pointer-events-none" />
-          <div className="absolute top-1/3 right-10 w-[500px] h-[500px] bg-gradient-to-br from-cyan-200/30 via-blue-300/20 to-indigo-300/30 rounded-full blur-[100px] -z-10 pointer-events-none" />
+          <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] md:w-[600px] md:h-[600px] bg-gradient-to-tr from-blue-300/40 via-indigo-200/30 to-purple-200/40 rounded-full blur-[60px] md:blur-[120px] -z-10 pointer-events-none md:animate-none opacity-60 md:opacity-100" />
+          <div className="absolute top-1/3 right-10 w-[250px] h-[250px] md:w-[500px] md:h-[500px] bg-gradient-to-br from-cyan-200/30 via-blue-300/20 to-indigo-300/30 rounded-full blur-[60px] md:blur-[100px] -z-10 pointer-events-none md:animate-none opacity-60 md:opacity-100" />
           
           {/* Kiri */}
           <motion.div 
             initial={{ opacity: 0, x: -30 }} 
             animate={{ opacity: 1, x: 0 }} 
             transition={{ duration: 0.7 }}
-            className="lg:col-span-7 text-center lg:text-left z-10"
+            className="lg:col-span-7 text-center lg:text-left z-10 will-change-transform"
           >
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-blue-200/80 shadow-sm text-blue-600 text-xs font-black mb-6 tracking-wider">
               <Star size={14} className="fill-yellow-400 text-yellow-400" /> #1 Platform Tools Digital Serba Guna
@@ -423,24 +423,24 @@ export default function Home() {
             </div>
             <div className="flex flex-wrap gap-4 justify-center lg:justify-start mb-12">
               {session ? (
-                <Link href="/dashboard" className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white px-8 py-4 rounded-full font-bold text-sm shadow-[0_10px_25px_rgba(37,99,235,0.35)] hover:shadow-[0_15px_35px_rgba(37,99,235,0.45)] hover:scale-105 transition-all flex items-center gap-2">
+                <Link href="/dashboard" className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white px-8 py-4 rounded-full font-bold text-sm shadow-[0_10px_25px_rgba(37,99,235,0.35)] hover:shadow-[0_15px_35px_rgba(37,99,235,0.45)] hover:scale-105 transition-all flex items-center gap-2 will-change-transform">
                   Buka Dashboard <Zap size={18} className="fill-white" />
                 </Link>
               ) : (
-                <button onClick={handleLogin} className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white px-8 py-4 rounded-full font-bold text-sm shadow-[0_10px_25px_rgba(37,99,235,0.35)] hover:shadow-[0_15px_35px_rgba(37,99,235,0.45)] hover:scale-105 transition-all flex items-center gap-2">
+                <button onClick={handleLogin} className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white px-8 py-4 rounded-full font-bold text-sm shadow-[0_10px_25px_rgba(37,99,235,0.35)] hover:shadow-[0_15px_35px_rgba(37,99,235,0.45)] hover:scale-105 transition-all flex items-center gap-2 will-change-transform">
                   Mulai Sekarang Gratis <Zap size={18} className="fill-white" />
                 </button>
               )}
-              <Link href="#features" className="bg-white hover:bg-slate-50/80 text-slate-800 px-8 py-4 rounded-full font-bold text-sm border border-slate-200/80 transition-all shadow-sm hover:shadow flex items-center gap-2">
+              <Link href="#features" className="bg-white hover:bg-slate-50/80 text-slate-800 px-8 py-4 rounded-full font-bold text-sm border border-slate-200/80 transition-all shadow-sm hover:shadow flex items-center gap-2 will-change-transform">
                 Lihat Fitur <ChevronRight size={18} />
               </Link>
             </div>
             
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-6 border-t border-slate-200/60 max-w-lg">
               <div className="flex -space-x-3 overflow-hidden">
-                <img className="inline-block h-10 w-10 rounded-full ring-2 ring-white object-cover shadow-sm" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" alt="User" />
-                <img className="inline-block h-10 w-10 rounded-full ring-2 ring-white object-cover shadow-sm" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80" alt="User" />
-                <img className="inline-block h-10 w-10 rounded-full ring-2 ring-white object-cover shadow-sm" src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80" alt="User" />
+                <img className="inline-block h-10 w-10 rounded-full ring-2 ring-white object-cover shadow-sm" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" alt="User" loading="lazy" />
+                <img className="inline-block h-10 w-10 rounded-full ring-2 ring-white object-cover shadow-sm" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80" alt="User" loading="lazy" />
+                <img className="inline-block h-10 w-10 rounded-full ring-2 ring-white object-cover shadow-sm" src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80" alt="User" loading="lazy" />
               </div>
               <div className="text-center sm:text-left">
                 <div className="flex items-center justify-center sm:justify-start gap-1 text-yellow-400">
@@ -459,15 +459,15 @@ export default function Home() {
             initial={{ opacity: 0, scale: 0.95, y: 30 }} 
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="lg:col-span-5 relative flex justify-center items-center w-full h-[580px] sm:h-[680px] lg:h-[780px] select-none overflow-visible z-20"
+            className="lg:col-span-5 relative flex justify-center items-center w-full h-[580px] sm:h-[680px] lg:h-[780px] select-none overflow-visible z-20 will-change-transform"
           >
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center -z-10 overflow-visible">
-              <svg viewBox="0 0 600 600" className="w-[140%] h-[140%] max-w-none opacity-85 animate-pulse" style={{ animationDuration: '6s' }} xmlns="http://www.w3.org/2000/svg">
+              <svg viewBox="0 0 600 600" className="w-[140%] h-[140%] max-w-none opacity-85 md:animate-pulse" style={{ animationDuration: '6s' }} xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <linearGradient id="trailCyan" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#22d3ee" stopOpacity="0" /><stop offset="50%" stopColor="#38bdf8" stopOpacity="0.8" /><stop offset="100%" stopColor="#818cf8" stopOpacity="0" /></linearGradient>
                   <linearGradient id="trailPurple" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#a855f7" stopOpacity="0" /><stop offset="50%" stopColor="#c084fc" stopOpacity="0.75" /><stop offset="100%" stopColor="#38bdf8" stopOpacity="0" /></linearGradient>
                   <linearGradient id="trailWhite" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#ffffff" stopOpacity="0" /><stop offset="50%" stopColor="#ffffff" stopOpacity="0.9" /><stop offset="100%" stopColor="#60a5fa" stopOpacity="0" /></linearGradient>
-                  <filter id="glowTrail" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6" result="blur" /><feComposite in="SourceGraphic" in2="blur" operator="over" /></filter>
+                  <filter id="glowTrail" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="4" result="blur" /><feComposite in="SourceGraphic" in2="blur" operator="over" /></filter>
                 </defs>
                 <path d="M 60 420 C 120 180, 380 120, 540 280 C 620 360, 480 500, 300 480" fill="none" stroke="url(#trailCyan)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glowTrail)" />
                 <path d="M 520 160 C 400 80, 150 180, 100 360 C 70 460, 220 540, 440 450" fill="none" stroke="url(#trailPurple)" strokeWidth="3" strokeLinecap="round" filter="url(#glowTrail)" />
@@ -477,8 +477,8 @@ export default function Home() {
 
             {/* Efek Cahaya Podium bawah */}
             <div className="absolute bottom-[6%] lg:bottom-[8%] left-1/2 -translate-x-1/2 w-[90%] lg:w-[110%] h-36 lg:h-44 pointer-events-none -z-5 flex items-center justify-center">
-              <div className="absolute w-full h-full rounded-[100%] border-[3px] border-cyan-400/70 shadow-[0_0_60px_rgba(34,211,238,0.8),inset_0_0_30px_rgba(56,189,248,0.6)] opacity-95 animate-pulse" />
-              <div className="absolute w-[86%] h-[78%] rounded-[100%] border-[2px] border-purple-400/80 shadow-[0_0_70px_rgba(168,85,247,0.7),inset_0_0_35px_rgba(192,132,252,0.7)]" />
+              <div className="absolute w-full h-full rounded-[100%] border-[3px] border-cyan-400/70 shadow-[0_0_30px_rgba(34,211,238,0.8),inset_0_0_15px_rgba(56,189,248,0.6)] md:shadow-[0_0_60px_rgba(34,211,238,0.8),inset_0_0_30px_rgba(56,189,248,0.6)] opacity-95 md:animate-pulse" />
+              <div className="absolute w-[86%] h-[78%] rounded-[100%] border-[2px] border-purple-400/80 shadow-[0_0_35px_rgba(168,85,247,0.7),inset_0_0_15px_rgba(192,132,252,0.7)] md:shadow-[0_0_70px_rgba(168,85,247,0.7),inset_0_0_35px_rgba(192,132,252,0.7)]" />
               <div className="absolute w-[70%] h-[55%] bg-gradient-to-r from-cyan-400/50 via-blue-500/60 to-fuchsia-500/50 rounded-[100%] blur-xl" />
             </div>
 
@@ -489,50 +489,50 @@ export default function Home() {
 
             {/* Bayangan Podium */}
             <div className="absolute bottom-[1%] lg:bottom-[2%] left-1/2 -translate-x-1/2 w-[85%] lg:w-[95%] h-16 lg:h-20 pointer-events-none -z-20 flex flex-col items-center justify-center">
-              <div className="absolute w-full h-full bg-gradient-to-r from-purple-600/40 via-blue-500/50 to-cyan-400/40 rounded-full blur-[40px]" />
+              <div className="absolute w-full h-full bg-gradient-to-r from-purple-600/40 via-blue-500/50 to-cyan-400/40 rounded-full blur-[20px] md:blur-[40px]" />
               <div className="absolute w-[72%] h-7 bg-slate-950/30 rounded-full blur-md" />
             </div>
 
-            {/* ICONS MELAYANG: Posisi & ukuran besar asli */}
+            {/* ICONS MELAYANG: Ditambahkan will-change-transform */}
             <div className="absolute inset-0 z-30 pointer-events-none flex justify-center items-center overflow-visible">
               
               {/* ZAP (Top Left) */}
               <motion.div animate={{ y: [0, -12, 0], rotateZ: [-6, 6, -6], rotateY: [-5, 5, -5] }} transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }} 
-                className="absolute top-[4%] sm:top-[6%] left-[0%] sm:left-[3%] transform-gpu drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                className="absolute top-[4%] sm:top-[6%] left-[0%] sm:left-[3%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
                 <div className="w-20 h-20 sm:w-28 sm:h-28 lg:w-32 lg:h-32 flex items-center justify-center">
-                  <Image src="/icon-zap.png" alt="Zap" width={140} height={140} className="object-contain w-full h-full drop-shadow-2xl" priority />
+                  <Image src="/icon-zap.png" alt="Zap" width={140} height={140} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" priority />
                 </div>
               </motion.div>
               
               {/* USERS (Top Right) */}
               <motion.div animate={{ y: [0, -14, 0], rotateY: [10, -10, 10], rotateZ: [-3, 3, -3] }} transition={{ duration: 4.0, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} 
-                className="absolute top-[10%] sm:top-[12%] right-[0%] sm:right-[3%] transform-gpu drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                className="absolute top-[10%] sm:top-[12%] right-[0%] sm:right-[3%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
                 <div className="w-20 h-20 sm:w-28 sm:h-28 lg:w-32 lg:h-32 flex items-center justify-center">
-                  <Image src="/icon-users.png" alt="Users" width={140} height={140} className="object-contain w-full h-full drop-shadow-2xl" priority />
+                  <Image src="/icon-users.png" alt="Users" width={140} height={140} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" priority />
                 </div>
               </motion.div>
               
               {/* QR (Mid Left) */}
               <motion.div animate={{ y: [0, 14, 0], rotateZ: [8, -4, 8], rotateX: [5, -5, 5] }} transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut", delay: 0.8 }} 
-                className="absolute top-[38%] sm:top-[40%] left-[-2%] sm:left-[1%] transform-gpu drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                className="absolute top-[38%] sm:top-[40%] left-[-2%] sm:left-[1%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
                 <div className="w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 flex items-center justify-center">
-                  <Image src="/icon-qr.png" alt="QR" width={120} height={120} className="object-contain w-full h-full drop-shadow-2xl" />
+                  <Image src="/icon-qr.png" alt="QR" width={120} height={120} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" />
                 </div>
               </motion.div>
               
               {/* LINK (Mid Right) */}
               <motion.div animate={{ y: [0, 12, 0], rotateZ: [-12, 6, -12], rotateY: [8, -8, 8] }} transition={{ duration: 5.8, repeat: Infinity, ease: "easeInOut", delay: 1.2 }} 
-                className="absolute top-[44%] sm:top-[46%] right-[-2%] sm:right-[1%] transform-gpu drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                className="absolute top-[44%] sm:top-[46%] right-[-2%] sm:right-[1%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
                 <div className="w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 flex items-center justify-center">
-                  <Image src="/icon-link.png" alt="Link" width={120} height={120} className="object-contain w-full h-full drop-shadow-2xl" />
+                  <Image src="/icon-link.png" alt="Link" width={120} height={120} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" />
                 </div>
               </motion.div>
               
               {/* SMALL ZAP (Bottom Right) */}
               <motion.div animate={{ y: [0, -8, 0], rotateY: [15, -15, 15] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} 
-                className="absolute bottom-[22%] sm:bottom-[24%] right-[10%] sm:right-[14%] transform-gpu drop-shadow-xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                className="absolute bottom-[22%] sm:bottom-[24%] right-[10%] sm:right-[14%] transform-gpu will-change-transform drop-shadow-md md:drop-shadow-xl z-30" style={{ transform: 'translateZ(60px)' }}>
                 <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 flex items-center justify-center">
-                  <Image src="/icon-petir-kecil.png" alt="Small Zap" width={80} height={80} className="object-contain w-full h-full drop-shadow-xl" />
+                  <Image src="/icon-petir-kecil.png" alt="Small Zap" width={80} height={80} className="object-contain w-full h-full drop-shadow-md md:drop-shadow-xl" />
                 </div>
               </motion.div>
 
@@ -547,10 +547,10 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="max-w-6xl mx-auto px-6 mb-20 relative z-20"
+          className="max-w-6xl mx-auto px-6 mb-20 relative z-20 will-change-transform"
         >
           <div className="bg-gradient-to-r from-[#1e40af] via-[#3b82f6] to-[#8b5cf6] rounded-3xl p-7 sm:p-8 text-white shadow-[0_20px_50px_rgba(59,130,246,0.25)] relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-6 border border-white/20">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-white/15 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white/15 rounded-full blur-[50px] md:blur-3xl -mr-20 -mt-20 pointer-events-none" />
             <div className="relative z-10 flex items-center gap-5 text-center sm:text-left">
               <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center flex-shrink-0 mx-auto sm:mx-0 shadow-inner"><GraduationCap size={32} className="text-white drop-shadow" /></div>
               <div>
@@ -558,15 +558,15 @@ export default function Home() {
                 <p className="text-white/90 text-xs sm:text-sm mt-1 max-w-xl font-normal leading-relaxed">Dapatkan akses <strong className="text-yellow-300 font-extrabold">Premium 1 Bulan GRATIS</strong> khusus mahasiswa dengan email <strong className="underline decoration-yellow-300 font-bold">.ac.id</strong></p>
               </div>
             </div>
-            <Link href="/student-promo" className="relative z-10 shrink-0 bg-white text-slate-900 hover:bg-blue-50 px-7 py-3.5 rounded-2xl font-black transition-all shadow-[0_10px_25px_rgba(0,0,0,0.15)] hover:scale-105 text-xs sm:text-sm flex items-center gap-2 group">
+            <Link href="/student-promo" className="relative z-10 shrink-0 bg-white text-slate-900 hover:bg-blue-50 px-7 py-3.5 rounded-2xl font-black transition-all shadow-[0_10px_25px_rgba(0,0,0,0.15)] hover:scale-105 text-xs sm:text-sm flex items-center gap-2 group will-change-transform">
               Klaim Sekarang <Zap size={16} className="fill-slate-900 text-slate-900 group-hover:scale-110 transition-transform" />
             </Link>
           </div>
         </motion.div>
 
-        {/* --- BAGIAN: DIPERCAYA OLEH RIBUAN PENGGUNA SETIAP HARI (100% MATCH DESIGN) --- */}
+        {/* --- BAGIAN: DIPERCAYA OLEH RIBUAN PENGGUNA --- */}
         <section className="max-w-7xl mx-auto px-6 mb-28 relative z-10 pt-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center max-w-3xl mx-auto mb-14">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center max-w-3xl mx-auto mb-14 will-change-transform">
             
             {/* Top Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50/80 border border-blue-100 text-blue-600 text-xs font-bold mb-6 shadow-sm">
@@ -605,7 +605,7 @@ export default function Home() {
           <motion.div variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
             
             {/* Card 1: Pengguna Aktif */}
-            <motion.div variants={itemVariants} className="bg-white rounded-[32px] p-6 sm:p-7 border border-slate-100 shadow-[0_10px_35px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgba(37,99,235,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+            <motion.div variants={itemVariants} className="bg-white rounded-[32px] p-6 sm:p-7 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] md:shadow-[0_10px_35px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgba(37,99,235,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group will-change-transform">
               <div>
                 <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 mb-6 border border-blue-100/60 shadow-sm">
                   <User size={22} />
@@ -620,16 +620,16 @@ export default function Home() {
               </div>
               <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                 <div className="flex -space-x-2">
-                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80" alt="Avatar" className="w-7 h-7 rounded-full object-cover ring-2 ring-white" />
-                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=80" alt="Avatar" className="w-7 h-7 rounded-full object-cover ring-2 ring-white" />
-                  <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=80&auto=format&fit=crop&q=80" alt="Avatar" className="w-7 h-7 rounded-full object-cover ring-2 ring-white" />
+                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80" alt="Avatar" className="w-7 h-7 rounded-full object-cover ring-2 ring-white" loading="lazy" />
+                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=80" alt="Avatar" className="w-7 h-7 rounded-full object-cover ring-2 ring-white" loading="lazy" />
+                  <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=80&auto=format&fit=crop&q=80" alt="Avatar" className="w-7 h-7 rounded-full object-cover ring-2 ring-white" loading="lazy" />
                 </div>
                 <span className="text-[11px] font-semibold text-slate-400">Bergabung hari ini</span>
               </div>
             </motion.div>
 
             {/* Card 2: PDF Dibuat */}
-            <motion.div variants={itemVariants} className="bg-white rounded-[32px] p-6 sm:p-7 border border-slate-100 shadow-[0_10px_35px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgba(37,99,235,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+            <motion.div variants={itemVariants} className="bg-white rounded-[32px] p-6 sm:p-7 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] md:shadow-[0_10px_35px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgba(37,99,235,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group will-change-transform">
               <div>
                 <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 mb-6 border border-indigo-100/60 shadow-sm">
                   <FileText size={22} />
@@ -654,7 +654,7 @@ export default function Home() {
             </motion.div>
 
             {/* Card 3: CV Dibuat */}
-            <motion.div variants={itemVariants} className="bg-white rounded-[32px] p-6 sm:p-7 border border-slate-100 shadow-[0_10px_35px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgba(37,99,235,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+            <motion.div variants={itemVariants} className="bg-white rounded-[32px] p-6 sm:p-7 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] md:shadow-[0_10px_35px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgba(37,99,235,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group will-change-transform">
               <div>
                 <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 mb-6 border border-purple-100/60 shadow-sm">
                   <FileCheck size={22} />
@@ -679,7 +679,7 @@ export default function Home() {
             </motion.div>
 
             {/* Card 4: Link Dibuat */}
-            <motion.div variants={itemVariants} className="bg-white rounded-[32px] p-6 sm:p-7 border border-slate-100 shadow-[0_10px_35px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgba(37,99,235,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+            <motion.div variants={itemVariants} className="bg-white rounded-[32px] p-6 sm:p-7 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] md:shadow-[0_10px_35px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgba(37,99,235,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group will-change-transform">
               <div>
                 <div className="w-12 h-12 rounded-2xl bg-cyan-50 flex items-center justify-center text-cyan-600 mb-6 border border-cyan-100/60 shadow-sm">
                   <LinkIcon size={22} />
@@ -704,7 +704,7 @@ export default function Home() {
             </motion.div>
 
             {/* Card 5: Rating Kepuasan */}
-            <motion.div variants={itemVariants} className="bg-white rounded-[32px] p-6 sm:p-7 border border-slate-100 shadow-[0_10px_35px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgba(37,99,235,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group sm:col-span-2 lg:col-span-1">
+            <motion.div variants={itemVariants} className="bg-white rounded-[32px] p-6 sm:p-7 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] md:shadow-[0_10px_35px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgba(37,99,235,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group sm:col-span-2 lg:col-span-1 will-change-transform">
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500 border border-amber-100/60 shadow-sm">
@@ -726,9 +726,9 @@ export default function Home() {
                 </p>
                 <div className="flex items-center justify-end">
                   <div className="flex -space-x-1.5">
-                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&auto=format&fit=crop&q=80" alt="Reviewer" className="w-5 h-5 rounded-full object-cover ring-1 ring-white" />
-                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&auto=format&fit=crop&q=80" alt="Reviewer" className="w-5 h-5 rounded-full object-cover ring-1 ring-white" />
-                    <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=60&auto=format&fit=crop&q=80" alt="Reviewer" className="w-5 h-5 rounded-full object-cover ring-1 ring-white" />
+                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&auto=format&fit=crop&q=80" alt="Reviewer" className="w-5 h-5 rounded-full object-cover ring-1 ring-white" loading="lazy" />
+                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&auto=format&fit=crop&q=80" alt="Reviewer" className="w-5 h-5 rounded-full object-cover ring-1 ring-white" loading="lazy" />
+                    <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=60&auto=format&fit=crop&q=80" alt="Reviewer" className="w-5 h-5 rounded-full object-cover ring-1 ring-white" loading="lazy" />
                   </div>
                 </div>
               </div>
@@ -737,7 +737,7 @@ export default function Home() {
           </motion.div>
 
           {/* Real-Time Analytics CTA & Bottom Bar */}
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.2 }} className="mt-14 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.2 }} className="mt-14 flex flex-col sm:flex-row items-center justify-center gap-4 will-change-transform">
             <Link href="/analytics" className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 hover:from-blue-900 hover:to-indigo-900 text-white rounded-full font-bold text-sm shadow-[0_10px_30px_rgba(15,23,42,0.25)] hover:scale-105 transition-all group">
               <BarChart3 size={18} className="text-blue-400" /> Lihat Data Real-time <ArrowRight size={16} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
             </Link>
@@ -766,7 +766,7 @@ export default function Home() {
         <section className="py-16 bg-[#f8fafc] relative overflow-hidden">
           <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:20px_20px] opacity-30" />
           <div className="relative z-10 max-w-7xl mx-auto px-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-12">
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-12 will-change-transform">
               <div className="inline-flex items-center justify-center gap-2.5 mb-4">
                 <div className="w-px h-4 bg-blue-200"></div>
                 <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-blue-600 uppercase"><Shield size={14} className="text-blue-600" /> Terpercaya & Terintegrasi</span>
@@ -782,7 +782,7 @@ export default function Home() {
             <motion.div variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true }} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-5 lg:gap-6">
               {platformIntegrations.map((platform, idx) => {
                 const CardContent = (
-                  <motion.div variants={itemVariants} className="group bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_15px_40px_rgba(37,99,235,0.08)] hover:-translate-y-2 transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer h-full relative overflow-hidden">
+                  <motion.div variants={itemVariants} className="group bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] md:shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_15px_40px_rgba(37,99,235,0.08)] hover:-translate-y-2 transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer h-full relative overflow-hidden will-change-transform">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-blue-50/40 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500">
                       {platform.icon}
@@ -817,7 +817,7 @@ export default function Home() {
           </div>
           <motion.div variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
             {toolsData.map((tool, index) => (
-              <motion.div key={index} variants={itemVariants} className="bg-white rounded-2xl p-7 border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative group flex flex-col justify-between">
+              <motion.div key={index} variants={itemVariants} className="bg-white rounded-2xl p-7 border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative group flex flex-col justify-between will-change-transform">
                 <div>
                   <div className={`w-14 h-14 rounded-xl ${tool.color} text-white flex items-center justify-center mb-5 shadow-md`}><tool.icon size={26} /></div>
                   <h3 className="text-lg font-bold text-slate-900 mb-2 font-jakarta">{tool.title}</h3>
@@ -828,20 +828,20 @@ export default function Home() {
             ))}
           </motion.div>
           <div className="flex justify-center mt-14">
-            <Link href="/tools" className="inline-flex items-center gap-3 px-8 py-3.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm shadow-sm hover:shadow-md transition-all duration-300">Jelajahi Semua Tools <Grid2X2 size={18} className="text-slate-500" /></Link>
+            <Link href="/tools" className="inline-flex items-center gap-3 px-8 py-3.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm shadow-sm hover:shadow-md transition-all duration-300 will-change-transform">Jelajahi Semua Tools <Grid2X2 size={18} className="text-slate-500" /></Link>
           </div>
         </section>
 
         {/* --- FITUR TAMBAHAN --- */}
         <section className="py-24 bg-white border-y border-slate-100/80">
           <div className="max-w-6xl mx-auto px-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-16">
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-16 will-change-transform">
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 mb-3 tracking-tight font-jakarta">Fitur Ekstra untuk <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500">Maksimalisasi Kinerja</span></h2>
               <p className="text-base sm:text-lg text-slate-600 font-normal leading-relaxed">Lebih dari sekadar tools biasa, kami menyediakan fitur untuk mengembangkan potensimu.</p>
             </motion.div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {extraFeatures.map((feat, idx) => (
-                <motion.div key={idx} initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: idx * 0.1 }} className="bg-[#f8fafc] hover:bg-blue-50/60 p-7 rounded-3xl border border-slate-100 hover:border-blue-200/80 transition-all flex flex-col justify-between group">
+                <motion.div key={idx} initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: idx * 0.1 }} className="bg-[#f8fafc] hover:bg-blue-50/60 p-7 rounded-3xl border border-slate-100 hover:border-blue-200/80 transition-all flex flex-col justify-between group will-change-transform">
                   <div className="w-12 h-12 bg-blue-100/80 text-blue-600 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform shadow-sm"><feat.icon size={22} /></div>
                   <div><h4 className="font-black text-slate-900 text-base mb-1.5 font-jakarta">{feat.title}</h4><p className="text-xs text-slate-500 leading-relaxed font-normal">{feat.desc}</p></div>
                 </motion.div>
@@ -852,13 +852,13 @@ export default function Home() {
 
         {/* --- PRICING --- */}
         <section id="pricing" className="py-24 max-w-6xl mx-auto px-6">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-16">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-16 will-change-transform">
             <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-3 tracking-tight font-jakarta">Harga yang <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">Transparan</span></h2>
             <p className="text-base sm:text-lg text-slate-600 font-normal leading-relaxed">Mulai gratis. Tingkatkan kapan saja.</p>
           </motion.div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch max-w-5xl mx-auto">
             {pricingPlans.map((plan, idx) => (
-              <motion.div key={idx} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: idx * 0.1 }} className={`bg-white rounded-[36px] p-8 sm:p-9 flex flex-col justify-between relative transition-all ${plan.popular ? 'border-2 border-purple-500 shadow-[0_20px_50px_rgba(139,92,246,0.18)] lg:-translate-y-4 z-10' : 'border border-slate-200/80 shadow-lg shadow-slate-200/50'}`}>
+              <motion.div key={idx} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: idx * 0.1 }} className={`bg-white rounded-[36px] p-8 sm:p-9 flex flex-col justify-between relative transition-all will-change-transform ${plan.popular ? 'border-2 border-purple-500 shadow-[0_15px_40px_rgba(139,92,246,0.15)] md:shadow-[0_20px_50px_rgba(139,92,246,0.18)] lg:-translate-y-4 z-10' : 'border border-slate-200/80 shadow-md md:shadow-lg shadow-slate-200/50'}`}>
                 {plan.popular && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white text-[11px] font-black px-5 py-1.5 rounded-full uppercase tracking-wider shadow-md">Paling Populer</div>}
                 <div>
                   <div className="text-center pb-6 border-b border-slate-100 mb-6">
@@ -880,16 +880,16 @@ export default function Home() {
 
         {/* --- BANNER PREMIUM --- */}
         <section className="py-12 max-w-[1400px] mx-auto px-4 sm:px-8">
-          <motion.div initial={{ opacity: 0, y: 25 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="relative rounded-[32px] bg-gradient-to-r from-[#03071e] via-[#0b0c26] to-[#120630] py-10 px-6 sm:px-16 overflow-hidden border border-blue-500/20 shadow-[0_20px_50px_rgba(3,7,30,0.6)] flex flex-col items-center justify-center min-h-[340px]">
-            <div className="absolute -top-32 left-10 w-96 h-96 bg-blue-600/25 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute -bottom-32 right-10 w-96 h-96 bg-purple-600/25 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute left-2 sm:left-8 md:left-14 top-1/2 -translate-y-1/2 w-40 sm:w-56 md:w-64 lg:w-72 h-40 sm:h-56 md:h-64 lg:h-72 pointer-events-none flex items-center justify-center z-10"><Image src="/icon-kubus.png" alt="Kubus Premium" width={280} height={280} className="object-contain w-full h-full drop-shadow-[0_0_40px_rgba(59,130,246,0.65)]" priority /></div>
-            <div className="absolute right-2 sm:right-8 md:right-14 top-1/2 -translate-y-1/2 w-40 sm:w-56 md:w-64 lg:w-72 h-40 sm:h-56 md:h-64 lg:h-72 pointer-events-none flex items-center justify-center z-10"><Image src="/icon-mahkota.png" alt="Mahkota Premium" width={280} height={280} className="object-contain w-full h-full drop-shadow-[0_0_40px_rgba(168,85,247,0.65)]" priority /></div>
+          <motion.div initial={{ opacity: 0, y: 25 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="relative rounded-[32px] bg-gradient-to-r from-[#03071e] via-[#0b0c26] to-[#120630] py-10 px-6 sm:px-16 overflow-hidden border border-blue-500/20 shadow-[0_20px_50px_rgba(3,7,30,0.6)] flex flex-col items-center justify-center min-h-[340px] will-change-transform">
+            <div className="absolute -top-32 left-10 w-64 h-64 md:w-96 md:h-96 bg-blue-600/25 rounded-full blur-[60px] md:blur-[120px] pointer-events-none" />
+            <div className="absolute -bottom-32 right-10 w-64 h-64 md:w-96 md:h-96 bg-purple-600/25 rounded-full blur-[60px] md:blur-[120px] pointer-events-none" />
+            <div className="absolute left-2 sm:left-8 md:left-14 top-1/2 -translate-y-1/2 w-40 sm:w-56 md:w-64 lg:w-72 h-40 sm:h-56 md:h-64 lg:h-72 pointer-events-none flex items-center justify-center z-10"><Image src="/icon-kubus.png" alt="Kubus Premium" width={280} height={280} className="object-contain w-full h-full drop-shadow-[0_0_20px_rgba(59,130,246,0.65)] md:drop-shadow-[0_0_40px_rgba(59,130,246,0.65)]" priority /></div>
+            <div className="absolute right-2 sm:right-8 md:right-14 top-1/2 -translate-y-1/2 w-40 sm:w-56 md:w-64 lg:w-72 h-40 sm:h-56 md:h-64 lg:h-72 pointer-events-none flex items-center justify-center z-10"><Image src="/icon-mahkota.png" alt="Mahkota Premium" width={280} height={280} className="object-contain w-full h-full drop-shadow-[0_0_20px_rgba(168,85,247,0.65)] md:drop-shadow-[0_0_40px_rgba(168,85,247,0.65)]" priority /></div>
             <div className="relative z-20 max-w-xl mx-auto text-center flex flex-col items-center">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-950/90 border border-blue-400/30 text-blue-200 text-xs font-bold mb-4 shadow-sm"><Star size={14} className="fill-yellow-400 text-yellow-400" /> Upgrade ke Premium</div>
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-3 tracking-tight font-jakarta">Unlock Semua Fitur <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400">Premium</span></h2>
               <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto mb-7 leading-relaxed font-normal">Dapatkan akses tanpa batas, fitur eksklusif, dan pengalaman terbaik bersama Oneklik.id Premium.</p>
-              <Link href="/upgrade" className="inline-flex items-center gap-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-8 sm:px-9 py-3.5 rounded-full font-black text-sm sm:text-base shadow-[0_10px_30px_rgba(99,102,241,0.5)] hover:scale-105 transition-all duration-300 border border-white/20 mb-8">Coba Premium Sekarang <Zap size={18} className="fill-white" /></Link>
+              <Link href="/upgrade" className="inline-flex items-center gap-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-8 sm:px-9 py-3.5 rounded-full font-black text-sm sm:text-base shadow-[0_10px_30px_rgba(99,102,241,0.5)] hover:scale-105 transition-all duration-300 border border-white/20 mb-8 will-change-transform">Coba Premium Sekarang <Zap size={18} className="fill-white" /></Link>
               <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
                 {[{ text: 'Akses Semua Tools Premium', icon: CheckCircle2 }, { text: 'Tanpa Iklan', icon: ShieldCheck }, { text: 'Support Prioritas', icon: Crown }, { text: 'Update Fitur Terbaru', icon: Sparkles }].map((item, idx) => (
                   <div key={idx} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.07] border border-white/10 backdrop-blur-md text-xs font-semibold text-slate-200 shadow-sm"><item.icon size={15} className="text-blue-400 shrink-0" /><span>{item.text}</span></div>
@@ -901,16 +901,16 @@ export default function Home() {
 
         {/* --- TESTIMONIAL --- */}
         <section className="py-28 bg-gradient-to-br from-[#1e1b4b] via-[#311042] to-[#1e3a8a] text-white relative overflow-hidden">
-          <div className="absolute top-10 left-1/4 w-[500px] h-[500px] bg-purple-500/25 rounded-full blur-[130px] pointer-events-none" />
-          <div className="absolute bottom-10 right-1/4 w-[500px] h-[500px] bg-blue-500/25 rounded-full blur-[130px] pointer-events-none" />
+          <div className="absolute top-10 left-1/4 w-[300px] h-[300px] md:w-[500px] md:h-[500px] bg-purple-500/25 rounded-full blur-[60px] md:blur-[130px] pointer-events-none" />
+          <div className="absolute bottom-10 right-1/4 w-[300px] h-[300px] md:w-[500px] md:h-[500px] bg-blue-500/25 rounded-full blur-[60px] md:blur-[130px] pointer-events-none" />
           <div className="max-w-6xl mx-auto px-6 relative z-10">
             <div className="text-center mb-16"><h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-3 tracking-tight font-jakarta">Apa Kata Mereka?</h2><p className="text-sm sm:text-base text-purple-200 font-normal max-w-xl mx-auto leading-relaxed">&ldquo;Alat PDF dan CV-nya luar biasa! Semua yang saya butuhkan ada di Oneklik.id.&rdquo;</p></div>
             <div className="max-w-5xl mx-auto overflow-hidden rounded-[32px]">
-              <motion.div className="flex" animate={{ x: `-${slideIndex * 33.33}%` }} transition={{ duration: 0.7, ease: "easeInOut" }}>
+              <motion.div className="flex will-change-transform" animate={{ x: `-${slideIndex * 33.33}%` }} transition={{ duration: 0.7, ease: "easeInOut" }}>
                 {duplicatedTestimonials.map((item, idx) => (
                   <div key={idx} className="min-w-full md:min-w-[33.33%] px-4 md:px-3 flex-shrink-0">
-                    <div className={`h-full bg-white/[0.07] backdrop-blur-xl border border-white/15 p-7 rounded-[32px] flex flex-col justify-between shadow-2xl hover:bg-white/[0.12] transition-all relative ${item.highlight ? 'ring-2 ring-purple-400/50 bg-white/[0.1] lg:-translate-y-2' : ''}`}>
-                      <div><div className="flex items-center justify-between mb-5"><div className="flex items-center gap-3.5"><img src={item.avatar} alt={item.name} className="w-12 h-12 rounded-full object-cover ring-2 ring-white/30 shadow-md" /><div><h4 className="font-bold text-sm text-white">{item.name}</h4><p className="text-xs text-purple-200">{item.role}</p></div></div>{item.highlight && (<div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-slate-900 shadow-lg cursor-pointer hover:scale-110 transition-transform"><Play size={16} className="fill-slate-900 ml-0.5" /></div>)}</div><div className="flex gap-1 text-yellow-400 mb-4">{[...Array(item.stars)].map((_, i) => <Star key={i} size={15} className="fill-current" />)}</div></div>
+                    <div className={`h-full bg-white/[0.07] backdrop-blur-md md:backdrop-blur-xl border border-white/15 p-7 rounded-[32px] flex flex-col justify-between shadow-2xl hover:bg-white/[0.12] transition-all relative ${item.highlight ? 'ring-2 ring-purple-400/50 bg-white/[0.1] lg:-translate-y-2' : ''}`}>
+                      <div><div className="flex items-center justify-between mb-5"><div className="flex items-center gap-3.5"><img src={item.avatar} alt={item.name} className="w-12 h-12 rounded-full object-cover ring-2 ring-white/30 shadow-md" loading="lazy" /><div><h4 className="font-bold text-sm text-white">{item.name}</h4><p className="text-xs text-purple-200">{item.role}</p></div></div>{item.highlight && (<div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-slate-900 shadow-lg cursor-pointer hover:scale-110 transition-transform"><Play size={16} className="fill-slate-900 ml-0.5" /></div>)}</div><div className="flex gap-1 text-yellow-400 mb-4">{[...Array(item.stars)].map((_, i) => <Star key={i} size={15} className="fill-current" />)}</div></div>
                       <p className="text-xs sm:text-sm text-white/90 leading-relaxed font-normal">&ldquo;{item.text}&rdquo;</p>
                     </div>
                   </div>
@@ -943,13 +943,13 @@ export default function Home() {
                   <div className="relative shrink-0 flex items-center justify-center w-36 h-36 sm:w-44 sm:h-44 lg:w-52 lg:h-52">
                     <div className="absolute inset-0 rounded-full border-[2px] border-blue-400/30 animate-[spin_8s_linear_infinite]" />
                     <div className="absolute inset-2 rounded-full border-[2px] border-blue-500/20 animate-[spin_12s_linear_infinite_reverse]" />
-                    <div className="absolute -inset-6 bg-blue-500/20 rounded-full blur-3xl -z-10" />
-                    <div className="absolute -inset-8 bg-purple-500/10 rounded-full blur-3xl -z-20" />
-                    <Image src="/icon-prisai-gembok.png" alt="Keamanan Prioritas" fill className="object-contain drop-shadow-2xl z-10" priority />
+                    <div className="absolute -inset-6 bg-blue-500/20 rounded-full blur-[20px] md:blur-3xl -z-10" />
+                    <div className="absolute -inset-8 bg-purple-500/10 rounded-full blur-[20px] md:blur-3xl -z-20" />
+                    <Image src="/icon-prisai-gembok.png" alt="Keamanan Prioritas" fill className="object-contain drop-shadow-xl md:drop-shadow-2xl z-10" priority />
                   </div>
                   <div className="space-y-4 text-center md:text-left">
                     <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-jakarta leading-tight">Keamanan adalah <br /><span className="text-blue-600">Prioritas Utama Kami</span></h2>
-                    <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-sm">Data Anda dilindungi dengan enkripsi tingkat tinggi dan sistem keamanan berlapis.</p>
+                    <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-sm mx-auto md:mx-0">Data Anda dilindungi dengan enkripsi tingkat tinggi dan sistem keamanan berlapis.</p>
                     <div className="flex flex-wrap gap-3 pt-2 justify-center md:justify-start">
                       <div className="flex-1 min-w-[130px] bg-white rounded-xl border border-slate-100/80 shadow-sm p-3 flex flex-col gap-1 hover:shadow-md transition-shadow"><div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600"><Lock size={16} /></div><h4 className="text-xs font-bold text-slate-900">Data Enkripsi</h4><p className="text-[10px] text-slate-500 leading-tight">Enkripsi tingkat tinggi melindungi data Anda.</p></div>
                       <div className="flex-1 min-w-[130px] bg-white rounded-xl border border-slate-100/80 shadow-sm p-3 flex flex-col gap-1 hover:shadow-md transition-shadow"><div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><Shield size={16} /></div><h4 className="text-xs font-bold text-slate-900">SSL Secure</h4><p className="text-[10px] text-slate-500 leading-tight">Koneksi aman dengan sertifikat SSL.</p></div>
@@ -984,12 +984,12 @@ export default function Home() {
                           whileInView={{ opacity: 1, y: 0 }}
                           viewport={{ once: true }}
                           transition={{ duration: 0.5, delay: index * 0.2 }}
-                          className="flex flex-col items-center flex-1 px-2"
+                          className="flex flex-col items-center flex-1 px-2 will-change-transform"
                         >
                           <motion.div
                             animate={isActive ? { scale: 1.05, boxShadow: '0 10px 25px rgba(99,102,241,0.4)' } : { scale: 1, boxShadow: 'none' }}
                             transition={{ duration: 0.4, type: "spring", stiffness: 200 }}
-                            className={`w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center text-2xl md:text-3xl font-bold transition-all duration-300 shadow-sm ${
+                            className={`w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center text-2xl md:text-3xl font-bold transition-all duration-300 shadow-sm will-change-transform ${
                               isActive
                                 ? 'bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white shadow-lg'
                                 : 'bg-slate-100 text-slate-400'
@@ -997,10 +997,10 @@ export default function Home() {
                           >
                             {item.step}
                           </motion.div>
-                          <h4 className={`mt-5 text-base font-bold transition-colors duration-300 ${isActive ? 'text-slate-900' : 'text-slate-500'}`}>
+                          <h4 className={`mt-5 text-base font-bold transition-colors duration-300 text-center ${isActive ? 'text-slate-900' : 'text-slate-500'}`}>
                             {item.title}
                           </h4>
-                          <p className="mt-2 text-xs sm:text-sm text-slate-500 leading-relaxed max-w-[180px]">
+                          <p className="mt-2 text-xs sm:text-sm text-slate-500 leading-relaxed max-w-[180px] text-center">
                             {item.desc}
                           </p>
                         </motion.div>
@@ -1029,7 +1029,7 @@ export default function Home() {
                   </button>
                   <AnimatePresence>
                     {activeFaq === index && (
-                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="px-6 pb-6 text-xs sm:text-sm text-slate-600 font-normal leading-relaxed border-t border-slate-100 pt-4">{faq.a}</motion.div>
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="px-6 pb-6 text-xs sm:text-sm text-slate-600 font-normal leading-relaxed border-t border-slate-100 pt-4 will-change-transform">{faq.a}</motion.div>
                     )}
                   </AnimatePresence>
                 </div>
@@ -1043,9 +1043,9 @@ export default function Home() {
 
         {/* --- FINAL CTA BANNER --- */}
         <section className="pt-10 pb-6 max-w-7xl mx-auto px-4 sm:px-6 relative z-20">
-          <motion.div initial={{ opacity: 0, scale: 0.96 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="rounded-[28px] sm:rounded-[36px] bg-gradient-to-r from-[#050816] via-[#090f2b] to-[#050816] py-11 sm:py-14 px-6 sm:px-16 text-center text-white relative overflow-visible shadow-[0_20px_50px_rgba(5,8,22,0.45)] border border-blue-500/30">
-            <div className="absolute -top-32 -left-32 w-80 h-80 bg-blue-600/30 rounded-full blur-[100px] pointer-events-none" />
-            <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-purple-600/30 rounded-full blur-[100px] pointer-events-none" />
+          <motion.div initial={{ opacity: 0, scale: 0.96 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="rounded-[28px] sm:rounded-[36px] bg-gradient-to-r from-[#050816] via-[#090f2b] to-[#050816] py-11 sm:py-14 px-6 sm:px-16 text-center text-white relative overflow-visible shadow-[0_20px_50px_rgba(5,8,22,0.45)] border border-blue-500/30 will-change-transform">
+            <div className="absolute -top-32 -left-32 w-56 h-56 md:w-80 md:h-80 bg-blue-600/30 rounded-full blur-[50px] md:blur-[100px] pointer-events-none" />
+            <div className="absolute -bottom-32 -right-32 w-56 h-56 md:w-80 md:h-80 bg-purple-600/30 rounded-full blur-[50px] md:blur-[100px] pointer-events-none" />
             <div className="absolute left-8 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 pointer-events-none"><div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/40 transform -rotate-12 border border-blue-300/30"><Users size={28} className="text-white" /></div><div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/40 transform rotate-6 border border-purple-300/30 ml-8"><Zap size={22} className="text-white fill-white" /></div></div>
             <div className="absolute right-6 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-3 pointer-events-none"><div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/40 transform rotate-12 border border-cyan-300/30"><Zap size={24} className="text-white fill-white" /></div><div className="w-24 h-40 bg-gradient-to-b from-slate-800 to-slate-950 rounded-[22px] border-2 border-slate-600/60 p-1.5 shadow-2xl transform -rotate-12 flex flex-col justify-between overflow-hidden relative"><div className="w-8 h-2 bg-slate-900 rounded-full mx-auto mb-1" /><div className="w-full h-24 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-xl flex items-center justify-center"><Zap size={28} className="text-white fill-white opacity-90" /></div><div className="w-full h-3 bg-slate-800 rounded-md mt-1" /></div></div>
             <div className="relative z-10 max-w-2xl mx-auto">
@@ -1054,9 +1054,9 @@ export default function Home() {
             </div>
             <div className="absolute -bottom-7 sm:-bottom-8 left-1/2 -translate-x-1/2 z-30">
               {session ? (
-                <Link href="/dashboard" className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-700 hover:to-indigo-700 text-white px-10 sm:px-12 py-4 sm:py-5 rounded-full text-base sm:text-lg font-black shadow-[0_15px_35px_rgba(37,99,235,0.8)] hover:shadow-[0_20px_45px_rgba(37,99,235,0.9)] hover:scale-105 transition-all duration-300 flex items-center gap-2.5 whitespace-nowrap border-2 border-blue-400/40">Lanjut ke Dashboard <Zap size={20} className="fill-white" /></Link>
+                <Link href="/dashboard" className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-700 hover:to-indigo-700 text-white px-10 sm:px-12 py-4 sm:py-5 rounded-full text-base sm:text-lg font-black shadow-[0_15px_35px_rgba(37,99,235,0.8)] hover:shadow-[0_20px_45px_rgba(37,99,235,0.9)] hover:scale-105 transition-all duration-300 flex items-center gap-2.5 whitespace-nowrap border-2 border-blue-400/40 will-change-transform">Lanjut ke Dashboard <Zap size={20} className="fill-white" /></Link>
               ) : (
-                <button onClick={handleLogin} className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-700 hover:to-indigo-700 text-white px-10 sm:px-12 py-4 sm:py-5 rounded-full text-base sm:text-lg font-black shadow-[0_15px_35px_rgba(37,99,235,0.8)] hover:shadow-[0_20px_45px_rgba(37,99,235,0.9)] hover:scale-105 transition-all duration-300 flex items-center gap-2.5 whitespace-nowrap border-2 border-blue-400/40 cursor-pointer">Buat Akun Gratis Sekarang <Zap size={20} className="fill-white" /></button>
+                <button onClick={handleLogin} className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-700 hover:to-indigo-700 text-white px-10 sm:px-12 py-4 sm:py-5 rounded-full text-base sm:text-lg font-black shadow-[0_15px_35px_rgba(37,99,235,0.8)] hover:shadow-[0_20px_45px_rgba(37,99,235,0.9)] hover:scale-105 transition-all duration-300 flex items-center gap-2.5 whitespace-nowrap border-2 border-blue-400/40 cursor-pointer will-change-transform">Buat Akun Gratis Sekarang <Zap size={20} className="fill-white" /></button>
               )}
             </div>
           </motion.div>
@@ -1081,7 +1081,7 @@ export default function Home() {
                     target={platform.link ? "_blank" : undefined} 
                     rel={platform.link ? "noopener noreferrer" : undefined}
                     title={platform.name}
-                    className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/20 transition-all flex items-center justify-center border border-white/10 hover:scale-110 shadow-sm"
+                    className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/20 transition-all flex items-center justify-center border border-white/10 hover:scale-110 shadow-sm will-change-transform"
                   >
                     <div className="w-[22px] h-[22px] flex items-center justify-center drop-shadow-md">
                       {platform.icon}
