@@ -483,7 +483,7 @@ export default function Home() {
             </div>
 
             {/* Komponen Hero3D */}
-            <div className="relative w-full h-full flex justify-center items-center z-10 transform scale-[1.55] sm:scale-[1.75] lg:scale-[1.95]">
+            <div className="relative w-full h-full flex justify-center items-center z-10 transform scale-[1.85] sm:scale-[1.75] lg:scale-[1.95] mt-4 sm:mt-0">
               <Hero3D />
             </div>
 
