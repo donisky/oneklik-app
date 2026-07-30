@@ -1811,13 +1811,7 @@ export default function BioPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat dashboard...</div>;
   if (!session) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6">
-      {/* --- LOGO DENGAN IKON + GRADASI BIRU-UNGU --- */}
-      <div className="flex items-center gap-3 mb-4">
-        <img src="/icon-oneklik.svg" alt="Oneklik" className="w-12 h-12" />
-        <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Oneklik<span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">.id</span>
-        </h1>
-      </div>
+      <h1 className="text-4xl font-extrabold text-blue-600 mb-4">Oneklik.id</h1>
       <h2 className="text-2xl font-bold mb-6 text-slate-800">Silakan Login</h2>
       <button onClick={handleLogin} className="px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-lg transition-all">Login dengan Google</button>
     </div>
@@ -1875,14 +1869,7 @@ export default function BioPage() {
           =================================================================== */}
       <header className="flex-shrink-0 sticky top-0 z-40 bg-white border-b border-slate-200 px-4 lg:px-6 h-16 flex items-center gap-3 lg:gap-4">
         <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"><Menu size={22} /></button>
-
-        {/* --- LOGO HEADER DENGAN IKON + GRADASI BIRU-UNGU --- */}
-        <Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight flex-shrink-0 hidden sm:block">
-          <img src="/icon-oneklik.svg" alt="Oneklik" className="w-7 h-7" />
-          <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Oneklik<span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">.id</span>
-          </span>
-        </Link>
+        <Link href="/" className="text-xl font-bold text-blue-600 tracking-tight flex-shrink-0 hidden sm:block">Oneklik<span className="text-blue-400">.id</span></Link>
 
         <div className="flex-1 max-w-md relative hidden md:block">
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -1961,13 +1948,7 @@ export default function BioPage() {
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         )}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between lg:hidden">
-            {/* --- LOGO SIDEBAR MOBILE DENGAN IKON + GRADASI BIRU-UNGU --- */}
-            <Link href="/" className="flex items-center gap-2 text-sm font-bold tracking-tight">
-              <img src="/icon-oneklik.svg" alt="Oneklik" className="w-6 h-6" />
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Oneklik<span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">.id</span>
-              </span>
-            </Link>
+            <span className="text-sm font-bold text-blue-600">Oneklik<span className="text-blue-400">.id</span></span>
             <button onClick={() => setMobileMenuOpen(false)} className="text-slate-600 hover:bg-slate-50 p-1 rounded-lg transition-colors"><X size={20} /></button>
           </div>
 
@@ -2033,7 +2014,7 @@ export default function BioPage() {
           </div>
         </aside>
 
-        /* ------------------------------ MAIN CONTENT ------------------------------ */
+        {/* ------------------------------ MAIN CONTENT ------------------------------ */}
         <main className="flex-1 h-full overflow-y-auto bg-[#F8FAFC] p-6 lg:p-10">
           <div className="max-w-2xl mx-auto">
             <div className="flex items-start justify-between mb-6 gap-3 flex-wrap">
@@ -2743,7 +2724,7 @@ export default function BioPage() {
           </div>
         </main>
 
-        /* -------------------------- RIGHT PREVIEW PANEL -------------------------- */
+        {/* -------------------------- RIGHT PREVIEW PANEL -------------------------- */}
         <aside className="flex flex-col w-full lg:w-[380px] bg-white border-t lg:border-t-0 lg:border-l border-slate-200 h-auto lg:h-full p-6 flex-shrink-0 overflow-y-auto">
           {activeTab === 'links' && (
             <div className="flex-1 flex flex-col justify-center">
