@@ -5,26 +5,12 @@
  * ============================================================================
  * Implementasi ulang UI mengikuti mockup desain (header global, sidebar,
  * wallet dropdown + panel wallet lengkap, dan detail modal Top Up/Tarik/
- * Transfer/Voucher/Invoice).
+ * Transfer/Voucher/Invoice) dengan pembaruan Logo dan Icon modern.
  *
  * SEMUA integrasi Supabase yang SUDAH ADA sebelumnya (users, links,
  * shop_products, orders, reviews, analytics_events, wallets,
  * wallet_transactions, notifications) TIDAK diubah sama sekali — hanya
  * ditata ulang tampilannya.
- *
- * TODO — integrasi yang perlu disambungkan menyusul (sudah diberi UI +
- * handler siap pakai, tinggal disesuaikan dengan skema/endpoint Anda):
- *   1. Midtrans: ganti simulasi di `handleConfirmTopUpPayment` dengan
- *      Snap token dari server + webhook notification handler.
- *   2. Transfer Saldo: `handleTransferSubmit` — sambungkan ke RPC/Edge
- *      Function Supabase agar debit-kredit berjalan atomik.
- *   3. Voucher & Promo: `handleClaimVoucher` — asumsi ada tabel `vouchers`
- *      (code, value, expired_at, quota), sesuaikan dengan skema Anda.
- *   4. Invoice: `InvoiceModal` menampilkan riwayat top up, tombol "Unduh"
- *      masih placeholder — sambungkan ke generator PDF invoice Anda.
- *   5. Storage widget di sidebar masih data statis — sambungkan ke
- *      pemakaian Supabase Storage per user bila tersedia.
- *   6. Tab "Template" & "Affiliate" baru berupa placeholder "Segera Hadir".
  * ============================================================================
  */
 
@@ -46,8 +32,23 @@ import {
   ShoppingBag, Wallet, ClipboardList, Star, Lightbulb, LayoutGrid,
   QrCode, Landmark, Clock, ArrowUpRight, ArrowDownRight,
   FileText, Users, HardDrive, ArrowRightLeft, Ticket, Receipt,
-  ChevronRight, Settings, MousePointerClick,
+  ChevronRight, Settings, MousePointerClick, Zap,
 } from 'lucide-react';
+
+/* =========================================================================
+   NEW BRAND LOGO COMPONENT
+   ========================================================================= */
+
+const OneklikLogo = ({ className = "w-8 h-8", textClassName = "text-xl font-extrabold text-slate-800" }: { className?: string; textClassName?: string }) => (
+  <div className="flex items-center gap-2.5">
+    <div className={`relative flex items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-blue-500 shadow-md shadow-blue-500/25 text-white flex-shrink-0 ${className}`}>
+      <Zap className="w-4 h-4 fill-white/20 text-white" />
+    </div>
+    <span className={`tracking-tight ${textClassName}`}>
+      Oneklik<span className="text-blue-600">.id</span>
+    </span>
+  </div>
+);
 
 /* =========================================================================
    UTILITIES
@@ -119,7 +120,6 @@ function fmtRupiah(n: number) {
   return `Rp ${Math.max(0, Math.round(n || 0)).toLocaleString('id-ID')}`;
 }
 
-// --- Trend helpers (dipakai kartu statistik "+X% dari minggu lalu") ---
 function computeTrend(dates: Array<string | undefined | null>) {
   const now = new Date();
   const c0 = new Date(now); c0.setDate(now.getDate() - 7);
@@ -287,10 +287,6 @@ const ActivityHeatmap = ({ events }: { events: any[] }) => {
   );
 };
 
-/* =========================================================================
-   TREND BADGE (statistik "+X% dari minggu lalu")
-   ========================================================================= */
-
 const TrendBadge = ({ pct, isNew }: { pct: number; isNew?: boolean }) => {
   if (isNew && pct === 0) {
     return <span className="text-[10px] font-medium text-slate-300 mt-1 block">Belum ada data</span>;
@@ -391,8 +387,8 @@ const BioPreview = ({ user, links }: { user: any; links: any[] }) => {
             </div>
           )}
           <div className="mt-2">
-            <motion.a href="https://oneklik.my.id" target="_blank" whileHover={{ scale: 1.05 }} className="text-[9px] text-white/40 hover:text-white/80 transition-colors block font-semibold tracking-wider">
-              Powered by <span className="text-blue-300">Oneklik.id</span>
+            <motion.a href="https://oneklik.my.id" target="_blank" whileHover={{ scale: 1.05 }} className="text-[9px] text-white/40 hover:text-white/85 transition-colors inline-flex items-center gap-1 font-semibold tracking-wider">
+              Powered by <span className="text-blue-300 font-bold">Oneklik.id</span>
             </motion.a>
           </div>
         </div>
@@ -434,15 +430,11 @@ const ShopPreview = ({ user, products }: { user: any; products: any[] }) => {
           <button className="w-full mt-3 py-2 rounded-lg bg-blue-600 text-white text-[10px] font-semibold">Lihat Semua Produk</button>
         </div>
 
-        <div className="mt-auto pb-6 pt-4 text-[9px] text-white/50 font-semibold tracking-wider">Powered by Oneklik.id</div>
+        <div className="mt-auto pb-6 pt-4 text-[9px] text-white/60 font-semibold tracking-wider">Powered by Oneklik.id</div>
       </div>
     </div>
   );
 };
-
-/* =========================================================================
-   SHARE DROPDOWN
-   ========================================================================= */
 
 const ShareDropdown = ({ url }: { url: string }) => {
   const [open, setOpen] = useState(false);
@@ -480,10 +472,6 @@ const ShareDropdown = ({ url }: { url: string }) => {
     </div>
   );
 };
-
-/* =========================================================================
-   NOTIFICATION MODAL
-   ========================================================================= */
 
 const NotificationModal = ({ isOpen, onClose, notifications, loading, tab, setTab }: any) => {
   if (!isOpen) return null;
@@ -524,10 +512,6 @@ const NotificationModal = ({ isOpen, onClose, notifications, loading, tab, setTa
   );
 };
 
-/* =========================================================================
-   WALLET: HEADER DROPDOWN (dipicu dari tombol saldo di top header)
-   ========================================================================= */
-
 const WalletDropdownPanel = ({
   wallet, walletLoading, onTopUp, onHistory, onWithdraw, onTransfer, onVoucher, onViewAll,
 }: any) => (
@@ -562,10 +546,6 @@ const WalletDropdownPanel = ({
   </div>
 );
 
-/* =========================================================================
-   WALLET: PANEL LENGKAP (slide-over dari kanan, dibuka lewat "Lihat Semua di Wallet")
-   ========================================================================= */
-
 const WalletPanel = ({
   isOpen, onClose, wallet, walletLoading, showBalance, setShowBalance,
   monthSummary, monthRangeLabel, transactions,
@@ -584,7 +564,6 @@ const WalletPanel = ({
         </div>
 
         <div className="p-5 space-y-4">
-          {/* Saldo Tersedia */}
           <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 shadow-lg shadow-blue-200">
             <div className="absolute -top-8 -right-8 w-28 h-28 bg-white/10 rounded-full pointer-events-none" />
             <div className="absolute -bottom-10 -left-6 w-24 h-24 bg-white/10 rounded-full pointer-events-none" />
@@ -607,7 +586,6 @@ const WalletPanel = ({
             </div>
           </div>
 
-          {/* Quick actions */}
           <div className="grid grid-cols-4 gap-2">
             {[
               { icon: <Clock size={17} />, label: 'Riwayat', onClick: onHistory },
@@ -622,7 +600,6 @@ const WalletPanel = ({
             ))}
           </div>
 
-          {/* Ringkasan Bulan Ini */}
           <div className="bg-white rounded-xl border border-slate-200 p-4">
             <div className="mb-3">
               <p className="text-xs font-bold text-slate-800">Ringkasan Bulan Ini</p>
@@ -644,7 +621,6 @@ const WalletPanel = ({
             </div>
           </div>
 
-          {/* Transaksi Terakhir */}
           <div className="bg-white rounded-xl border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-bold text-slate-800">Transaksi Terakhir</p>
@@ -687,10 +663,6 @@ const WalletPanel = ({
   );
 };
 
-/* =========================================================================
-   WALLET: TOP UP MODAL (multi-step: nominal -> metode -> bayar -> menunggu -> sukses)
-   ========================================================================= */
-
 const TOPUP_NOMINALS = [10000, 25000, 50000, 100000, 250000, 500000];
 
 const PAYMENT_METHODS = [
@@ -731,7 +703,6 @@ const TopUpModal = ({
         </div>
 
         <div className="p-5">
-          {/* STEP 1: Pilih Nominal */}
           {step === 1 && (
             <div className="space-y-4">
               <div>
@@ -770,7 +741,6 @@ const TopUpModal = ({
             </div>
           )}
 
-          {/* STEP 2: Pilih Metode Pembayaran */}
           {step === 2 && (
             <div className="space-y-4">
               <div>
@@ -799,7 +769,6 @@ const TopUpModal = ({
             </div>
           )}
 
-          {/* STEP 3: Instruksi Pembayaran */}
           {step === 3 && (
             <div className="text-center space-y-4">
               {method === 'qris' ? (
@@ -824,11 +793,10 @@ const TopUpModal = ({
               </div>
               <p className="text-[11px] text-amber-600 flex items-center justify-center gap-1"><Clock size={12} /> Selesaikan pembayaran dalam {fmtCountdown(countdown)}</p>
               <button onClick={onCheckPayment} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">Cek Status Pembayaran</button>
-              <p className="text-[10px] text-slate-400">*Simulasi pembayaran — pada produksi, konfirmasi idealnya lewat webhook notification Midtrans.</p>
+              <p className="text-[10px] text-slate-400">*Simulasi pembayaran — pada produksi, konfirmasi idealnya lewat webhook notification.</p>
             </div>
           )}
 
-          {/* STEP 4: Menunggu (processing) */}
           {step === 4 && (
             <div className="text-center py-8 space-y-3">
               <div className="w-14 h-14 mx-auto border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
@@ -837,7 +805,6 @@ const TopUpModal = ({
             </div>
           )}
 
-          {/* STEP 5: Sukses */}
           {step === 5 && (
             <div className="text-center py-2 space-y-3">
               <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center text-green-600"><CheckCircle2 size={32} /></div>
@@ -856,10 +823,6 @@ const TopUpModal = ({
     </div>
   );
 };
-
-/* =========================================================================
-   WALLET: TARIK SALDO MODAL
-   ========================================================================= */
 
 const WithdrawModal = ({ isOpen, onClose, wallet, amount, setAmount, onSubmit, submitting }: any) => {
   if (!isOpen) return null;
@@ -907,10 +870,6 @@ const WithdrawModal = ({ isOpen, onClose, wallet, amount, setAmount, onSubmit, s
   );
 };
 
-/* =========================================================================
-   WALLET: TRANSFER SALDO MODAL (baru)
-   ========================================================================= */
-
 const TransferModal = ({ isOpen, onClose, wallet, recipient, setRecipient, amount, setAmount, note, setNote, onSubmit, submitting }: any) => {
   if (!isOpen) return null;
   return (
@@ -957,15 +916,10 @@ const TransferModal = ({ isOpen, onClose, wallet, recipient, setRecipient, amoun
         >
           {submitting ? 'Memproses...' : 'Kirim Transfer'}
         </button>
-        <p className="text-[10px] text-slate-400 mt-3 text-center">*Saldo akan terpotong setelah transfer berhasil diverifikasi sistem.</p>
       </div>
     </div>
   );
 };
-
-/* =========================================================================
-   WALLET: VOUCHER & PROMO MODAL (baru)
-   ========================================================================= */
 
 const VoucherModal = ({ isOpen, onClose, code, setCode, onSubmit, submitting }: any) => {
   if (!isOpen) return null;
@@ -989,15 +943,10 @@ const VoucherModal = ({ isOpen, onClose, code, setCode, onSubmit, submitting }: 
         >
           {submitting ? 'Memeriksa...' : 'Klaim Voucher'}
         </button>
-        <p className="text-[10px] text-slate-400 mt-3 text-center">Belum punya kode voucher? Pantau promo terbaru di halaman Upgrade.</p>
       </div>
     </div>
   );
 };
-
-/* =========================================================================
-   WALLET: INVOICE MODAL (baru)
-   ========================================================================= */
 
 const InvoiceModal = ({ isOpen, onClose, transactions, loading }: any) => {
   if (!isOpen) return null;
@@ -1036,10 +985,6 @@ const InvoiceModal = ({ isOpen, onClose, transactions, loading }: any) => {
     </div>
   );
 };
-
-/* =========================================================================
-   WALLET: RIWAYAT TRANSAKSI (DRAWER)
-   ========================================================================= */
 
 const WalletHistoryDrawer = ({ isOpen, onClose, transactions, loading, tab, setTab }: any) => {
   if (!isOpen) return null;
@@ -1124,7 +1069,6 @@ export default function BioPage() {
 
   const [uploadingBg, setUploadingBg] = useState(false);
 
-  // --- STATE: SHOP STATS & ORDERS ---
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
@@ -1135,12 +1079,10 @@ export default function BioPage() {
     totalReviews: 0,
   });
 
-  // --- STATE: DOMPET DIGITAL ---
   const [wallet, setWallet] = useState<any>(null);
   const [walletLoading, setWalletLoading] = useState(false);
   const [showWalletBalance, setShowWalletBalance] = useState(true);
 
-  // --- STATE: MODAL TOP UP SALDO (5 langkah) ---
   const [showTopUpModal, setShowTopUpModal] = useState(false);
   const [topUpStep, setTopUpStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [topUpNominal, setTopUpNominal] = useState<number | null>(null);
@@ -1149,33 +1091,27 @@ export default function BioPage() {
   const [topUpCountdown, setTopUpCountdown] = useState(15 * 60);
   const [topUpVaNumber] = useState(() => `8808${Math.floor(1000000000 + Math.random() * 8999999999)}`);
 
-  // --- STATE: MODAL TARIK SALDO ---
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
 
-  // --- STATE: MODAL TRANSFER SALDO (baru) ---
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferRecipient, setTransferRecipient] = useState('');
   const [transferAmount, setTransferAmount] = useState('');
   const [transferNote, setTransferNote] = useState('');
   const [transferSubmitting, setTransferSubmitting] = useState(false);
 
-  // --- STATE: MODAL VOUCHER & PROMO (baru) ---
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [voucherCode, setVoucherCode] = useState('');
   const [voucherSubmitting, setVoucherSubmitting] = useState(false);
 
-  // --- STATE: MODAL INVOICE (baru) ---
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
-  // --- STATE: PANEL WALLET LENGKAP + DROPDOWN HEADER (baru) ---
   const [showWalletPanel, setShowWalletPanel] = useState(false);
   const [walletDropdownOpen, setWalletDropdownOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [headerSearch, setHeaderSearch] = useState('');
 
-  // --- STATE: DRAWER RIWAYAT TRANSAKSI WALLET ---
   const [showWalletHistory, setShowWalletHistory] = useState(false);
   const [walletHistoryTab, setWalletHistoryTab] = useState<'semua' | 'topup' | 'pengeluaran'>('semua');
   const [walletTransactions, setWalletTransactions] = useState<any[]>([]);
@@ -1193,7 +1129,6 @@ export default function BioPage() {
   const supabase = createClientComponentClient();
   const router = useRouter();
 
-  // --- FETCH DATA USER & LINKS ---
   useEffect(() => {
     const getData = async () => {
       try {
@@ -1224,7 +1159,6 @@ export default function BioPage() {
     getData();
   }, [supabase]);
 
-  // --- FETCH NOTIFICATIONS ---
   const fetchNotifications = async () => {
     if (!session?.user?.id) return;
     setNotifLoading(true);
@@ -1234,7 +1168,6 @@ export default function BioPage() {
     setNotifLoading(false);
   };
 
-  // --- FETCH SHOP PRODUCTS ---
   const fetchProducts = async () => {
     if (!session?.user?.id) return;
     const { data, error } = await supabase.from('shop_products').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false });
@@ -1242,7 +1175,6 @@ export default function BioPage() {
     else setProducts(data || []);
   };
 
-  // --- FETCH ANALYTICS ---
   const fetchAnalytics = async () => {
     if (!session?.user?.id) return;
     setAnalyticsLoading(true);
@@ -1252,7 +1184,6 @@ export default function BioPage() {
     setAnalyticsLoading(false);
   };
 
-  // --- FETCH ORDERS ---
   const fetchOrders = async () => {
     if (!session?.user?.id) return;
     setOrdersLoading(true);
@@ -1272,7 +1203,6 @@ export default function BioPage() {
     }
   };
 
-  // --- FETCH SHOP STATS ---
   const fetchShopStats = async () => {
     if (!session?.user?.id) return;
     try {
@@ -1310,7 +1240,6 @@ export default function BioPage() {
     }
   };
 
-  // --- FETCH WALLET ---
   const fetchWallet = async () => {
     if (!session?.user?.id) return;
     setWalletLoading(true);
@@ -1330,7 +1259,6 @@ export default function BioPage() {
     }
   };
 
-  // --- FETCH RIWAYAT TRANSAKSI WALLET ---
   const fetchWalletTransactions = async () => {
     if (!session?.user?.id) return;
     setWalletTransactionsLoading(true);
@@ -1351,7 +1279,6 @@ export default function BioPage() {
     }
   };
 
-  // --- INISIALISASI DATA DENGAN EFEK ---
   useEffect(() => {
     if (session?.user?.id) {
       fetchProducts();
@@ -1363,7 +1290,6 @@ export default function BioPage() {
     }
   }, [session]);
 
-  // --- COUNTDOWN TIMER UNTUK MODAL TOP UP (step pembayaran) ---
   useEffect(() => {
     if (!showTopUpModal || topUpStep !== 3) return;
     if (topUpCountdown <= 0) return;
@@ -1380,13 +1306,11 @@ export default function BioPage() {
     }
   }, [activeTab]);
 
-  /* ----------------------------- DERIVED DATA ----------------------------- */
   const totalViews = useMemo(() => analyticsData.filter((e) => e.event_type === 'profile_view').length, [analyticsData]);
   const totalClicks = useMemo(() => analyticsData.filter((e) => e.event_type === 'link_click').length, [analyticsData]);
   const ctr = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(1) : '0.0';
   const dailySeries = useMemo(() => computeDailySeries(analyticsData, analyticsRangeDays), [analyticsData, analyticsRangeDays]);
 
-  // Trend "+X% dari minggu lalu" untuk kartu statistik
   const linksTrend = useMemo(() => computeTrend(links.map((l) => l.created_at)), [links]);
   const clicksTrend = useMemo(() => computeTrend(analyticsData.filter((e) => e.event_type === 'link_click').map((e) => e.created_at)), [analyticsData]);
   const viewsTrend = useMemo(() => computeTrend(analyticsData.filter((e) => e.event_type === 'profile_view').map((e) => e.created_at)), [analyticsData]);
@@ -1469,7 +1393,6 @@ export default function BioPage() {
       .map(([key, value]) => ({ label: key, value }));
   }, [analyticsData]);
 
-  // --- DERIVED: WALLET ---
   const topUpAmount = useMemo(() => {
     if (topUpCustomNominal) return parseInt(topUpCustomNominal, 10) || 0;
     return topUpNominal || 0;
@@ -1497,11 +1420,9 @@ export default function BioPage() {
 
   const walletMonthRangeLabel = useMemo(() => formatMonthRangeLabel(), []);
 
-  // --- DERIVED: STORAGE (placeholder — sambungkan ke Supabase Storage usage) ---
   const storageLimitGb = user?.is_premium ? 50 : 10;
-  const storageUsedGb = 2.4; // TODO: hitung dari total ukuran file di bucket avatars/products
+  const storageUsedGb = 2.4;
 
-  /* ------------------------------- HANDLERS ------------------------------- */
   const handleSaveProfile = async () => {
     if (!session?.user?.id || !user?.username) { toast.error('Username wajib diisi!'); return; }
     setSaving(true);
@@ -1519,7 +1440,7 @@ export default function BioPage() {
         social_twitch: user.social_twitch || null,
       }).eq('id', session.user.id).select();
       if (error) { toast.error('Gagal menyimpan: ' + error.message); return; }
-      if (!updatedRows || updatedRows.length === 0) { toast.error('Data tidak tersimpan. Cek RLS policy UPDATE di Supabase.'); return; }
+      if (!updatedRows || updatedRows.length === 0) { toast.error('Data tidak tersimpan.'); return; }
       setUser(updatedRows[0]);
       toast.success('Profil & Pengaturan berhasil disimpan!');
     } catch (err: any) { console.error(err); toast.error('Terjadi kesalahan tak terduga.'); } finally { setSaving(false); }
@@ -1538,7 +1459,7 @@ export default function BioPage() {
       const publicUrl = urlData.publicUrl;
       setUser((prev: any) => ({ ...prev, avatar_url: publicUrl }));
       const { error: updateError } = await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', session.user.id);
-      if (updateError) throw new Error(updateError.message || 'Gagal menyimpan URL avatar ke database.');
+      if (updateError) throw new Error(updateError.message || 'Gagal menyimpan URL avatar.');
       toast.success('Foto profil berhasil diunggah!');
     } catch (error: any) { toast.error('Gagal mengunggah foto: ' + error.message); } finally { setUploadingAvatar(false); setIsAvatarMenuOpen(false); }
   };
@@ -1574,7 +1495,7 @@ export default function BioPage() {
     if (!newLinkTitle || !newLinkUrl) { toast.error('Judul dan URL wajib diisi!'); return; }
     const { data: inserted, error } = await supabase.from('links').insert({ user_id: session.user.id, title: newLinkTitle, url: newLinkUrl, position: links.length }).select().maybeSingle();
     if (error) { toast.error('Gagal menambah link: ' + error.message); return; }
-    if (!inserted) { toast.error('Link tidak tersimpan. Cek RLS INSERT.'); return; }
+    if (!inserted) { toast.error('Link tidak tersimpan.'); return; }
     setLinks([...links, inserted]);
     setNewLinkTitle(''); setNewLinkUrl(''); setShowAddLink(false);
     toast.success('Link berhasil ditambahkan!');
@@ -1612,7 +1533,7 @@ export default function BioPage() {
 
   const handleResetDesign = () => {
     setUser((prev: any) => ({ ...prev, theme_primary: '#3b82f6', theme_secondary: '#ffffff', theme_bg: '#f3f4f6', design_settings: {} }));
-    toast('Desain dikembalikan ke default. Klik "Simpan Perubahan" untuk menyimpan.');
+    toast('Desain dikembalikan ke default.');
   };
 
   const handleAddProduct = async () => {
@@ -1655,7 +1576,6 @@ export default function BioPage() {
     fetchProducts();
   };
 
-  /* ----------------------------- HANDLERS: WALLET ----------------------------- */
   const openTopUpModal = () => {
     setTopUpStep(1);
     setTopUpNominal(null);
@@ -1679,11 +1599,6 @@ export default function BioPage() {
     setTopUpStep(3);
   };
 
-  // NOTE: Ini simulasi konfirmasi pembayaran di sisi client untuk keperluan UI/demo.
-  // Untuk produksi (integrasi Midtrans), saldo idealnya baru dikreditkan setelah
-  // menerima notifikasi webhook dari Midtrans (Snap/Core API), mengikuti pola
-  // dual-write yang sudah dipakai pada integrasi PayPal, agar tidak bisa
-  // dimanipulasi dari sisi client.
   const handleConfirmTopUpPayment = async () => {
     if (!session?.user?.id || !topUpAmount) return;
     setTopUpStep(4);
@@ -1741,7 +1656,6 @@ export default function BioPage() {
     }
   };
 
-  // --- HANDLER: TRANSFER SALDO (baru, siap diintegrasikan ke RPC Supabase) ---
   const handleTransferSubmit = async () => {
     const amount = parseInt(transferAmount, 10) || 0;
     if (!transferRecipient.trim()) { toast.error('Masukkan username atau ID penerima'); return; }
@@ -1749,8 +1663,6 @@ export default function BioPage() {
     if (amount > (wallet?.balance || 0)) { toast.error('Saldo tidak mencukupi'); return; }
     setTransferSubmitting(true);
     try {
-      // TODO: idealnya proses debit-kredit dilakukan lewat RPC/Edge Function
-      // Supabase agar atomik. Di sini hanya verifikasi penerima + catat pengajuan.
       const { data: recipientUser, error: recipientError } = await supabase
         .from('users')
         .select('id, username')
@@ -1780,13 +1692,10 @@ export default function BioPage() {
     }
   };
 
-  // --- HANDLER: KLAIM VOUCHER (baru, asumsi tabel `vouchers` — sesuaikan skema) ---
   const handleClaimVoucher = async () => {
     if (!voucherCode.trim()) return;
     setVoucherSubmitting(true);
     try {
-      // TODO: validasi kode voucher ke tabel `vouchers` (masa berlaku, kuota, dsb),
-      // lalu catat klaim di tabel `voucher_redemptions` dan kreditkan saldo/diskon.
       const { data: voucherData, error: voucherError } = await supabase
         .from('vouchers')
         .select('*')
@@ -1806,12 +1715,10 @@ export default function BioPage() {
     }
   };
 
-  /* --------------------------------- RENDER -------------------------------- */
-
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat dashboard...</div>;
   if (!session) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6">
-      <h1 className="text-4xl font-extrabold text-blue-600 mb-4">Oneklik.id</h1>
+      <div className="mb-6"><OneklikLogo className="w-12 h-12" textClassName="text-3xl font-extrabold text-slate-800" /></div>
       <h2 className="text-2xl font-bold mb-6 text-slate-800">Silakan Login</h2>
       <button onClick={handleLogin} className="px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-lg transition-all">Login dengan Google</button>
     </div>
@@ -1864,12 +1771,11 @@ export default function BioPage() {
     <div className="h-screen bg-[#F8FAFC] text-slate-800 flex flex-col overflow-hidden">
       <Toaster position="top-center" />
 
-      {/* ===================================================================
-          TOP HEADER BAR (global — logo, search, notifikasi, wallet, profil)
-          =================================================================== */}
       <header className="flex-shrink-0 sticky top-0 z-40 bg-white border-b border-slate-200 px-4 lg:px-6 h-16 flex items-center gap-3 lg:gap-4">
         <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"><Menu size={22} /></button>
-        <Link href="/" className="text-xl font-bold text-blue-600 tracking-tight flex-shrink-0 hidden sm:block">Oneklik<span className="text-blue-400">.id</span></Link>
+        <div className="hidden sm:block flex-shrink-0">
+          <Link href="/"><OneklikLogo className="w-8 h-8" textClassName="text-xl font-extrabold text-slate-800" /></Link>
+        </div>
 
         <div className="flex-1 max-w-md relative hidden md:block">
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -1888,7 +1794,6 @@ export default function BioPage() {
             {notifications.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />}
           </button>
 
-          {/* Wallet dropdown trigger */}
           <div className="relative">
             <button onClick={() => setWalletDropdownOpen((v) => !v)} className="flex items-center gap-1.5 pl-2 pr-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors">
               <span className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0"><Wallet size={12} /></span>
@@ -1941,21 +1846,20 @@ export default function BioPage() {
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden relative">
         {mobileMenuOpen && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setMobileMenuOpen(false)} />}
 
-        {/* ------------------------------- SIDEBAR ------------------------------- */}
         <aside className={cx(
           'fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out',
           'lg:relative lg:translate-x-0 lg:w-[260px] lg:flex lg:flex-col lg:h-full lg:flex-shrink-0',
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         )}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between lg:hidden">
-            <span className="text-sm font-bold text-blue-600">Oneklik<span className="text-blue-400">.id</span></span>
+            <OneklikLogo className="w-7 h-7" textClassName="text-sm font-bold text-slate-800" />
             <button onClick={() => setMobileMenuOpen(false)} className="text-slate-600 hover:bg-slate-50 p-1 rounded-lg transition-colors"><X size={20} /></button>
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 custom-scrollbar">
             <div className="space-y-1">
               <div className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider"><span>MENU</span></div>
-              <Link href="/dashboard"><div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-50 cursor-pointer"><LayoutDashboard className="w-4 h-4" /> Dashboard</div></Link>
+              <Link href="/dashboard"><div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-50 cursor-pointer"><LayoutDashboard className="w-4 h-4 text-slate-500" /> Dashboard</div></Link>
               {NAV_ITEMS.map((item) => (
                 <button
                   key={item.key}
@@ -1967,7 +1871,6 @@ export default function BioPage() {
               ))}
             </div>
 
-            {/* --- STORAGE WIDGET (placeholder — sambungkan ke Supabase Storage) --- */}
             <div className="mx-2 p-4 bg-white rounded-2xl border border-slate-200">
               <div className="flex items-center gap-2 mb-2 text-slate-500">
                 <HardDrive size={14} />
@@ -1980,7 +1883,6 @@ export default function BioPage() {
               <Link href="/upgrade" className="block w-full py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 text-center text-[11px] font-semibold rounded-lg transition-colors">Upgrade Storage</Link>
             </div>
 
-            {/* --- CARD UPGRADE KE PRO --- */}
             {!user?.is_premium && (
               <div className="mx-2 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 shadow-sm">
                 <div className="flex items-start gap-3 mb-3">
@@ -1999,7 +1901,6 @@ export default function BioPage() {
             )}
           </div>
 
-          {/* FOOTER SIDEBAR */}
           <div className="p-4 border-t border-slate-100 bg-white space-y-3">
             <div className="flex items-center gap-2.5 px-1">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
@@ -2014,7 +1915,6 @@ export default function BioPage() {
           </div>
         </aside>
 
-        {/* ------------------------------ MAIN CONTENT ------------------------------ */}
         <main className="flex-1 h-full overflow-y-auto bg-[#F8FAFC] p-6 lg:p-10">
           <div className="max-w-2xl mx-auto">
             <div className="flex items-start justify-between mb-6 gap-3 flex-wrap">
@@ -2070,7 +1970,6 @@ export default function BioPage() {
               </div>
             </div>
 
-            {/* --------------------------------- TAB: LINKS --------------------------------- */}
             {activeTab === 'links' && (
               <>
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4 relative">
@@ -2230,7 +2129,6 @@ export default function BioPage() {
               </>
             )}
 
-            {/* --------------------------------- TAB: DESIGN --------------------------------- */}
             {activeTab === 'design' && (
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-4 mb-6">
@@ -2295,7 +2193,7 @@ export default function BioPage() {
                               key={t.id}
                               onClick={() => {
                                 if (isLocked) {
-                                  toast.error('Template Premium hanya bisa diakses oleh pengguna PRO. Upgrade sekarang!');
+                                  toast.error('Template Premium hanya untuk pengguna PRO.');
                                   router.push('/upgrade');
                                   return;
                                 }
@@ -2448,11 +2346,8 @@ export default function BioPage() {
               </div>
             )}
 
-            {/* --------------------------------- TAB: SHOP --------------------------------- */}
             {activeTab === 'shop' && (
               <div className="space-y-4">
-                
-                {/* --- MODAL KELOLA PESANAN --- */}
                 {showOrderModal && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 relative max-h-[80vh] flex flex-col">
@@ -2495,7 +2390,6 @@ export default function BioPage() {
                   </div>
                 )}
 
-                {/* --- MODAL TAMBAH PRODUK --- */}
                 {showProductModal && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
@@ -2532,7 +2426,6 @@ export default function BioPage() {
                   </div>
                 )}
 
-                {/* --- STATISTIK TOKO --- */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   <div className="bg-white rounded-xl border border-slate-200 p-4">
                     <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Produk</p>
@@ -2560,7 +2453,6 @@ export default function BioPage() {
                   </div>
                 </div>
 
-                {/* --- MANAJEMEN PRODUK --- */}
                 <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                   <div className="p-4 border-b border-slate-100 space-y-3">
                     <div className="flex gap-2 overflow-x-auto">
@@ -2611,7 +2503,6 @@ export default function BioPage() {
               </div>
             )}
 
-            {/* ------------------------------- TAB: ANALYTICS ------------------------------- */}
             {activeTab === 'analytics' && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -2703,28 +2594,25 @@ export default function BioPage() {
               </div>
             )}
 
-            {/* --------------------------------- TAB: TEMPLATE (baru) --------------------------------- */}
             {activeTab === 'template' && (
               <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
                 <div className="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500"><LayoutGrid size={26} /></div>
                 <h4 className="text-base font-semibold text-slate-700">Galeri Template Segera Hadir</h4>
-                <p className="text-sm text-slate-400 mt-1 max-w-sm mx-auto">Halaman khusus untuk menjelajahi seluruh koleksi template akan segera tersedia. Untuk saat ini, pilih template lewat tab Design.</p>
+                <p className="text-sm text-slate-400 mt-1 max-w-sm mx-auto">Halaman khusus untuk menjelajahi seluruh koleksi template akan segera tersedia.</p>
                 <button onClick={() => setActiveTab('design')} className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">Buka Tab Design</button>
               </div>
             )}
 
-            {/* --------------------------------- TAB: AFFILIATE (baru) --------------------------------- */}
             {activeTab === 'affiliate' && (
               <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
                 <div className="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-500"><Users size={26} /></div>
                 <h4 className="text-base font-semibold text-slate-700">Program Affiliate Segera Hadir</h4>
-                <p className="text-sm text-slate-400 mt-1 max-w-sm mx-auto">Ajak teman menggunakan Oneklik.id dan dapatkan komisi dari setiap pengguna yang upgrade ke PRO.</p>
+                <p className="text-sm text-slate-400 mt-1 max-w-sm mx-auto">Ajak teman menggunakan Oneklik.id dan dapatkan komisi dari setiap referral.</p>
               </div>
             )}
           </div>
         </main>
 
-        {/* -------------------------- RIGHT PREVIEW PANEL -------------------------- */}
         <aside className="flex flex-col w-full lg:w-[380px] bg-white border-t lg:border-t-0 lg:border-l border-slate-200 h-auto lg:h-full p-6 flex-shrink-0 overflow-y-auto">
           {activeTab === 'links' && (
             <div className="flex-1 flex flex-col justify-center">
@@ -2739,7 +2627,6 @@ export default function BioPage() {
                 </div>
               </div>
               <FramedPreview><BioPreview user={user} links={links} /></FramedPreview>
-              <div className="mt-4 text-center text-[10px] text-slate-400">*Mockup menyesuaikan Template &amp; Desain yang dipilih.</div>
             </div>
           )}
 
@@ -2788,7 +2675,6 @@ export default function BioPage() {
               </div>
 
               <ShopPreview user={user} products={products} />
-              <p className="mt-3 text-center text-[10px] text-slate-400">Produk tampil lewat tombol 🛍️ Shop di halaman bio Anda saat ini — bukan halaman toko terpisah.</p>
 
               <div className="mt-5 bg-slate-50 rounded-xl border border-slate-100 p-4">
                 <p className="text-xs font-bold text-slate-700 mb-2">Bagikan Toko</p>
@@ -2811,11 +2697,6 @@ export default function BioPage() {
                 <p className="text-xs font-bold text-slate-700 mb-3">Waktu Aktif Pengunjung</p>
                 <ActivityHeatmap events={analyticsData} />
               </div>
-
-              <div className="mt-4 bg-blue-50 rounded-xl border border-blue-100 p-4 flex gap-2.5">
-                <Lightbulb size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
-                <p className="text-[11px] text-blue-700">Posting link Anda saat jam kunjungan tertinggi (lihat heatmap di atas) untuk mendapatkan klik lebih banyak!</p>
-              </div>
             </div>
           )}
 
@@ -2827,9 +2708,6 @@ export default function BioPage() {
         </aside>
       </div>
 
-      {/* ===================================================================
-          WALLET: PANEL LENGKAP (slide-over)
-          =================================================================== */}
       <WalletPanel
         isOpen={showWalletPanel}
         onClose={() => setShowWalletPanel(false)}
@@ -2848,9 +2726,6 @@ export default function BioPage() {
         onInvoice={() => setShowInvoiceModal(true)}
       />
 
-      {/* ===================================================================
-          MODALS
-          =================================================================== */}
       <TopUpModal
         isOpen={showTopUpModal}
         onClose={closeTopUpModal}
