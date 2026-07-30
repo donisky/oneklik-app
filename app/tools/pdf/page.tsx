@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Combine, Minimize2, RefreshCcw, 
   Lock, Sparkles, ArrowRight, Crown, UserCircle,
@@ -14,6 +15,10 @@ export default function PDFToolsDashboard() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+
+  // --- DROPDOWN STATE ---
+  const [toolsDropdownOpen, setToolsDropdownOpen] = useState(false);
+  const [fiturDropdownOpen, setFiturDropdownOpen] = useState(false);
   
   const supabase = createClientComponentClient();
   const router = useRouter();
@@ -83,35 +88,84 @@ export default function PDFToolsDashboard() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans selection:bg-blue-600 selection:text-white pb-16">
       
-      {/* --- TOP NAVBAR --- */}
+      {/* --- TOP NAVBAR PREMIUM DENGAN DROPDOWN FUNGSIONAL --- */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 lg:px-12 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-blue-200">
-              <Zap size={22} className="fill-white" />
+          {/* LOGO KHAS ONEKLIK ASLI */}
+          <Link href="/" className="text-2xl font-black text-blue-600 tracking-tight flex items-center gap-2.5">
+            <div className="w-9 h-9 bg-gradient-to-tr from-blue-600 via-indigo-600 to-blue-500 rounded-xl flex items-center justify-center text-white shadow-md shadow-blue-500/30">
+              <Zap size={18} className="fill-white" />
             </div>
-            <span className="text-xl font-extrabold tracking-tight text-slate-900">
-              Oneklik<span className="text-blue-600">.id</span>
-            </span>
+            Oneklik<span className="text-blue-400">.id</span>
           </Link>
 
-          {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+          {/* NAVIGASI TENGAH DENGAN DROPDOWN YANG BERFUNGSI */}
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600 relative">
             <Link href="/" className="hover:text-blue-600 transition-colors">Beranda</Link>
-            <div className="flex items-center gap-1 text-blue-600 font-semibold cursor-pointer">
-              Tools <ChevronDown size={14} />
+            
+            {/* DROPDOWN TOOLS */}
+            <div 
+              className="relative"
+              onMouseEnter={() => setToolsDropdownOpen(true)}
+              onMouseLeave={() => setToolsDropdownOpen(false)}
+            >
+              <button className="flex items-center gap-1 hover:text-blue-600 transition-colors py-2">
+                Tools <ChevronDown size={14} className={`transition-transform duration-200 ${toolsDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              <AnimatePresence>
+                {toolsDropdownOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full left-0 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-100 p-2 py-3 z-50 space-y-1"
+                  >
+                    <Link href="/bio" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Link Bio</Link>
+                    <Link href="/tools/pdf" className="block px-4 py-2 bg-blue-50 text-blue-600 rounded-xl transition-colors font-semibold text-xs">Alat PDF Canggih</Link>
+                    <Link href="/tools/cv" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Generator CV</Link>
+                    <Link href="/tools/url-shortener" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">URL Shortener</Link>
+                    <Link href="/tools/file-qr" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">File to QR Code</Link>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-            <div className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer">
-              Fitur <ChevronDown size={14} />
+
+            {/* DROPDOWN FITUR */}
+            <div 
+              className="relative"
+              onMouseEnter={() => setFiturDropdownOpen(true)}
+              onMouseLeave={() => setFiturDropdownOpen(false)}
+            >
+              <button className="flex items-center gap-1 hover:text-blue-600 transition-colors py-2">
+                Fitur <ChevronDown size={14} className={`transition-transform duration-200 ${fiturDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              <AnimatePresence>
+                {fiturDropdownOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full left-0 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-100 p-2 py-3 z-50 space-y-1"
+                  >
+                    <Link href="/analytics" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Analitik Real-Time</Link>
+                    <Link href="/tools/domain" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Kustom Domain</Link>
+                    <Link href="/security" className="block px-4 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors font-semibold text-xs">Keamanan Enkripsi</Link>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
+
             <Link href="/pricing" className="hover:text-blue-600 transition-colors">Harga</Link>
             <Link href="/guides" className="hover:text-blue-600 transition-colors">Panduan</Link>
             <Link href="/blog" className="hover:text-blue-600 transition-colors">Blog</Link>
           </nav>
 
-          {/* Right Actions (Premium & User) */}
+          {/* RIGHT ACTIONS (PREMIUM & USER) */}
           <div className="flex items-center gap-4">
             <Link 
               href="/upgrade" 
@@ -138,8 +192,8 @@ export default function PDFToolsDashboard() {
       {/* --- MAIN CONTAINER --- */}
       <div className="max-w-7xl mx-auto px-6 pt-10">
 
-        {/* --- HERO SECTION --- */}
-        <div className="relative bg-gradient-to-b from-blue-50/50 via-transparent to-transparent rounded-3xl p-8 lg:p-12 mb-12 overflow-hidden border border-blue-100/60 shadow-sm">
+        {/* --- HERO SECTION (Premium Glow) --- */}
+        <div className="relative bg-gradient-to-br from-blue-50/40 via-transparent to-transparent rounded-3xl p-8 lg:p-12 mb-12 overflow-hidden border border-blue-100/60 shadow-sm">
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
             <div className="lg:col-span-7">
@@ -176,14 +230,15 @@ export default function PDFToolsDashboard() {
               </div>
             </div>
 
-            {/* Right Hero Graphic Mockup */}
+            {/* Right Hero Graphic Mockup (CSS murni menyerupai desain) */}
             <div className="lg:col-span-5 hidden lg:flex justify-center relative">
               <div className="relative w-full max-w-sm h-64 flex items-center justify-center">
-                {/* Podium background ring */}
+                
+                {/* Podium Glow Effect */}
                 <div className="absolute bottom-4 w-72 h-16 bg-gradient-to-r from-blue-200/40 via-indigo-200/60 to-blue-200/40 rounded-full blur-xl"></div>
                 
-                {/* Floating Folder / PDF Icon Illustration */}
-                <div className="relative bg-white/80 backdrop-blur-md border border-white p-6 rounded-3xl shadow-2xl shadow-blue-200/50 flex flex-col items-center">
+                {/* Floating PDF Block (Mockup Utama) */}
+                <div className="relative bg-white/80 backdrop-blur-md border border-white p-6 rounded-3xl shadow-2xl shadow-blue-200/50 flex flex-col items-center transform rotate-2">
                   <div className="w-20 h-24 bg-gradient-to-b from-blue-500 to-blue-600 rounded-2xl shadow-lg flex flex-col items-center justify-center text-white font-black text-xl tracking-wider relative">
                     PDF
                     <div className="absolute -top-3 -right-3 w-8 h-8 bg-red-500 rounded-xl flex items-center justify-center text-white shadow-md">
@@ -195,7 +250,7 @@ export default function PDFToolsDashboard() {
                   </div>
                 </div>
 
-                {/* Floating mini tool badges */}
+                {/* Ikon Melayang di Sekitarnya */}
                 <div className="absolute top-2 right-4 w-12 h-12 bg-red-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-red-200 animate-bounce duration-1000">
                   <Combine size={20} />
                 </div>
@@ -210,74 +265,81 @@ export default function PDFToolsDashboard() {
           </div>
         </div>
 
-        {/* --- GRID ALAT PDF --- */}
+        {/* --- 3 KARTU ALAT UTAMA --- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mb-12">
           
-          {/* 1. Gabung PDF */}
+          {/* 1. Gabung PDF (Red Theme) */}
           <Link href="/tools/pdf/merge" className="block group relative">
             <div className="bg-white rounded-3xl border border-slate-200/80 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-8 flex flex-col items-center text-center h-full relative overflow-hidden">
               
-              {/* Star Badge top-right */}
-              <div className="absolute top-6 right-6 w-8 h-8 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center text-amber-400">
+              {/* Background Soft Glow */}
+              <div className="absolute inset-0 bg-gradient-to-br from-red-50/30 to-transparent opacity-80" />
+              
+              {/* Star Badge Top Right */}
+              <div className="absolute top-6 right-6 w-8 h-8 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center text-amber-400 z-10">
                 <Star size={15} className="fill-amber-400" />
               </div>
 
-              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-red-200 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-red-200 group-hover:scale-110 transition-transform duration-300 z-10">
                 <Combine size={30} />
               </div>
               
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Gabung PDF</h3>
-              <p className="text-sm text-slate-500 leading-relaxed mb-6">
+              <h3 className="text-xl font-bold text-slate-900 mb-2 z-10">Gabung PDF</h3>
+              <p className="text-sm text-slate-500 leading-relaxed mb-6 z-10">
                 Satukan beberapa file PDF menjadi satu dokumen utuh dengan cepat.
               </p>
               
-              <div className="mt-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-red-600 bg-red-50 border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-all duration-300">
+              <div className="mt-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-red-600 bg-red-50 border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-all duration-300 z-10">
                 Gunakan Sekarang <ArrowRight size={14} />
               </div>
             </div>
           </Link>
           
-          {/* 2. Kompres PDF */}
+          {/* 2. Kompres PDF (Blue Theme) */}
           <Link href="/tools/pdf/compress" className="block group relative">
             <div className="bg-white rounded-3xl border border-slate-200/80 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-8 flex flex-col items-center text-center h-full relative overflow-hidden">
               
-              <div className="absolute top-6 right-6 w-8 h-8 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center text-amber-400">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-transparent opacity-80" />
+              
+              <div className="absolute top-6 right-6 w-8 h-8 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center text-amber-400 z-10">
                 <Star size={15} className="fill-amber-400" />
               </div>
 
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-200 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-200 group-hover:scale-110 transition-transform duration-300 z-10">
                 <Minimize2 size={30} />
               </div>
               
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Kompres PDF</h3>
-              <p className="text-sm text-slate-500 leading-relaxed mb-6">
+              <h3 className="text-xl font-bold text-slate-900 mb-2 z-10">Kompres PDF</h3>
+              <p className="text-sm text-slate-500 leading-relaxed mb-6 z-10">
                 Kecilkan ukuran file PDF dengan tingkat kompresi yang bisa diatur.
               </p>
               
-              <div className="mt-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+              <div className="mt-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 z-10">
                 Gunakan Sekarang <ArrowRight size={14} />
               </div>
             </div>
           </Link>
 
-          {/* 3. Konversi PDF */}
+          {/* 3. Konversi PDF (Green Theme) */}
           <Link href="/tools/pdf/convert" className="block group relative">
             <div className="bg-white rounded-3xl border border-slate-200/80 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-8 flex flex-col items-center text-center h-full relative overflow-hidden">
               
-              <div className="absolute top-6 right-6 w-8 h-8 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center text-amber-400">
+              <div className="absolute inset-0 bg-gradient-to-br from-green-50/30 to-transparent opacity-80" />
+              
+              <div className="absolute top-6 right-6 w-8 h-8 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center text-amber-400 z-10">
                 <Star size={15} className="fill-amber-400" />
               </div>
 
-              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-green-200 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-green-200 group-hover:scale-110 transition-transform duration-300 z-10">
                 <RefreshCcw size={30} />
               </div>
               
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Konversi PDF</h3>
-              <p className="text-sm text-slate-500 leading-relaxed mb-6">
+              <h3 className="text-xl font-bold text-slate-900 mb-2 z-10">Konversi PDF</h3>
+              <p className="text-sm text-slate-500 leading-relaxed mb-6 z-10">
                 Konversi dokumen Anda antar format seperti JPG, PNG, Word, Excel, dan lainnya.
               </p>
               
-              <div className="mt-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-green-600 bg-green-50 border border-green-100 group-hover:bg-green-600 group-hover:text-white transition-all duration-300">
+              <div className="mt-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-green-600 bg-green-50 border border-green-100 group-hover:bg-green-600 group-hover:text-white transition-all duration-300 z-10">
                 Gunakan Sekarang <ArrowRight size={14} />
               </div>
             </div>
@@ -285,7 +347,7 @@ export default function PDFToolsDashboard() {
 
         </div>
 
-        {/* --- UPGRADE BANNER --- */}
+        {/* --- UPGRADE PREMIUM BANNER (Gradasi Biru-Ungu) --- */}
         <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-8 lg:p-10 text-white shadow-xl shadow-blue-500/10 flex flex-col lg:flex-row items-center justify-between gap-6 mb-16 relative overflow-hidden">
           
           <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
@@ -312,7 +374,7 @@ export default function PDFToolsDashboard() {
           </Link>
         </div>
 
-        {/* --- 4 FEATURE BOTTOM CARDS --- */}
+        {/* --- 4 FITUR UNGGULAN (BOTTOM CARDS) --- */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           
           <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col">
@@ -357,7 +419,7 @@ export default function PDFToolsDashboard() {
 
       </div>
 
-      {/* Floating Chat Widget Button */}
+      {/* --- FLOATING CHAT WIDGET BUTTON --- */}
       <button className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-xl shadow-blue-500/30 transition-transform hover:scale-105 z-50">
         <MessageSquare size={24} />
       </button>
