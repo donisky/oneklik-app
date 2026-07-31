@@ -76,7 +76,7 @@ export default function ConvertPDF() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // --- DRAG & DROP LOGIC (Dioptimalkan agar tidak mengambang/glitching) ---
+  // --- DRAG & DROP LOGIC ---
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -123,14 +123,13 @@ export default function ConvertPDF() {
     setIsSuccess(false);
   };
 
-  // --- LOGIKA KONVERSI BERKUALITAS iLovePDF ---
+  // --- LOGIKA KONVERSI ---
   const handleConvert = async () => {
     if (!file) return alert('Pilih file terlebih dahulu!');
     setIsConverting(true);
     setIsSuccess(false);
 
     try {
-      // --- 1. KONVERSI JPG/PNG ke PDF (High Resolution Presisi Tinggi) ---
       if (conversionType === 'jpg-to-pdf') {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -153,8 +152,6 @@ export default function ConvertPDF() {
         };
         reader.readAsDataURL(file);
       } 
-      
-      // --- 2. KONVERSI PDF ke JPG (Ultra HD Rendering Skala 4 & Kualitas 1.0) ---
       else if (conversionType === 'pdf-to-jpg') {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -219,8 +216,6 @@ export default function ConvertPDF() {
         setIsSuccess(true);
         setTimeout(() => { setFile(null); setPreview(null); setIsConverting(false); setIsSuccess(false); }, 3000);
       } 
-
-      // --- 3. KONVERSI WORD/EXCEL/PPT/HTML ke PDF (Via API /convert-doc) ---
       else if (['word-to-pdf', 'pptx-to-pdf', 'excel-to-pdf', 'html-to-pdf'].includes(conversionType)) {
         const formData = new FormData();
         formData.append('file', file);
@@ -242,8 +237,6 @@ export default function ConvertPDF() {
         setIsSuccess(true);
         setTimeout(() => { setFile(null); setPreview(null); setIsConverting(false); setIsSuccess(false); }, 3000);
       }
-
-      // --- 4. KONVERSI PDF ke WORD/EXCEL/PPT/PDFA (Via API /convert-pdf-out) ---
       else if (['pdf-to-word', 'pdf-to-pptx', 'pdf-to-excel', 'pdf-to-pdfa'].includes(conversionType)) {
         const target = conversionType.split('-')[2]; 
 
@@ -272,7 +265,6 @@ export default function ConvertPDF() {
         setIsSuccess(true);
         setTimeout(() => { setFile(null); setPreview(null); setIsConverting(false); setIsSuccess(false); }, 3000);
       }
-
       else {
         alert('Tipe konversi tidak dikenali.');
         setIsConverting(false);
@@ -677,7 +669,7 @@ export default function ConvertPDF() {
             {/* AREA KANAN: Upload & Summary Panel */}
             <div className="flex flex-col gap-6">
               
-              {/* Box Upload (Responsif & Anti-Mengambang/Glitch) */}
+              {/* Box Upload (Diperbaiki tanpa tinggi tetap/h-48 agar tidak ngambang/tumpang tindih) */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sticky top-6">
                 <h3 className="text-base font-bold text-slate-900 mb-4">Upload File</h3>
                 
@@ -689,7 +681,7 @@ export default function ConvertPDF() {
                       onDrop={handleDrop}
                       onClick={() => fileInputRef.current?.click()}
                       className={`
-                        relative w-full h-48 rounded-[20px] border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center cursor-pointer mb-4
+                        relative w-full rounded-[20px] border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center cursor-pointer mb-4 py-8 px-6 text-center
                         ${isDragging 
                           ? 'border-blue-600 bg-blue-50 scale-[1.01]' 
                           : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50/50 bg-slate-50/30'
@@ -703,12 +695,12 @@ export default function ConvertPDF() {
                         onChange={handleFileChange} 
                         ref={fileInputRef}
                       />
-                      <div className="flex flex-col items-center text-center pointer-events-none px-4">
+                      <div className="flex flex-col items-center text-center pointer-events-none">
                         <div className="w-14 h-14 rounded-full bg-blue-600 text-white flex items-center justify-center mb-3 shadow-lg shadow-blue-200">
                           <Upload size={24} />
                         </div>
-                        <p className="text-slate-800 font-bold text-[15px]">Drag & drop file di sini</p>
-                        <p className="text-slate-500 text-xs mt-1 mb-4">atau klik untuk memilih file</p>
+                        <p className="text-slate-800 font-bold text-[15px] mb-1">Drag & drop file di sini</p>
+                        <p className="text-slate-500 text-xs mb-4">atau klik untuk memilih file</p>
                         <span className="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-xs font-bold pointer-events-auto">
                           Pilih File
                         </span>
