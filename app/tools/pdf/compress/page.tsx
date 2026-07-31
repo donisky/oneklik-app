@@ -1,25 +1,62 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { 
   ArrowLeft, Upload, Loader2, FileText, Trash2, 
-  CheckCircle2, Lock, Sparkles
+  CheckCircle2, Lock, Sparkles, Home, ChevronRight,
+  ChevronDown, Moon, LayoutDashboard, History, Settings,
+  CloudUpload, Edit3, Scissors, Unlock, QrCode, Link as LinkIcon,
+  PenTool, Crown, Eye, Plus, ShieldCheck, Zap, Award, GripVertical,
+  Check, Circle, Star
 } from 'lucide-react';
 import Link from 'next/link';
 import { saveAs } from 'file-saver';
+import { motion, AnimatePresence } from 'framer-motion';
+
+/* =========================================================================
+   COMPONENTS UI KUSTOM
+   ========================================================================= */
+
+const OneklikLogo = () => (
+  <div className="flex items-center gap-2.5 px-2">
+    <img src="/icon-oneklik.svg" alt="Oneklik.id" className="w-7 h-7 flex-shrink-0 object-contain" onError={(e) => { e.currentTarget.src = 'https://ui-avatars.com/api/?name=O&background=0D8ABC&color=fff&rounded=true' }} />
+    <span className="text-[22px] font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+      Oneklik.id
+    </span>
+  </div>
+);
+
+const StarRating = ({ rating }: { rating: number }) => {
+  return (
+    <div className="flex items-center gap-0.5 mt-2">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star 
+          key={star} 
+          size={12} 
+          className={star <= rating ? "text-slate-700 fill-slate-700" : (star - 0.5 === rating ? "text-slate-700 fill-slate-700 opacity-50" : "text-slate-300 fill-slate-300")} 
+        />
+      ))}
+    </div>
+  );
+};
+
+/* =========================================================================
+   MAIN COMPONENT
+   ========================================================================= */
 
 export default function CompressPDF() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [file, setFile] = useState<File | null>(null);
-  const [level, setLevel] = useState('recommended');
+  const [level, setLevel] = useState('recommended'); // 'less', 'recommended', 'extreme'
   const [isCompressing, setIsCompressing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [outputFileName, setOutputFileName] = useState('hasil_kompresi');
-
+  const [outputFileName, setOutputFileName] = useState('');
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClientComponentClient();
   const router = useRouter();
 
@@ -30,6 +67,16 @@ export default function CompressPDF() {
     });
   }, [supabase]);
 
+  // Set default output filename when file is selected
+  useEffect(() => {
+    if (file) {
+      const originalName = file.name.replace('.pdf', '');
+      setOutputFileName(`${originalName}_compressed`);
+    } else {
+      setOutputFileName('');
+    }
+  }, [file]);
+
   // --- FORMAT UKURAN FILE ---
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -38,6 +85,22 @@ export default function CompressPDF() {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
+
+  // --- ESTIMASI KOMPRESI (Visual Only) ---
+  const getCompressionEstimate = () => {
+    if (!file) return { size: 0, saving: 0, ratio: 1 };
+    let ratio = 1;
+    if (level === 'less') ratio = 0.85; // Penghematan 15%
+    if (level === 'recommended') ratio = 0.26; // Penghematan ~74%
+    if (level === 'extreme') ratio = 0.15; // Penghematan 85%
+    
+    return {
+      size: file.size * ratio,
+      saving: Math.round((1 - ratio) * 100),
+      ratio: ratio
+    };
+  };
+  const estimate = getCompressionEstimate();
 
   // --- DRAG & DROP LOGIC ---
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -73,6 +136,7 @@ export default function CompressPDF() {
       } else {
         alert('Hanya file PDF yang diperbolehkan!');
       }
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -122,31 +186,25 @@ export default function CompressPDF() {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
           <p className="text-sm text-slate-400 font-medium">Memuat alat...</p>
         </div>
       </div>
     );
   }
 
-  // --- JIKA BELUM LOGIN ---
   if (!session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white/80 backdrop-blur-md p-10 rounded-3xl shadow-2xl shadow-blue-100/50 text-center max-w-md border border-slate-100 w-full">
-          <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm">
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+        <div className="bg-white p-10 rounded-3xl shadow-xl text-center max-w-md border border-slate-100 w-full">
+          <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <Lock size={28} />
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 mb-2">Akses Terkunci</h1>
-          <p className="text-slate-500 mb-6 text-sm leading-relaxed">
-            Anda perlu login untuk menggunakan alat kompresi PDF ini.
-          </p>
+          <h1 className="text-2xl font-bold text-slate-800 mb-2">Akses Terkunci</h1>
+          <p className="text-slate-500 mb-6 text-sm">Anda perlu login sebelum menggunakan alat ini.</p>
           <button 
-            onClick={() => supabase.auth.signInWithOAuth({ 
-              provider: 'google', 
-              options: { redirectTo: window.location.origin + '/upgrade?next=' + window.location.pathname } 
-            })}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-200"
+            onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/upgrade?next=' + window.location.pathname } })}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-md"
           >
             Login dengan Google
           </button>
@@ -155,187 +213,425 @@ export default function CompressPDF() {
     );
   }
 
+  const userName = session?.user?.user_metadata?.full_name || 'Andi Creator';
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans py-8 px-6 md:py-12">
-      <div className="max-w-6xl mx-auto">
+    <div className="flex h-screen bg-[#F8FAFC] font-sans overflow-hidden text-slate-800">
+      
+      {/* =====================================================================
+          SIDEBAR KIRI
+          ===================================================================== */}
+      <aside className="w-[260px] bg-white border-r border-slate-200 flex flex-col hidden lg:flex flex-shrink-0 h-full overflow-y-auto custom-scrollbar relative z-20">
+        <div className="h-16 flex items-center border-b border-slate-100 px-4 flex-shrink-0 sticky top-0 bg-white z-10">
+          <OneklikLogo />
+        </div>
         
-        {/* --- HEADER NAVIGASI --- */}
-        <div className="flex items-center gap-3 mb-8">
-          <Link href="/tools/pdf" className="flex items-center justify-center w-10 h-10 rounded-full bg-white border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-300 transition-all shadow-sm">
-            <ArrowLeft size={18} />
-          </Link>
+        <div className="flex-1 px-3 py-5 space-y-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Kompres PDF</h1>
-            <p className="text-sm text-slate-500 mt-0.5 flex items-center gap-2">
-              <Sparkles size={14} className="text-yellow-500" /> Kecilkan ukuran file PDF Anda dengan kualitas tetap terjaga.
-            </p>
+            <Link href="/" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
+              <Home size={18} className="text-slate-400" /> Beranda
+            </Link>
+          </div>
+
+          <div>
+            <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">TOOLS PDF</p>
+            <div className="space-y-1">
+              {[
+                { icon: <FileText size={18} />, label: 'Merge PDF', path: '/tools/pdf/merge' },
+              ].map((item, idx) => (
+                <Link key={idx} href={item.path} className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
+                  <span className="text-slate-400">{item.icon}</span> {item.label}
+                </Link>
+              ))}
+              
+              <div className="flex items-center gap-3 px-3 py-2.5 bg-blue-50 text-blue-700 rounded-xl text-sm font-semibold shadow-sm">
+                <CloudUpload size={18} className="text-blue-600" /> Compress PDF
+              </div>
+
+              {[
+                { icon: <FileText size={18} />, label: 'Convert PDF' },
+                { icon: <Edit3 size={18} />, label: 'Edit PDF' },
+                { icon: <Scissors size={18} />, label: 'Split PDF' },
+                { icon: <Unlock size={18} />, label: 'Unlock PDF' },
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                  <span className="text-slate-400">{item.icon}</span> {item.label}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">TOOLS LAINNYA</p>
+            <div className="space-y-1">
+              {[
+                { icon: <QrCode size={18} />, label: 'QR Code' },
+                { icon: <FileText size={18} />, label: 'CV Maker' },
+                { icon: <LinkIcon size={18} />, label: 'Short Link' },
+                { icon: <PenTool size={18} />, label: 'AI Writer' },
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                  <span className="text-slate-400">{item.icon}</span> {item.label}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">AKUN</p>
+            <div className="space-y-1">
+              {[
+                { icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
+                { icon: <History size={18} />, label: 'Riwayat' },
+                { icon: <Settings size={18} />, label: 'Pengaturan' },
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                  <span className="text-slate-400">{item.icon}</span> {item.label}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* --- GRID UTAMA (3:2 SKALA) --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
-          
-          {/* --- KOLOM KIRI: UPLOAD & PREVIEW (Span 3) --- */}
-          <div className="lg:col-span-3 flex flex-col gap-6">
-            
-            {/* Area Upload */}
-            {!file ? (
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={`
-                  relative w-full h-56 rounded-2xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center cursor-pointer
-                  ${isDragging 
-                    ? 'border-blue-500 bg-blue-50/50 scale-[1.01]' 
-                    : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50/50'
-                  }
-                `}
-              >
-                <input 
-                  type="file" 
-                  accept=".pdf" 
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                  onChange={handleFileChange} 
-                />
-                <div className="flex flex-col items-center text-center pointer-events-none">
-                  <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 transition-colors ${isDragging ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
-                    <Upload size={28} />
-                  </div>
-                  <p className="text-slate-700 font-medium">Upload file PDF di sini</p>
-                  <p className="text-slate-400 text-xs mt-1">Klik untuk memilih atau <strong>drag & drop</strong></p>
-                  <p className="text-slate-400 text-[10px] mt-2">Maksimal 50MB</p>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex items-center justify-between">
-                <div className="flex items-center gap-4 overflow-hidden flex-1">
-                  <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <FileText size={24} />
-                  </div>
-                  <div className="truncate flex-1 min-w-0">
-                    <p className="font-semibold text-slate-800 truncate text-base">{file.name}</p>
-                    <p className="text-xs text-slate-400">{formatFileSize(file.size)}</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={removeFile} 
-                  className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
-            )}
-            
-            {/* Tips & Informasi Keamanan */}
-            <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
-              <div className="mt-0.5 text-blue-600"><Lock size={16} /></div>
-              <div>
-                <p className="text-xs text-blue-800 font-medium">Keamanan Data</p>
-                <p className="text-[10px] text-blue-600/70 leading-relaxed">
-                  File Anda diproses langsung di perangkat Anda. Tidak ada data yang dikirim ke server publik.
-                </p>
-              </div>
+        <div className="p-4 mt-auto">
+          <div className="bg-gradient-to-b from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 relative overflow-hidden">
+            <div className="absolute -top-3 -right-3 rotate-12">
+              <Crown size={48} className="text-amber-300 opacity-20 fill-amber-300" />
             </div>
+            <div className="flex items-center gap-1.5 mb-1.5 relative z-10">
+              <h4 className="text-sm font-bold text-blue-900">Upgrade ke Premium</h4>
+              <Crown size={14} className="text-amber-500 fill-amber-500" />
+            </div>
+            <p className="text-[10px] text-slate-500 mb-3 leading-relaxed relative z-10">Akses semua fitur tanpa batas dan ukuran file lebih besar.</p>
+            <button className="w-full py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 text-white rounded-lg text-xs font-bold transition-opacity shadow-md shadow-blue-200">
+              Upgrade Sekarang
+            </button>
+          </div>
+        </div>
+      </aside>
 
+      {/* =====================================================================
+          MAIN LAYOUT (Header + Konten)
+          ===================================================================== */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+        
+        {/* HEADER ATAS */}
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0 z-10">
+          <div className="flex items-center text-xs font-medium text-slate-500">
+            <Home size={14} className="text-blue-600" />
+            <ChevronRight size={14} className="mx-2 text-slate-300" />
+            <span>Tools PDF</span>
+            <ChevronRight size={14} className="mx-2 text-slate-300" />
+            <span className="text-slate-800 font-semibold">Compress PDF</span>
           </div>
 
-          {/* --- KOLOM KANAN: KONTROL & RINGKASAN (Span 2) --- */}
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            
-            {/* Panel Ringkasan */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-              <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <FileText size={16} className="text-blue-600" /> Ringkasan File
-              </h3>
-              <div className="space-y-2 text-sm border-b border-slate-100 pb-4 mb-4">
-                <div className="flex justify-between text-slate-500">
-                  <span>Nama File</span>
-                  <span className="font-medium text-slate-700 truncate max-w-[150px]">{file ? file.name : 'Belum dipilih'}</span>
-                </div>
-                <div className="flex justify-between text-slate-500">
-                  <span>Ukuran</span>
-                  <span className="font-medium text-slate-700">{file ? formatFileSize(file.size) : '-'}</span>
-                </div>
+          <div className="flex items-center gap-4">
+            <button className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-100 hover:bg-blue-100 rounded-full text-xs font-semibold text-blue-700 transition-colors">
+              <Crown size={14} className="text-blue-600" /> Premium
+            </button>
+            <button className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-50 transition-colors">
+              <Moon size={18} />
+            </button>
+            <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200 cursor-pointer">
+              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
+                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=f1f5f9&color=475569`} alt="User" />
               </div>
-
-              <div className="space-y-3">
-                <label htmlFor="filename" className="text-sm font-medium text-slate-700 flex items-center gap-1">
-                  Nama File Output
-                </label>
-                <input 
-                  type="text" 
-                  id="filename"
-                  value={outputFileName}
-                  onChange={(e) => setOutputFileName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all placeholder:text-slate-400"
-                  placeholder="hasil_kompresi"
-                />
-                <p className="text-[10px] text-slate-400">Format akan otomatis menjadi .pdf</p>
+              <div className="hidden sm:block">
+                <span className="text-sm font-semibold text-slate-700 block">{userName}</span>
+                <span className="text-[10px] text-slate-400 block -mt-0.5">Free</span>
               </div>
+              <ChevronDown size={14} className="text-slate-400" />
             </div>
+          </div>
+        </header>
 
-            {/* Panel Level Kompresi */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-              <h3 className="text-sm font-bold text-slate-800 mb-4">Tingkat Kompresi</h3>
-              <div className="space-y-3">
-                {[
-                  { id: 'extreme', label: 'Ekstrem', sub: 'Kualitas rendah, ukuran sangat kecil' },
-                  { id: 'recommended', label: 'Rekomendasi', sub: 'Kualitas baik, ukuran seimbang' },
-                  { id: 'less', label: 'Ringan', sub: 'Kualitas tinggi, ukuran hampir sama' }
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setLevel(item.id)}
-                    className={`
-                      w-full text-left p-4 rounded-xl border transition-all flex justify-between items-center
-                      ${level === item.id 
-                        ? 'bg-blue-50/80 border-blue-500 shadow-sm ring-1 ring-blue-500' 
-                        : 'bg-slate-50/60 border-transparent hover:bg-white hover:border-slate-200'}
-                    `}
+        {/* KONTEN UTAMA SCROLLABLE */}
+        <main className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
+          <div className="max-w-[1200px] mx-auto grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-8">
+            
+            {/* AREA KIRI: Judul, Dropzone, Daftar File, Preview */}
+            <div className="flex flex-col gap-6">
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-start gap-4">
+                  <Link href="/tools/pdf" className="w-10 h-10 mt-1 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:shadow-sm transition-all flex-shrink-0">
+                    <ArrowLeft size={18} />
+                  </Link>
+                  <div>
+                    <h1 className="text-2xl font-bold text-slate-900 mb-1 tracking-tight">Compress PDF</h1>
+                    <p className="text-sm text-slate-500">Perkecil ukuran PDF tanpa mengurangi kualitas.</p>
+                  </div>
+                </div>
+                <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-blue-50/50 border border-blue-100 rounded-full text-xs font-semibold text-blue-700">
+                  <ShieldCheck size={14} /> 100% Aman
+                  <span className="text-slate-400 font-normal ml-1 border-l border-blue-200 pl-2">File Anda aman dan privat.</span>
+                </div>
+              </div>
+
+              {/* Dropzone Area */}
+              {!file ? (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`
+                    relative w-full rounded-[24px] border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center py-16
+                    ${isDragging 
+                      ? 'border-blue-500 bg-blue-50/70 scale-[1.01]' 
+                      : 'border-[#E2E8F0] bg-white hover:border-blue-400 hover:bg-slate-50/30'
+                    }
+                  `}
+                >
+                  {/* Ilustrasi Dokumen */}
+                  <div className="relative mb-6">
+                     <div className="w-20 h-24 bg-white border-2 border-slate-200 rounded-lg shadow-sm flex items-center justify-center relative z-10 rotate-[-5deg]">
+                       <span className="font-bold text-red-500 text-lg">PDF</span>
+                     </div>
+                     <div className="w-20 h-24 bg-blue-50 border-2 border-blue-200 rounded-lg absolute top-0 left-0 rotate-[5deg] z-0 opacity-50"></div>
+                     <div className="absolute -bottom-2 -right-4 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-200 z-20">
+                       <Upload size={18} className="text-white" />
+                     </div>
+                  </div>
+                  
+                  <h3 className="text-xl font-bold text-slate-800 mb-1">Drag & drop file PDF di sini</h3>
+                  <p className="text-sm text-slate-500 mb-6">atau klik tombol untuk memilih file</p>
+                  
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-8 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:opacity-90 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-200/50 transition-opacity flex items-center gap-2"
                   >
-                    <div>
-                      <p className={`font-bold text-sm ${level === item.id ? 'text-blue-600' : 'text-slate-700'}`}>{item.label}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{item.sub}</p>
-                    </div>
-                    {level === item.id && <CheckCircle2 size={18} className="text-blue-600 flex-shrink-0" />}
+                    <Upload size={16} /> Pilih File PDF
                   </button>
+                  <input 
+                    type="file" 
+                    accept=".pdf" 
+                    className="hidden" 
+                    ref={fileInputRef}
+                    onChange={handleFileChange} 
+                  />
+                  
+                  <p className="text-xs font-medium text-slate-400 mt-5">Format: PDF &bull; Maksimal ukuran: 50MB</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-6">
+                  {/* File Terpilih */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="flex items-center justify-between p-5 border-b border-slate-100">
+                      <h3 className="text-sm font-bold text-slate-800">File yang Ditambahkan (1)</h3>
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                      >
+                        <Plus size={14} /> Tambah File Lain
+                      </button>
+                      <input type="file" accept=".pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+                    </div>
+
+                    <div className="p-5">
+                      <div className="flex items-center gap-4 bg-white p-2 rounded-xl group">
+                        <div className="w-10 h-12 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden border border-red-100">
+                           <div className="absolute top-0 w-full h-3 bg-red-500"></div>
+                           <span className="text-[10px] font-bold text-red-600 mt-2">PDF</span>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="text-base font-semibold text-slate-800 truncate">{file.name}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{formatFileSize(file.size)} &bull; Dokumen PDF</p>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button className="w-10 h-10 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors">
+                            <Eye size={18} />
+                          </button>
+                          <button 
+                            onClick={removeFile} 
+                            className="w-10 h-10 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Panel Pratinjau Hasil Kompresi */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative overflow-hidden">
+                    <h3 className="text-base font-bold text-slate-800 mb-6">Pratinjau Hasil Kompresi</h3>
+                    
+                    <div className="flex items-center justify-between mb-8">
+                      {/* Original */}
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-slate-500 mb-1">Original</p>
+                        <p className="text-2xl font-extrabold text-slate-900 mb-3">{formatFileSize(file.size)}</p>
+                        <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-red-400 w-full rounded-full"></div>
+                        </div>
+                      </div>
+
+                      {/* Arrow */}
+                      <div className="px-6 flex items-center justify-center pt-5 text-slate-300">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                      </div>
+
+                      {/* Estimasi */}
+                      <div className="flex-1 text-right">
+                        <p className="text-sm font-medium text-slate-500 mb-1">Estimasi Setelah Kompresi</p>
+                        <p className="text-2xl font-extrabold text-green-600 mb-3">{formatFileSize(estimate.size)}</p>
+                        <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden flex justify-end">
+                          <motion.div 
+                            className="h-full bg-green-500 rounded-full" 
+                            initial={{ width: '100%' }}
+                            animate={{ width: `${estimate.ratio * 100}%` }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
+                          ></motion.div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-center border-t border-slate-100 pt-5">
+                      <div className="flex items-center gap-2 px-4 py-1.5 bg-green-50 border border-green-200 rounded-full text-green-700 text-sm font-bold">
+                        <Zap size={14} className="fill-green-600" /> Penghematan: {estimate.saving}%
+                      </div>
+                    </div>
+                    
+                    <p className="text-center text-[10px] text-slate-400 mt-4">Hasil dapat berbeda tergantung konten file PDF Anda.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Fitur Bawah */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                {[
+                  { icon: <ShieldCheck size={20} className="text-blue-600" />, title: '100% Privat', desc: 'File diproses di browser Anda dan tidak dikirim ke server.' },
+                  { icon: <Zap size={20} className="text-blue-600" />, title: 'Proses Cepat', desc: 'Kompresi selesai dalam hitungan detik.' },
+                  { icon: <Award size={20} className="text-blue-600" />, title: 'Kualitas Terjaga', desc: 'Teknologi cerdas menjaga kualitas dokumen.' },
+                  { icon: <FileText size={20} className="text-blue-600" />, title: 'Tanpa Watermark', desc: 'Hasil kompresi bersih tanpa tanda atau watermark.' },
+                ].map((ft, i) => (
+                  <div key={i} className="flex items-start gap-3 bg-white/60 rounded-2xl p-4 border border-slate-100">
+                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                      {ft.icon}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800 mb-0.5">{ft.title}</h4>
+                      <p className="text-[10px] text-slate-500 leading-relaxed">{ft.desc}</p>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
 
-            {/* Tombol Aksi */}
-            <button 
-              onClick={handleCompress} 
-              disabled={!file || isCompressing}
-              className={`
-                w-full py-3.5 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all
-                ${isSuccess 
-                  ? 'bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-200' 
-                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg shadow-blue-200'
-                }
-                disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none
-              `}
-            >
-              {isCompressing ? (
-                <>
-                  <Loader2 size={20} className="animate-spin" /> Memproses...
-                </>
-              ) : isSuccess ? (
-                <>
-                  <CheckCircle2 size={20} /> Berhasil Dikompres!
-                </>
-              ) : (
-                'Kompres & Download'
-              )}
-            </button>
-            <p className="text-center text-[10px] text-slate-400 mt-2">
-              {file ? 'File akan diproses secara lokal (aman).' : 'Silakan upload file PDF untuk memulai.'}
-            </p>
+            {/* AREA KANAN: Panel Ringkasan & Tingkat Kompresi */}
+            <div className="flex flex-col gap-6">
+              
+              {/* Ringkasan File Panel */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sticky top-6">
+                
+                <div className="flex items-center gap-2 mb-6">
+                  <FileText size={20} className="text-blue-600" />
+                  <h3 className="text-base font-bold text-slate-900">Ringkasan File</h3>
+                </div>
 
+                <div className="space-y-4 mb-6 text-sm">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <span className="text-slate-500">Nama File</span>
+                    <span className="font-bold text-slate-800 truncate max-w-[150px]">{file ? file.name : '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <span className="text-slate-500">Ukuran Original</span>
+                    <span className="font-bold text-slate-800">{file ? formatFileSize(file.size) : '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <span className="text-slate-500">Estimasi Setelah Kompresi</span>
+                    <span className="font-bold text-green-600">{file ? formatFileSize(estimate.size) : '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <span className="text-slate-500">Penghematan</span>
+                    <span className="font-bold text-green-600">{file ? `${estimate.saving}%` : '-'}</span>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-slate-800 mb-2">Nama File Output</label>
+                  <input 
+                    type="text" 
+                    value={outputFileName}
+                    onChange={(e) => setOutputFileName(e.target.value)}
+                    disabled={!file}
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                    placeholder="Nama file output"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1.5">Format akan otomatis menjadi .pdf</p>
+                </div>
+              </div>
+
+              {/* Tingkat Kompresi Panel */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative">
+                <h3 className="text-base font-bold text-slate-900 mb-4">Tingkat Kompresi</h3>
+                
+                <div className="space-y-3 mb-6">
+                  {[
+                    { id: 'less', title: 'Maksimal Kualitas', desc: 'Kualitas terbaik, ukuran hampir sama', stars: 5 },
+                    { id: 'recommended', title: 'Rekomendasi (Balanced)', desc: 'Kualitas baik, ukuran seimbang', stars: 4 },
+                    { id: 'extreme', title: 'Maksimal Kompresi', desc: 'Ukuran sekecil mungkin, kualitas lebih rendah', stars: 2.5 },
+                  ].map((lvl) => (
+                    <div 
+                      key={lvl.id}
+                      onClick={() => setLevel(lvl.id)}
+                      className={`
+                        relative p-4 rounded-xl border-2 cursor-pointer transition-all
+                        ${level === lvl.id 
+                          ? 'border-blue-500 bg-blue-50/50' 
+                          : 'border-slate-100 hover:border-slate-300'
+                        }
+                      `}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className={`text-sm font-bold mb-1 ${level === lvl.id ? 'text-blue-700' : 'text-slate-800'}`}>
+                            {lvl.title}
+                          </h4>
+                          <p className="text-[11px] text-slate-500">{lvl.desc}</p>
+                          <StarRating rating={lvl.stars} />
+                        </div>
+                        <div className="mt-1 flex-shrink-0">
+                          {level === lvl.id ? (
+                            <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                              <Check size={12} strokeWidth={3} />
+                            </div>
+                          ) : (
+                            <Circle size={20} className="text-slate-300" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button 
+                  onClick={handleCompress} 
+                  disabled={!file || isCompressing}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-500 hover:from-blue-700 hover:to-purple-600 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCompressing ? (
+                    <><Loader2 size={18} className="animate-spin" /> Mengkompres...</>
+                  ) : isSuccess ? (
+                    <><CheckCircle2 size={18} /> Berhasil!</>
+                  ) : (
+                    <>
+                      <Sparkles size={18} /> Compress PDF
+                    </>
+                  )}
+                </button>
+                <div className="flex items-center justify-center gap-1.5 mt-4 text-[10px] text-slate-400 font-medium">
+                  <Lock size={12} /> Proses aman, file Anda tidak disimpan di server kami.
+                </div>
+              </div>
+
+            </div>
           </div>
-        </div>
+        </main>
       </div>
+
     </div>
   );
 }
