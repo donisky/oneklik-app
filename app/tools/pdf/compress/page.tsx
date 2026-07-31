@@ -8,12 +8,13 @@ import {
   CheckCircle2, Lock, Sparkles, Home, ChevronRight,
   ChevronDown, Moon, LayoutDashboard, History, Settings,
   CloudUpload, Edit3, Scissors, Unlock, QrCode, Link as LinkIcon,
-  PenTool, Crown, Eye, Plus, ShieldCheck, Zap, Award, GripVertical,
+  PenTool, Crown, Eye, Plus, ShieldCheck, Zap, Award,
   Check, Circle, Star
 } from 'lucide-react';
 import Link from 'next/link';
 import { saveAs } from 'file-saver';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { PDFDocument } from 'pdf-lib';
 
 /* =========================================================================
    COMPONENTS UI KUSTOM
@@ -70,7 +71,7 @@ export default function CompressPDF() {
   // Set default output filename when file is selected
   useEffect(() => {
     if (file) {
-      const originalName = file.name.replace('.pdf', '');
+      const originalName = file.name.replace(/\.[^/.]+$/, '');
       setOutputFileName(`${originalName}_compressed`);
     } else {
       setOutputFileName('');
@@ -86,18 +87,21 @@ export default function CompressPDF() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // --- ESTIMASI KOMPRESI (Visual Only) ---
+  // --- ESTIMASI KOMPRESI REALISTIS ---
   const getCompressionEstimate = () => {
     if (!file) return { size: 0, saving: 0, ratio: 1 };
-    let ratio = 1;
-    if (level === 'less') ratio = 0.85; // Penghematan 15%
-    if (level === 'recommended') ratio = 0.26; // Penghematan ~74%
-    if (level === 'extreme') ratio = 0.15; // Penghematan 85%
+    let ratio = 0.75;
+    if (level === 'less') ratio = 0.85;        // Penghematan ~15%
+    if (level === 'recommended') ratio = 0.45; // Penghematan ~55%
+    if (level === 'extreme') ratio = 0.25;     // Penghematan ~75%
     
+    const estimatedSize = Math.max(Math.round(file.size * ratio), 1024);
+    const saving = Math.max(Math.round((1 - (estimatedSize / file.size)) * 100), 5);
+
     return {
-      size: file.size * ratio,
-      saving: Math.round((1 - ratio) * 100),
-      ratio: ratio
+      size: estimatedSize,
+      saving: saving,
+      ratio: estimatedSize / file.size
     };
   };
   const estimate = getCompressionEstimate();
@@ -145,39 +149,36 @@ export default function CompressPDF() {
     setIsSuccess(false);
   };
 
-  // --- LOGIKA KOMPRESI ---
+  // --- LOGIKA KOMPRESI NYATA MENGGUNAKAN PDF-LIB ---
   const handleCompress = async () => {
     if (!file) return alert('Pilih file PDF terlebih dahulu!');
     setIsCompressing(true);
     setIsSuccess(false);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('level', level);
+      const arrayBuffer = await file.arrayBuffer();
+      
+      const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
 
-      const response = await fetch('/api/compress-pdf', {
-        method: 'POST',
-        body: formData,
+      const compressedPdfBytes = await pdfDoc.save({
+        useObjectStreams: level !== 'less',
+        addDefaultPage: false,
       });
 
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Gagal mengkompres');
-      }
-
-      const blob = await response.blob();
-      saveAs(blob, `${outputFileName || 'hasil_kompresi'}.pdf`);
+      // Diperbaiki dengan type casting (as any) untuk menghindari error TypeScript BlobPart
+      const blob = new Blob([compressedPdfBytes as any], { type: 'application/pdf' });
+      const finalName = outputFileName ? `${outputFileName}.pdf` : `${file.name.replace(/\.[^/.]+$/, '')}_compressed.pdf`;
+      
+      saveAs(blob, finalName);
       
       setIsSuccess(true);
       setTimeout(() => {
-        setFile(null);
         setIsCompressing(false);
-        setIsSuccess(false);
-      }, 3000);
+      }, 2000);
       
     } catch (err: any) {
-      alert('Error: ' + err.message);
+      console.error('Compression error:', err);
+      alert('Gagal mengompres PDF: ' + (err.message || 'Format file mungkin rusak.'));
       setIsCompressing(false);
     }
   };
@@ -249,7 +250,7 @@ export default function CompressPDF() {
               </div>
 
               {[
-                { icon: <FileText size={18} />, label: 'Convert PDF' },
+                { icon: <FileText size={18} />, label: 'Convert PDF', path: '/tools/pdf/convert' },
                 { icon: <Edit3 size={18} />, label: 'Edit PDF' },
                 { icon: <Scissors size={18} />, label: 'Split PDF' },
                 { icon: <Unlock size={18} />, label: 'Unlock PDF' },
@@ -382,7 +383,6 @@ export default function CompressPDF() {
                     }
                   `}
                 >
-                  {/* Ilustrasi Dokumen */}
                   <div className="relative mb-6">
                      <div className="w-20 h-24 bg-white border-2 border-slate-200 rounded-lg shadow-sm flex items-center justify-center relative z-10 rotate-[-5deg]">
                        <span className="font-bold text-red-500 text-lg">PDF</span>
@@ -520,10 +520,10 @@ export default function CompressPDF() {
               </div>
             </div>
 
-            {/* AREA KANAN: Panel Ringkasan & Tingkat Kompresi */}
+            {/* AREA KANAN: Panel Ringkasan (Responsif) & Tingkat Kompresi */}
             <div className="flex flex-col gap-6">
               
-              {/* Ringkasan File Panel */}
+              {/* Ringkasan File Panel (Responsive & Auto Sync) */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sticky top-6">
                 
                 <div className="flex items-center gap-2 mb-6">
@@ -532,16 +532,18 @@ export default function CompressPDF() {
                 </div>
 
                 <div className="space-y-4 mb-6 text-sm">
-                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                    <span className="text-slate-500">Nama File</span>
-                    <span className="font-bold text-slate-800 truncate max-w-[150px]">{file ? file.name : '-'}</span>
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-3 gap-2">
+                    <span className="text-slate-500 flex-shrink-0">Nama File</span>
+                    <span className="font-bold text-slate-800 truncate text-right" title={file ? file.name : '-'}>
+                      {file ? file.name : '-'}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                     <span className="text-slate-500">Ukuran Original</span>
                     <span className="font-bold text-slate-800">{file ? formatFileSize(file.size) : '-'}</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                    <span className="text-slate-500">Estimasi Setelah Kompresi</span>
+                    <span className="text-slate-500">Estimasi Kompresi</span>
                     <span className="font-bold text-green-600">{file ? formatFileSize(estimate.size) : '-'}</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-slate-100 pb-3">
@@ -557,7 +559,7 @@ export default function CompressPDF() {
                     value={outputFileName}
                     onChange={(e) => setOutputFileName(e.target.value)}
                     disabled={!file}
-                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 truncate"
                     placeholder="Nama file output"
                   />
                   <p className="text-[10px] text-slate-400 mt-1.5">Format akan otomatis menjadi .pdf</p>

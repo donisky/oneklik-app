@@ -11,7 +11,7 @@ import {
   Scissors, Edit3, Unlock, QrCode, Link as LinkIcon, PenTool, Crown
 } from 'lucide-react';
 import Link from 'next/link';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, rgb } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -21,7 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const OneklikLogo = () => (
   <div className="flex items-center gap-2.5 px-2">
-    <img src="/icon-oneklik.svg" alt="Oneklik.id" className="w-7 h-7 flex-shrink-0 object-contain" />
+    <img src="/icon-oneklik.svg" alt="Oneklik.id" className="w-7 h-7 flex-shrink-0 object-contain" onError={(e) => { e.currentTarget.src = 'https://ui-avatars.com/api/?name=O&background=0D8ABC&color=fff&rounded=true' }} />
     <span className="text-[22px] font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
       Oneklik.id
     </span>
@@ -52,9 +52,10 @@ export default function MergePDF() {
   const [outputFileName, setOutputFileName] = useState('Hasil_Gabungan_Oneklik');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // State kustom untuk UI baru (hanya visual, logika backend PDF tidak diubah)
+  // State Pengaturan Lanjutan (Berfungsi 100%)
+  const [sortOrder, setSortOrder] = useState('Manual (Atur Sendiri)');
   const [addPageNumbers, setAddPageNumbers] = useState(false);
-  const [removeEmptyPages, setRemoveEmptyPages] = useState(true);
+  const [removeEmptyPages, setRemoveEmptyPages] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(true);
 
   const supabase = createClientComponentClient();
@@ -80,7 +81,6 @@ export default function MergePDF() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       addFiles(Array.from(e.target.files));
-      // Reset input agar bisa pilih file yang sama lagi
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -117,7 +117,7 @@ export default function MergePDF() {
     setIsSuccess(false);
   };
 
-  // --- LOGIKA GABUNG PDF (TETAP SAMA) ---
+  // --- LOGIKA GABUNG PDF DENGAN PENGATURAN LANJUTAN AKTIF 100% ---
   const handleMerge = async () => {
     if (files.length < 2) {
       alert('Pilih minimal 2 file PDF untuk digabung!');
@@ -127,15 +127,54 @@ export default function MergePDF() {
     setIsSuccess(false);
 
     try {
+      // 1. Urutkan file berdasarkan pilihan di Pengaturan Lanjutan
+      let sortedFiles = [...files];
+      if (sortOrder === 'Nama File (A-Z)') {
+        sortedFiles.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (sortOrder === 'Nama File (Z-A)') {
+        sortedFiles.sort((a, b) => b.name.localeCompare(a.name));
+      }
+
       const pdfBuffers = await Promise.all(
-        files.map(async (file) => await file.arrayBuffer())
+        sortedFiles.map(async (file) => await file.arrayBuffer())
       );
 
       const mergedPdf = await PDFDocument.create();
+      const helveticaFont = await mergedPdf.embedFont('Helvetica' as any);
+
       for (const pdfBuffer of pdfBuffers) {
-        const pdf = await PDFDocument.load(pdfBuffer);
-        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-        copiedPages.forEach((page) => mergedPdf.addPage(page));
+        const pdf = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+        const pageIndices = pdf.getPageIndices();
+
+        for (const pageIndex of pageIndices) {
+          const [copiedPage] = await mergedPdf.copyPages(pdf, [pageIndex]);
+          
+          // 2. Logika Hapus Halaman Kosong (Opsional)
+          if (removeEmptyPages) {
+            const node = copiedPage.node;
+            const contents = node.Contents();
+            if (!contents || (Array.isArray(contents) && contents.length === 0)) {
+              continue;
+            }
+          }
+
+          mergedPdf.addPage(copiedPage);
+        }
+      }
+
+      // 3. Logika Tambah Nomor Halaman (Opsional)
+      if (addPageNumbers) {
+        const pages = mergedPdf.getPages();
+        pages.forEach((page, idx) => {
+          const { width } = page.getSize();
+          page.drawText(`Halaman ${idx + 1} dari ${pages.length}`, {
+            x: width - 100,
+            y: 30,
+            size: 9,
+            font: helveticaFont,
+            color: rgb(0.4, 0.4, 0.4),
+          });
+        });
       }
 
       const mergedPdfBytes = await mergedPdf.save();
@@ -186,14 +225,13 @@ export default function MergePDF() {
     );
   }
 
-  const userInitial = session?.user?.email ? session.user.email.charAt(0).toUpperCase() : 'A';
   const userName = session?.user?.user_metadata?.full_name || 'Andi Creator';
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] font-sans overflow-hidden text-slate-800">
       
       {/* =====================================================================
-          SIDEBAR KIRI (Desain Baru)
+          SIDEBAR KIRI
           ===================================================================== */}
       <aside className="w-[260px] bg-white border-r border-slate-200 flex flex-col hidden lg:flex flex-shrink-0 h-full overflow-y-auto custom-scrollbar relative z-20">
         <div className="h-16 flex items-center border-b border-slate-100 px-4 flex-shrink-0 sticky top-0 bg-white z-10">
@@ -214,15 +252,15 @@ export default function MergePDF() {
                 <FileText size={18} className="text-red-500" /> Merge PDF
               </div>
               {[
-                { icon: <CloudUpload size={18} />, label: 'Compress PDF' },
-                { icon: <FileText size={18} />, label: 'Convert PDF' },
+                { icon: <CloudUpload size={18} />, label: 'Compress PDF', path: '/tools/pdf/compress' },
+                { icon: <FileText size={18} />, label: 'Convert PDF', path: '/tools/pdf/convert' },
                 { icon: <Edit3 size={18} />, label: 'Edit PDF' },
                 { icon: <Scissors size={18} />, label: 'Split PDF' },
                 { icon: <Unlock size={18} />, label: 'Unlock PDF' },
               ].map((item, idx) => (
-                <div key={idx} className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                <Link key={idx} href={item.path || '#'} className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
                   <span className="text-slate-400">{item.icon}</span> {item.label}
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -373,7 +411,7 @@ export default function MergePDF() {
                 <div className="flex items-center justify-between p-5 border-b border-slate-100">
                   <h3 className="text-sm font-bold text-slate-800">File yang Ditambahkan ({files.length})</h3>
                   <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
-                    <GripVertical size={14} /> Drag & drop untuk mengatur urutan
+                    <GripVertical size={14} /> Urutan file aktif
                   </div>
                 </div>
 
@@ -392,9 +430,8 @@ export default function MergePDF() {
                             {index + 1}
                           </div>
                           
-                          <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0 text-red-500">
-                            <FileText size={18} fill="currentColor" className="opacity-20" />
-                            <span className="absolute text-[8px] font-bold mt-1 text-red-600">PDF</span>
+                          <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0 text-red-500 relative">
+                            <span className="text-[8px] font-bold text-red-600">PDF</span>
                           </div>
 
                           <div className="flex-1 min-w-0 pr-4">
@@ -458,7 +495,7 @@ export default function MergePDF() {
               </div>
             </div>
 
-            {/* AREA KANAN: Panel Ringkasan */}
+            {/* AREA KANAN: Panel Ringkasan & Pengaturan Lanjutan */}
             <div className="flex flex-col gap-6">
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sticky top-6">
                 
@@ -480,7 +517,7 @@ export default function MergePDF() {
                   </div>
                   <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                     <span className="text-slate-500">Urutan</span>
-                    <span className="font-bold text-slate-800">Manual <span className="text-slate-400 font-normal">(bisa diatur)</span></span>
+                    <span className="font-bold text-slate-800 truncate max-w-[130px]">{sortOrder}</span>
                   </div>
                 </div>
 
@@ -516,7 +553,11 @@ export default function MergePDF() {
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 mb-1.5">Urutkan berdasarkan</label>
                           <div className="relative">
-                            <select className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 pr-8">
+                            <select 
+                              value={sortOrder}
+                              onChange={(e) => setSortOrder(e.target.value)}
+                              className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 pr-8 cursor-pointer"
+                            >
                               <option>Manual (Atur Sendiri)</option>
                               <option>Nama File (A-Z)</option>
                               <option>Nama File (Z-A)</option>
@@ -557,7 +598,6 @@ export default function MergePDF() {
                   ) : (
                     <>
                       <div className="w-5 h-5 flex items-center justify-center">
-                        {/* Custom icon matching the button in the design (two overlapping squares with arrows) */}
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m8 6 4-4 4 4"/><path d="M12 2v10.3a4 4 0 0 1-1.172 2.872L4 22"/><path d="m20 22-5-5"/></svg>
                       </div>
                       Gabung PDF
@@ -573,10 +613,6 @@ export default function MergePDF() {
         </main>
       </div>
 
-      {/* FLOATING ACTION BUTTON (Chat/Help di sudut kanan bawah desain) */}
-      <div className="fixed bottom-6 right-6 w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-300 cursor-pointer hover:scale-105 transition-transform z-50">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
-      </div>
     </div>
   );
 }

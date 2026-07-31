@@ -76,19 +76,22 @@ export default function ConvertPDF() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // --- DRAG & DROP LOGIC ---
+  // --- DRAG & DROP LOGIC (Dioptimalkan agar tidak mengambang/glitching) ---
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
   };
 
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       processFile(e.dataTransfer.files[0]);
@@ -120,14 +123,14 @@ export default function ConvertPDF() {
     setIsSuccess(false);
   };
 
-  // --- LOGIKA KONVERSI (DIUPGRADE 10x LEBIH BAIK) ---
+  // --- LOGIKA KONVERSI BERKUALITAS iLovePDF ---
   const handleConvert = async () => {
     if (!file) return alert('Pilih file terlebih dahulu!');
     setIsConverting(true);
     setIsSuccess(false);
 
     try {
-      // --- 1. KONVERSI JPG/PNG ke PDF (Frontend Upgrade - Resolusi Presisi Tinggi) ---
+      // --- 1. KONVERSI JPG/PNG ke PDF (High Resolution Presisi Tinggi) ---
       if (conversionType === 'jpg-to-pdf') {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -135,15 +138,12 @@ export default function ConvertPDF() {
           const pdf = new jsPDF();
           const imgProps = pdf.getImageProperties(imgData);
           
-          // UPGRADE: Buat ukuran halaman PDF mengikuti dimensi asli gambar secara exact
-          // Mencegah blur, distorsi, atau garis putih pada tepi dokumen.
           const customPdf = new jsPDF({
             orientation: imgProps.width > imgProps.height ? 'landscape' : 'portrait',
             unit: 'px',
             format: [imgProps.width, imgProps.height]
           });
           
-          // Render gambar kualitas tertinggi tanpa kompresi tambahan
           customPdf.addImage(imgData, 'JPEG', 0, 0, imgProps.width, imgProps.height, undefined, 'SLOW');
           
           const blob = customPdf.output('blob');
@@ -154,7 +154,7 @@ export default function ConvertPDF() {
         reader.readAsDataURL(file);
       } 
       
-      // --- 2. KONVERSI PDF ke JPG (Frontend Upgrade - Resolusi 4x Lipat & Rendering 1.0) ---
+      // --- 2. KONVERSI PDF ke JPG (Ultra HD Rendering Skala 4 & Kualitas 1.0) ---
       else if (conversionType === 'pdf-to-jpg') {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -162,12 +162,10 @@ export default function ConvertPDF() {
 
         if (numPages === 1) {
           const page = await pdf.getPage(1);
-          // UPGRADE: Scale dari 2 ke 4 untuk ketajaman (DPI) 10x lebih baik saat zoom
           const viewport = page.getViewport({ scale: 4 }); 
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
           
-          // Anti-aliasing handling
           canvas.width = Math.floor(viewport.width);
           canvas.height = Math.floor(viewport.height);
           
@@ -178,7 +176,6 @@ export default function ConvertPDF() {
 
           await page.render({ canvasContext: context as any, viewport }).promise;
           
-          // UPGRADE: Output kualitas JPEG diatur ke maksimal 1.0 (lossless setara)
           canvas.toBlob((blob) => {
             if (blob) {
               saveAs(blob, `${outputFileName || 'konversi_pdf_ke_jpg'}.jpg`);
@@ -194,7 +191,7 @@ export default function ConvertPDF() {
         
         for (let i = 1; i <= numPages; i++) {
           const page = await pdf.getPage(i);
-          const viewport = page.getViewport({ scale: 4 }); // Scale 4 for Ultra HD
+          const viewport = page.getViewport({ scale: 4 }); 
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
           
@@ -234,7 +231,10 @@ export default function ConvertPDF() {
           body: formData,
         });
 
-        if (!response.ok) throw new Error('Gagal mengonversi dokumen');
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(errText || 'Gagal mengonversi dokumen');
+        }
         
         const blob = await response.blob();
         saveAs(blob, `${outputFileName || 'converted'}.pdf`);
@@ -258,8 +258,7 @@ export default function ConvertPDF() {
 
         if (!response.ok) {
           const errorText = await response.text(); 
-          console.error('Server error response:', errorText);
-          throw new Error(`Server gagal memproses (Status: ${response.status}).`);
+          throw new Error(`Server gagal memproses (Status: ${response.status}): ${errorText}`);
         }
         
         const blob = await response.blob();
@@ -280,8 +279,8 @@ export default function ConvertPDF() {
       }
 
     } catch (error: any) {
-      console.error('Full error:', error);
-      alert('Terjadi kesalahan: ' + (error.message || 'Server tidak merespons dengan benar.'));
+      console.error('Full conversion error:', error);
+      alert('Terjadi kesalahan konversi: ' + (error.message || 'Server atau browser gagal memproses.'));
       setIsConverting(false);
     }
   };
@@ -319,7 +318,6 @@ export default function ConvertPDF() {
 
   const userName = session?.user?.user_metadata?.full_name || 'Andi Creator';
 
-  // --- MENU KONVERSI (Desain Baru) ---
   const toPdfOptions = [
     { id: 'jpg-to-pdf', title: 'JPG to PDF', desc: 'Ubah gambar JPG/PNG menjadi PDF', icon: ImageIcon, bgColor: 'bg-green-500' },
     { id: 'word-to-pdf', title: 'WORD to PDF', desc: 'Ubah file Word (.docx) menjadi PDF', letter: 'W', bgColor: 'bg-blue-500' },
@@ -495,31 +493,27 @@ export default function ConvertPDF() {
                   <p className="text-sm text-slate-500">Ubah format file Anda menjadi PDF atau sebaliknya dengan cepat.</p>
                 </div>
                 
-                {/* Custom Illustration */}
                 <div className="absolute right-0 top-0 bottom-0 w-[40%] hidden sm:flex items-center justify-center">
                    <div className="relative w-full h-full">
-                     {/* Background blur elements */}
-                     <div className="absolute top-4 right-10 w-24 h-24 bg-blue-100 rounded-full blur-3xl opacity-60"></div>
-                     <div className="absolute bottom-4 right-24 w-20 h-20 bg-purple-100 rounded-full blur-3xl opacity-60"></div>
-                     
-                     {/* Floating documents */}
-                     <div className="absolute right-24 top-6 w-16 h-20 bg-blue-500 rounded-lg shadow-lg rotate-[-12deg] flex flex-col p-2 z-10 border border-blue-400">
-                        <div className="w-full h-2 bg-white/40 rounded-full mb-1.5"></div>
-                        <div className="w-3/4 h-2 bg-white/40 rounded-full mb-1.5"></div>
-                        <div className="w-full h-2 bg-white/40 rounded-full mb-1.5"></div>
-                     </div>
-                     
-                     <div className="absolute right-12 top-12 w-20 h-24 bg-red-500 rounded-xl shadow-xl rotate-[5deg] flex items-center justify-center z-20 border border-red-400">
-                        <span className="text-white font-black text-xl">PDF</span>
-                     </div>
-                     
-                     <div className="absolute right-6 top-1/2 w-12 h-12 bg-purple-500 rounded-full shadow-lg flex items-center justify-center z-30">
-                        <ArrowLeftRight size={20} className="text-white" />
-                     </div>
-                     
-                     {/* Sparkles */}
-                     <Sparkles className="absolute right-40 top-8 text-yellow-400" size={16} />
-                     <Sparkles className="absolute right-8 bottom-10 text-yellow-400" size={12} />
+                      <div className="absolute top-4 right-10 w-24 h-24 bg-blue-100 rounded-full blur-3xl opacity-60"></div>
+                      <div className="absolute bottom-4 right-24 w-20 h-20 bg-purple-100 rounded-full blur-3xl opacity-60"></div>
+                      
+                      <div className="absolute right-24 top-6 w-16 h-20 bg-blue-500 rounded-lg shadow-lg rotate-[-12deg] flex flex-col p-2 z-10 border border-blue-400">
+                         <div className="w-full h-2 bg-white/40 rounded-full mb-1.5"></div>
+                         <div className="w-3/4 h-2 bg-white/40 rounded-full mb-1.5"></div>
+                         <div className="w-full h-2 bg-white/40 rounded-full mb-1.5"></div>
+                      </div>
+                      
+                      <div className="absolute right-12 top-12 w-20 h-24 bg-red-500 rounded-xl shadow-xl rotate-[5deg] flex items-center justify-center z-20 border border-red-400">
+                         <span className="text-white font-black text-xl">PDF</span>
+                      </div>
+                      
+                      <div className="absolute right-6 top-1/2 w-12 h-12 bg-purple-500 rounded-full shadow-lg flex items-center justify-center z-30">
+                         <ArrowLeftRight size={20} className="text-white" />
+                      </div>
+                      
+                      <Sparkles className="absolute right-40 top-8 text-yellow-400" size={16} />
+                      <Sparkles className="absolute right-8 bottom-10 text-yellow-400" size={12} />
                    </div>
                 </div>
               </div>
@@ -626,7 +620,6 @@ export default function ConvertPDF() {
                   </div>
                 </div>
 
-                {/* Info Tips */}
                 <div className="mt-8 bg-blue-50 border border-blue-100 rounded-xl p-3.5 flex items-center gap-3">
                    <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center flex-shrink-0 text-blue-700 font-bold text-[10px]">i</div>
                    <p className="text-[11px] text-blue-800">
@@ -674,7 +667,6 @@ export default function ConvertPDF() {
                   </div>
                 </div>
 
-                {/* Abstract graphic bottom right */}
                 <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none">
                   <div className="w-48 h-48 bg-blue-500 rounded-full blur-3xl translate-x-1/4 translate-y-1/4"></div>
                 </div>
@@ -685,7 +677,7 @@ export default function ConvertPDF() {
             {/* AREA KANAN: Upload & Summary Panel */}
             <div className="flex flex-col gap-6">
               
-              {/* Box Upload */}
+              {/* Box Upload (Responsif & Anti-Mengambang/Glitch) */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sticky top-6">
                 <h3 className="text-base font-bold text-slate-900 mb-4">Upload File</h3>
                 
@@ -695,10 +687,11 @@ export default function ConvertPDF() {
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
+                      onClick={() => fileInputRef.current?.click()}
                       className={`
                         relative w-full h-48 rounded-[20px] border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center cursor-pointer mb-4
                         ${isDragging 
-                          ? 'border-blue-500 bg-blue-50/70 scale-[1.02]' 
+                          ? 'border-blue-600 bg-blue-50 scale-[1.01]' 
                           : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50/50 bg-slate-50/30'
                         }
                       `}
@@ -706,19 +699,19 @@ export default function ConvertPDF() {
                       <input 
                         type="file" 
                         accept={isTargetPdf ? "image/*, .doc, .docx, .ppt, .pptx, .xls, .xlsx, .html" : ".pdf"}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                        className="hidden" 
                         onChange={handleFileChange} 
                         ref={fileInputRef}
                       />
-                      <div className="flex flex-col items-center text-center pointer-events-none">
+                      <div className="flex flex-col items-center text-center pointer-events-none px-4">
                         <div className="w-14 h-14 rounded-full bg-blue-600 text-white flex items-center justify-center mb-3 shadow-lg shadow-blue-200">
                           <Upload size={24} />
                         </div>
                         <p className="text-slate-800 font-bold text-[15px]">Drag & drop file di sini</p>
                         <p className="text-slate-500 text-xs mt-1 mb-4">atau klik untuk memilih file</p>
-                        <button className="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-xs font-bold pointer-events-auto">
+                        <span className="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-xs font-bold pointer-events-auto">
                           Pilih File
-                        </button>
+                        </span>
                       </div>
                     </div>
                     <div className="text-[10px] text-slate-400 space-y-1">
@@ -840,10 +833,6 @@ export default function ConvertPDF() {
         </main>
       </div>
 
-      {/* FLOATING ACTION BUTTON (Chat/Help di sudut kanan bawah desain) */}
-      <div className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-300 cursor-pointer hover:scale-105 transition-transform z-50">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
-      </div>
     </div>
   );
 }
