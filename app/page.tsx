@@ -14,14 +14,18 @@ import {
   Heart, Send, Mail, Grid2X2, UserPlus, TrendingUp, Clock, Cpu, Award
 } from 'lucide-react';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 
 // --- IMPORT FONT GOOGLE ---
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-inter' });
 const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], display: 'swap', variable: '--font-jakarta' });
 
-// --- IMPORT KOMPONEN 3D ---
-import Hero3D from '@/components/Hero3D'; 
+// --- IMPORT KOMPONEN 3D (Dynamic Import untuk performa) ---
+const Hero3D = dynamic(() => import('@/components/Hero3D'), { 
+  ssr: false,
+  loading: () => <div className="w-full h-full flex items-center justify-center"><div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
+});
 
 // --- ANIMATION VARIANTS ---
 const containerVariants = {
@@ -471,7 +475,8 @@ export default function Home() {
             {/* INNER WRAPPER TO SHIFT EVERYTHING TOGETHER TOWARDS THE CENTER */}
             <div className="relative w-full h-full flex justify-center items-center lg:-ml-10">
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center -z-10 overflow-visible">
-                <svg viewBox="0 0 600 600" className="w-[140%] h-[140%] max-w-none opacity-85 md:animate-pulse" style={{ animationDuration: '6s' }} xmlns="http://www.w3.org/2000/svg">
+                {/* FIXED: Removed max-w-none to prevent zoom crash, limited to 140% max */}
+                <svg viewBox="0 0 600 600" className="w-[140%] h-[140%] max-w-[140%] opacity-85 md:animate-pulse" style={{ animationDuration: '6s' }} xmlns="http://www.w3.org/2000/svg">
                   <defs>
                     <linearGradient id="trailCyan" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#22d3ee" stopOpacity="0" /><stop offset="50%" stopColor="#38bdf8" stopOpacity="0.8" /><stop offset="100%" stopColor="#818cf8" stopOpacity="0" /></linearGradient>
                     <linearGradient id="trailPurple" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#a855f7" stopOpacity="0" /><stop offset="50%" stopColor="#c084fc" stopOpacity="0.75" /><stop offset="100%" stopColor="#38bdf8" stopOpacity="0" /></linearGradient>
@@ -485,7 +490,8 @@ export default function Home() {
               </div>
 
               {/* Efek Cahaya Podium bawah */}
-              <div className="absolute bottom-[6%] lg:bottom-[8%] left-1/2 -translate-x-1/2 w-[90%] lg:w-[110%] h-36 lg:h-44 pointer-events-none -z-5 flex items-center justify-center">
+              {/* FIXED: Added max-w-[110%] to prevent zoom overflow */}
+              <div className="absolute bottom-[6%] lg:bottom-[8%] left-1/2 -translate-x-1/2 w-[90%] lg:w-[110%] max-w-[110%] h-36 lg:h-44 pointer-events-none -z-5 flex items-center justify-center">
                 <div className="absolute w-full h-full rounded-[100%] border-[3px] border-cyan-400/70 shadow-[0_0_30px_rgba(34,211,238,0.8),inset_0_0_15px_rgba(56,189,248,0.6)] md:shadow-[0_0_60px_rgba(34,211,238,0.8),inset_0_0_30px_rgba(56,189,248,0.6)] opacity-95 md:animate-pulse" />
                 <div className="absolute w-[86%] h-[78%] rounded-[100%] border-[2px] border-purple-400/80 shadow-[0_0_35px_rgba(168,85,247,0.7),inset_0_0_15px_rgba(192,132,252,0.7)] md:shadow-[0_0_70px_rgba(168,85,247,0.7),inset_0_0_35px_rgba(192,132,252,0.7)]" />
                 <div className="absolute w-[70%] h-[55%] bg-gradient-to-r from-cyan-400/50 via-blue-500/60 to-fuchsia-500/50 rounded-[100%] blur-xl" />
@@ -502,46 +508,46 @@ export default function Home() {
                 <div className="absolute w-[72%] h-7 bg-slate-950/30 rounded-full blur-md" />
               </div>
 
-              {/* ICONS MELAYANG */}
+              {/* ICONS MELAYANG - OPTIMIZED FOR MOBILE PERFORMANCE (hidden md:block) */}
               <div className="absolute inset-0 z-30 pointer-events-none flex justify-center items-center overflow-visible">
                 
-                {/* ZAP (Top Left) */}
+                {/* ZAP (Top Left) - Hidden on mobile */}
                 <motion.div animate={{ y: [0, -12, 0], rotateZ: [-6, 6, -6], rotateY: [-5, 5, -5] }} transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }} 
-                  className="absolute top-[4%] sm:top-[6%] left-[0%] sm:left-[3%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                  className="absolute top-[4%] sm:top-[6%] left-[0%] sm:left-[3%] hidden md:block transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
                   <div className="w-20 h-20 sm:w-28 sm:h-28 lg:w-32 lg:h-32 flex items-center justify-center">
                     <Image src="/icon-zap.png" alt="Zap" width={140} height={140} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" priority />
                   </div>
                 </motion.div>
                 
-                {/* USERS (Top Right) */}
+                {/* USERS (Top Right) - Hidden on mobile */}
                 <motion.div animate={{ y: [0, -14, 0], rotateY: [10, -10, 10], rotateZ: [-3, 3, -3] }} transition={{ duration: 4.0, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} 
-                  className="absolute top-[10%] sm:top-[12%] right-[0%] sm:right-[3%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                  className="absolute top-[10%] sm:top-[12%] right-[0%] sm:right-[3%] hidden md:block transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
                   <div className="w-20 h-20 sm:w-28 sm:h-28 lg:w-32 lg:h-32 flex items-center justify-center">
                     <Image src="/icon-users.png" alt="Users" width={140} height={140} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" priority />
                   </div>
                 </motion.div>
                 
-                {/* QR (Mid Left) */}
+                {/* QR (Mid Left) - Hidden on mobile */}
                 <motion.div animate={{ y: [0, 14, 0], rotateZ: [8, -4, 8], rotateX: [5, -5, 5] }} transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut", delay: 0.8 }} 
-                  className="absolute top-[38%] sm:top-[40%] left-[-2%] sm:left-[1%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                  className="absolute top-[38%] sm:top-[40%] left-[-2%] sm:left-[1%] hidden md:block transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
                   <div className="w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 flex items-center justify-center">
-                    <Image src="/icon-qr.png" alt="QR" width={120} height={120} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" />
+                    <Image src="/icon-qr.png" alt="QR" width={120} height={120} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" priority />
                   </div>
                 </motion.div>
                 
-                {/* LINK (Mid Right) */}
+                {/* LINK (Mid Right) - Hidden on mobile */}
                 <motion.div animate={{ y: [0, 12, 0], rotateZ: [-12, 6, -12], rotateY: [8, -8, 8] }} transition={{ duration: 5.8, repeat: Infinity, ease: "easeInOut", delay: 1.2 }} 
-                  className="absolute top-[44%] sm:top-[46%] right-[-2%] sm:right-[1%] transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                  className="absolute top-[44%] sm:top-[46%] right-[-2%] sm:right-[1%] hidden md:block transform-gpu will-change-transform drop-shadow-xl md:drop-shadow-2xl z-30" style={{ transform: 'translateZ(60px)' }}>
                   <div className="w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 flex items-center justify-center">
-                    <Image src="/icon-link.png" alt="Link" width={120} height={120} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" />
+                    <Image src="/icon-link.png" alt="Link" width={120} height={120} className="object-contain w-full h-full drop-shadow-lg md:drop-shadow-2xl" priority />
                   </div>
                 </motion.div>
                 
-                {/* SMALL ZAP (Bottom Right) */}
+                {/* SMALL ZAP (Bottom Right) - Hidden on tablet/mobile to save performance */}
                 <motion.div animate={{ y: [0, -8, 0], rotateY: [15, -15, 15] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} 
-                  className="absolute bottom-[22%] sm:bottom-[24%] right-[10%] sm:right-[14%] transform-gpu will-change-transform drop-shadow-md md:drop-shadow-xl z-30" style={{ transform: 'translateZ(60px)' }}>
+                  className="absolute bottom-[22%] sm:bottom-[24%] right-[10%] sm:right-[14%] hidden lg:block transform-gpu will-change-transform drop-shadow-md md:drop-shadow-xl z-30" style={{ transform: 'translateZ(60px)' }}>
                   <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 flex items-center justify-center">
-                    <Image src="/icon-petir-kecil.png" alt="Small Zap" width={80} height={80} className="object-contain w-full h-full drop-shadow-md md:drop-shadow-xl" />
+                    <Image src="/icon-petir-kecil.png" alt="Small Zap" width={80} height={80} className="object-contain w-full h-full drop-shadow-md md:drop-shadow-xl" priority />
                   </div>
                 </motion.div>
 
@@ -1088,6 +1094,7 @@ export default function Home() {
                   width={32}
                   height={32}
                   className="h-8 w-8 object-contain"
+                  priority
                 />
                 <span className="text-2xl font-black tracking-tight bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
                   Oneklik.id

@@ -1516,7 +1516,8 @@ function EditorContent() {
           <Sidebar data={cvData} setData={setCvData} />
         </div>
         <div className="flex-1 bg-gray-100 p-4 md:p-8 overflow-y-auto flex items-start justify-center">
-          <div id="cv-preview-container" className="w-full max-w-[595px] bg-white shadow-2xl rounded-lg overflow-hidden aspect-[210/297]">
+          {/* --- PERUBAHAN: HAPUS aspect-[210/297] dan overflow-hidden, tambahkan max-h & overflow-y-auto pada mobile --- */}
+          <div id="cv-preview-container" className="w-full max-w-[595px] bg-white shadow-2xl rounded-lg md:aspect-[210/297] md:overflow-hidden max-h-[80vh] overflow-y-auto">
             <CVPreview data={cvData} templateId={selectedTemplate} />
           </div>
         </div>

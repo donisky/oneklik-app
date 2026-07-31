@@ -1764,7 +1764,7 @@ export default function BioPage() {
     );
 
   return (
-    <div className="h-screen bg-[#F8FAFC] text-slate-800 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col">
       <Toaster position="top-center" />
 
       <header className="flex-shrink-0 sticky top-0 z-40 bg-white border-b border-slate-200 px-4 lg:px-6 h-16 flex items-center gap-3 lg:gap-4">
@@ -1911,7 +1911,7 @@ export default function BioPage() {
           </div>
         </aside>
 
-        <main className="flex-1 h-full overflow-y-auto bg-[#F8FAFC] p-6 lg:p-10">
+        <main className="flex-1 overflow-y-auto bg-[#F8FAFC] p-6 lg:p-10">
           <div className="max-w-2xl mx-auto">
             <div className="flex items-start justify-between mb-6 gap-3 flex-wrap">
               <div className="flex items-center gap-3">
@@ -1963,7 +1963,7 @@ export default function BioPage() {
             </div>
 
             {activeTab === 'links' && (
-              <>
+              <div className="min-h-[400px]">
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4 relative">
                   <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-t-xl" />
                   <div className="mt-2 flex items-center gap-4">
@@ -2118,468 +2118,474 @@ export default function BioPage() {
                     </div>
                   )}
                 </div>
-              </>
+              </div>
             )}
 
             {activeTab === 'design' && (
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-4 mb-6">
-                  {DesignSubTabs.map((t) => (
-                    <button key={t.key} onClick={() => setDesignSubTab(t.key)} className={cx('px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors', designSubTab === t.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200')}>
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="min-h-[400px]">
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                  <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-4 mb-6">
+                    {DesignSubTabs.map((t) => (
+                      <button key={t.key} onClick={() => setDesignSubTab(t.key)} className={cx('px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors', designSubTab === t.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200')}>
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
 
-                {designSubTab === 'tampilan' && (
-                  <div className="space-y-6">
+                  {designSubTab === 'tampilan' && (
+                    <div className="space-y-6">
+                      <div>
+                        <p className="text-sm font-bold text-slate-800 mb-1">Background</p>
+                        <p className="text-xs text-slate-400 mb-3">Pilih sumber background untuk halaman bio link Anda.</p>
+                        <div className="grid grid-cols-3 gap-3">
+                          {[
+                            { key: 'template', label: 'Template', desc: 'Gunakan template siap pakai', icon: <LayoutGrid size={18} /> },
+                            { key: 'url', label: 'URL', desc: 'Gunakan gambar dari link URL', icon: <Link2 size={18} /> },
+                            { key: 'upload', label: 'Upload', desc: 'Upload gambar dari perangkat Anda', icon: <ImageIcon size={18} /> },
+                          ].map((opt) => (
+                            <button key={opt.key} onClick={() => updateDesign('bg_type', opt.key)} className={cx('text-left p-3 rounded-xl border transition-colors', (user?.design_settings?.bg_type || 'template') === opt.key ? 'border-blue-400 bg-blue-50/50' : 'border-slate-200 hover:bg-slate-50')}>
+                              <div className="text-slate-500 mb-1.5">{opt.icon}</div>
+                              <p className="text-xs font-semibold text-slate-700">{opt.label}</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">{opt.desc}</p>
+                            </button>
+                          ))}
+                        </div>
+
+                        {user?.design_settings?.bg_type === 'url' && (
+                          <input type="text" placeholder="https://example.com/background.jpg" value={user?.design_settings?.bg_custom_url || ''} onChange={(e) => updateDesign('bg_custom_url', e.target.value)} className="w-full mt-3 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                        )}
+                        {user?.design_settings?.bg_type === 'upload' && (
+                          <div className="relative mt-3">
+                            <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleBackgroundUpload} disabled={uploadingBg} />
+                            <div className="w-full border-2 border-dashed border-slate-300 rounded-lg p-3 text-center text-sm text-slate-500 hover:bg-slate-50 transition-colors">
+                              {uploadingBg ? 'Mengupload...' : 'Klik untuk upload Background Image'}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="border-t border-slate-100 pt-5">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-bold text-slate-800">Pilih Template</p>
+                          <div className="relative">
+                            <select value={templateCategory} onChange={(e) => { setTemplateCategory(e.target.value); setTemplateShowCount(8); }} className="text-xs border border-slate-200 rounded-lg pl-3 pr-7 py-1.5 appearance-none bg-white text-slate-600">
+                              {templateCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-400 mb-3">Pilih template yang sesuai dengan gaya Anda.</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          {filteredTemplates.slice(0, templateShowCount).map((t: any) => {
+                            const active = String(user?.selected_template) === String(t.id);
+                            const isPremium = t.isPremium || false;
+                            const isLocked = isPremium && !user?.is_premium;
+
+                            return (
+                              <button
+                                key={t.id}
+                                onClick={() => {
+                                  if (isLocked) {
+                                    toast.error('Template Premium hanya untuk pengguna PRO.');
+                                    router.push('/upgrade');
+                                    return;
+                                  }
+                                  setUser((prev: any) => ({ ...prev, selected_template: String(t.id) }));
+                                }}
+                                className={cx(
+                                  'rounded-xl overflow-hidden border-2 text-left transition-all relative',
+                                  active ? 'border-blue-500 ring-2 ring-blue-100' : 'border-transparent'
+                                )}
+                              >
+                                {isLocked && (
+                                  <div className="absolute top-2 right-2 z-10 bg-amber-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1 text-[9px] font-bold shadow-md">
+                                    <Crown size={12} /> PRO
+                                  </div>
+                                )}
+
+                                <div
+                                  className="relative aspect-[3/4] flex flex-col items-center justify-between p-3"
+                                  style={
+                                    t.bgImage
+                                      ? { backgroundImage: `url(${t.bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                                      : { backgroundColor: t.colors?.bg || '#e2e8f0' }
+                                  }
+                                >
+                                  {active && <span className="absolute top-1.5 right-1.5 bg-blue-500 text-white rounded-full p-0.5"><CheckCircle2 size={14} /></span>}
+                                  <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white text-xs font-bold border border-white/30 mt-2">B</div>
+                                  <div className="w-full space-y-1 mb-1">
+                                    <div className="text-center text-white text-[10px] font-semibold drop-shadow">brodi</div>
+                                    <div className="rounded-md py-1 text-center text-[8px] font-semibold text-white" style={{ backgroundColor: t.colors?.primary || '#3b82f6' }}>Instagram</div>
+                                    <div className="rounded-md py-1 text-center text-[8px] font-semibold text-white bg-green-500">Shop</div>
+                                  </div>
+                                </div>
+                                <p className="text-[11px] font-medium text-slate-600 px-1 py-1.5 text-center truncate">{t.name || `Template ${t.id}`}</p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {filteredTemplates.length > templateShowCount && (
+                          <button onClick={() => setTemplateShowCount((c) => c + 8)} className="w-full mt-4 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1.5">Muat Lebih Banyak <ChevronDown size={14} /></button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {designSubTab === 'tema' && (
                     <div>
-                      <p className="text-sm font-bold text-slate-800 mb-1">Background</p>
-                      <p className="text-xs text-slate-400 mb-3">Pilih sumber background untuk halaman bio link Anda.</p>
-                      <div className="grid grid-cols-3 gap-3">
+                      <p className="text-sm font-bold text-slate-800 mb-1">Tema</p>
+                      <p className="text-xs text-slate-400 mb-3">Gaya tampilan menyeluruh untuk halaman bio Anda.</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {['air', 'customize', 'dark', 'light'].map((th) => (
+                          <button key={th} onClick={() => updateDesign('theme', th)} className={cx('px-4 py-3 rounded-lg text-sm font-medium capitalize border transition-colors', (user?.design_settings?.theme || 'air') === th ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>{th}</button>
+                        ))}
+                      </div>
+                      <button onClick={handleEnhance} className="mt-5 flex items-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-700"><Sparkles size={16} /> Acak & sempurnakan desain</button>
+                    </div>
+                  )}
+
+                  {designSubTab === 'warna' && (
+                    <div className="space-y-5">
+                      <p className="text-sm font-bold text-slate-800 -mb-2">Warna</p>
+                      <div className="grid sm:grid-cols-3 gap-4">
                         {[
-                          { key: 'template', label: 'Template', desc: 'Gunakan template siap pakai', icon: <LayoutGrid size={18} /> },
-                          { key: 'url', label: 'URL', desc: 'Gunakan gambar dari link URL', icon: <Link2 size={18} /> },
-                          { key: 'upload', label: 'Upload', desc: 'Upload gambar dari perangkat Anda', icon: <ImageIcon size={18} /> },
-                        ].map((opt) => (
-                          <button key={opt.key} onClick={() => updateDesign('bg_type', opt.key)} className={cx('text-left p-3 rounded-xl border transition-colors', (user?.design_settings?.bg_type || 'template') === opt.key ? 'border-blue-400 bg-blue-50/50' : 'border-slate-200 hover:bg-slate-50')}>
-                            <div className="text-slate-500 mb-1.5">{opt.icon}</div>
-                            <p className="text-xs font-semibold text-slate-700">{opt.label}</p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">{opt.desc}</p>
+                          { key: 'theme_primary', label: 'Warna Tombol', fallback: '#3b82f6' },
+                          { key: 'theme_secondary', label: 'Warna Teks Tombol', fallback: '#ffffff' },
+                          { key: 'theme_bg', label: 'Warna Latar (fallback)', fallback: '#f3f4f6' },
+                        ].map((c) => (
+                          <div key={c.key} className="flex items-center gap-3 border border-slate-200 rounded-lg p-3">
+                            <input type="color" value={user?.[c.key] || c.fallback} onChange={(e) => setUser((prev: any) => ({ ...prev, [c.key]: e.target.value }))} className="w-10 h-10 rounded-lg cursor-pointer border-0" />
+                            <div>
+                              <p className="text-xs font-semibold text-slate-700">{c.label}</p>
+                              <p className="text-[10px] text-slate-400 uppercase">{user?.[c.key] || c.fallback}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 mb-2">Tema Cepat</p>
+                        <div className="flex gap-2">
+                          {quickThemeColors.map((c) => (
+                            <button key={c} onClick={() => setUser((prev: any) => ({ ...prev, theme_primary: c }))} className="w-8 h-8 rounded-full border-2 border-white shadow ring-1 ring-slate-200" style={{ backgroundColor: c }} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {designSubTab === 'tipografi' && (
+                    <div>
+                      <p className="text-sm font-bold text-slate-800 mb-1">Tipografi</p>
+                      <p className="text-xs text-slate-400 mb-3">Jenis huruf untuk nama, bio, dan tombol link.</p>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[{ key: 'sans', label: 'Sans', style: 'sans-serif' }, { key: 'serif', label: 'Serif', style: 'serif' }, { key: 'mono', label: 'Mono', style: 'monospace' }].map((f) => (
+                          <button key={f.key} onClick={() => updateDesign('font', f.key)} className={cx('px-4 py-4 rounded-lg border text-center transition-colors', (user?.design_settings?.font || 'sans') === f.key ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50')}>
+                            <p className="text-lg text-slate-800" style={{ fontFamily: f.style }}>Aa</p>
+                            <p className="text-[11px] text-slate-500 mt-1">{f.label}</p>
                           </button>
                         ))}
                       </div>
-
-                      {user?.design_settings?.bg_type === 'url' && (
-                        <input type="text" placeholder="https://example.com/background.jpg" value={user?.design_settings?.bg_custom_url || ''} onChange={(e) => updateDesign('bg_custom_url', e.target.value)} className="w-full mt-3 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                      )}
-                      {user?.design_settings?.bg_type === 'upload' && (
-                        <div className="relative mt-3">
-                          <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleBackgroundUpload} disabled={uploadingBg} />
-                          <div className="w-full border-2 border-dashed border-slate-300 rounded-lg p-3 text-center text-sm text-slate-500 hover:bg-slate-50 transition-colors">
-                            {uploadingBg ? 'Mengupload...' : 'Klik untuk upload Background Image'}
-                          </div>
-                        </div>
-                      )}
                     </div>
+                  )}
 
-                    <div className="border-t border-slate-100 pt-5">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm font-bold text-slate-800">Pilih Template</p>
-                        <div className="relative">
-                          <select value={templateCategory} onChange={(e) => { setTemplateCategory(e.target.value); setTemplateShowCount(8); }} className="text-xs border border-slate-200 rounded-lg pl-3 pr-7 py-1.5 appearance-none bg-white text-slate-600">
-                            {templateCategories.map((c) => <option key={c} value={c}>{c}</option>)}
-                          </select>
-                          <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-400 mb-3">Pilih template yang sesuai dengan gaya Anda.</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        {filteredTemplates.slice(0, templateShowCount).map((t: any) => {
-                          const active = String(user?.selected_template) === String(t.id);
-                          const isPremium = t.isPremium || false;
-                          const isLocked = isPremium && !user?.is_premium;
-
-                          return (
-                            <button
-                              key={t.id}
-                              onClick={() => {
-                                if (isLocked) {
-                                  toast.error('Template Premium hanya untuk pengguna PRO.');
-                                  router.push('/upgrade');
-                                  return;
-                                }
-                                setUser((prev: any) => ({ ...prev, selected_template: String(t.id) }));
-                              }}
-                              className={cx(
-                                'rounded-xl overflow-hidden border-2 text-left transition-all relative',
-                                active ? 'border-blue-500 ring-2 ring-blue-100' : 'border-transparent'
-                              )}
-                            >
-                              {isLocked && (
-                                <div className="absolute top-2 right-2 z-10 bg-amber-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1 text-[9px] font-bold shadow-md">
-                                  <Crown size={12} /> PRO
-                                </div>
-                              )}
-
-                              <div
-                                className="relative aspect-[3/4] flex flex-col items-center justify-between p-3"
-                                style={
-                                  t.bgImage
-                                    ? { backgroundImage: `url(${t.bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                                    : { backgroundColor: t.colors?.bg || '#e2e8f0' }
-                                }
-                              >
-                                {active && <span className="absolute top-1.5 right-1.5 bg-blue-500 text-white rounded-full p-0.5"><CheckCircle2 size={14} /></span>}
-                                <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white text-xs font-bold border border-white/30 mt-2">B</div>
-                                <div className="w-full space-y-1 mb-1">
-                                  <div className="text-center text-white text-[10px] font-semibold drop-shadow">brodi</div>
-                                  <div className="rounded-md py-1 text-center text-[8px] font-semibold text-white" style={{ backgroundColor: t.colors?.primary || '#3b82f6' }}>Instagram</div>
-                                  <div className="rounded-md py-1 text-center text-[8px] font-semibold text-white bg-green-500">Shop</div>
-                                </div>
-                              </div>
-                              <p className="text-[11px] font-medium text-slate-600 px-1 py-1.5 text-center truncate">{t.name || `Template ${t.id}`}</p>
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {filteredTemplates.length > templateShowCount && (
-                        <button onClick={() => setTemplateShowCount((c) => c + 8)} className="w-full mt-4 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1.5">Muat Lebih Banyak <ChevronDown size={14} /></button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {designSubTab === 'tema' && (
-                  <div>
-                    <p className="text-sm font-bold text-slate-800 mb-1">Tema</p>
-                    <p className="text-xs text-slate-400 mb-3">Gaya tampilan menyeluruh untuk halaman bio Anda.</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {['air', 'customize', 'dark', 'light'].map((th) => (
-                        <button key={th} onClick={() => updateDesign('theme', th)} className={cx('px-4 py-3 rounded-lg text-sm font-medium capitalize border transition-colors', (user?.design_settings?.theme || 'air') === th ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>{th}</button>
-                      ))}
-                    </div>
-                    <button onClick={handleEnhance} className="mt-5 flex items-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-700"><Sparkles size={16} /> Acak & sempurnakan desain</button>
-                  </div>
-                )}
-
-                {designSubTab === 'warna' && (
-                  <div className="space-y-5">
-                    <p className="text-sm font-bold text-slate-800 -mb-2">Warna</p>
-                    <div className="grid sm:grid-cols-3 gap-4">
-                      {[
-                        { key: 'theme_primary', label: 'Warna Tombol', fallback: '#3b82f6' },
-                        { key: 'theme_secondary', label: 'Warna Teks Tombol', fallback: '#ffffff' },
-                        { key: 'theme_bg', label: 'Warna Latar (fallback)', fallback: '#f3f4f6' },
-                      ].map((c) => (
-                        <div key={c.key} className="flex items-center gap-3 border border-slate-200 rounded-lg p-3">
-                          <input type="color" value={user?.[c.key] || c.fallback} onChange={(e) => setUser((prev: any) => ({ ...prev, [c.key]: e.target.value }))} className="w-10 h-10 rounded-lg cursor-pointer border-0" />
-                          <div>
-                            <p className="text-xs font-semibold text-slate-700">{c.label}</p>
-                            <p className="text-[10px] text-slate-400 uppercase">{user?.[c.key] || c.fallback}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                  {designSubTab === 'tombol' && (
                     <div>
-                      <p className="text-xs font-semibold text-slate-500 mb-2">Tema Cepat</p>
-                      <div className="flex gap-2">
-                        {quickThemeColors.map((c) => (
-                          <button key={c} onClick={() => setUser((prev: any) => ({ ...prev, theme_primary: c }))} className="w-8 h-8 rounded-full border-2 border-white shadow ring-1 ring-slate-200" style={{ backgroundColor: c }} />
+                      <p className="text-sm font-bold text-slate-800 mb-1">Gaya Tombol</p>
+                      <p className="text-xs text-slate-400 mb-3">Terapkan ke semua tombol link di halaman bio Anda.</p>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[{ key: 'fill', label: 'Fill' }, { key: 'outline', label: 'Outline' }, { key: 'ghost', label: 'Ghost' }].map((b) => (
+                          <button key={b.key} onClick={() => updateDesign('buttons', b.key)} className={cx('px-4 py-4 rounded-lg border transition-colors flex flex-col items-center gap-2', (user?.design_settings?.buttons || 'fill') === b.key ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50')}>
+                            <span className="w-full py-2 rounded-lg text-xs font-semibold text-center" style={b.key === 'outline' ? { border: `2px solid ${user?.theme_primary || '#3b82f6'}`, color: user?.theme_primary || '#3b82f6' } : b.key === 'ghost' ? { color: user?.theme_primary || '#3b82f6' } : { backgroundColor: user?.theme_primary || '#3b82f6', color: user?.theme_secondary || '#fff' }}>Link</span>
+                            <p className="text-[11px] text-slate-500">{b.label}</p>
+                          </button>
                         ))}
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {designSubTab === 'tipografi' && (
-                  <div>
-                    <p className="text-sm font-bold text-slate-800 mb-1">Tipografi</p>
-                    <p className="text-xs text-slate-400 mb-3">Jenis huruf untuk nama, bio, dan tombol link.</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[{ key: 'sans', label: 'Sans', style: 'sans-serif' }, { key: 'serif', label: 'Serif', style: 'serif' }, { key: 'mono', label: 'Mono', style: 'monospace' }].map((f) => (
-                        <button key={f.key} onClick={() => updateDesign('font', f.key)} className={cx('px-4 py-4 rounded-lg border text-center transition-colors', (user?.design_settings?.font || 'sans') === f.key ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50')}>
-                          <p className="text-lg text-slate-800" style={{ fontFamily: f.style }}>Aa</p>
-                          <p className="text-[11px] text-slate-500 mt-1">{f.label}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  {designSubTab === 'lanjutan' && (
+                    <div className="space-y-6">
+                      <div>
+                        <p className="text-sm font-bold text-slate-800 mb-1">Stiker &amp; Footer</p>
+                        <div className="flex flex-wrap gap-3 mt-2">
+                          <button onClick={() => updateDesign('stickers', user?.design_settings?.stickers === 'decorate' ? 'none' : 'decorate')} className={cx('px-4 py-2 rounded-lg text-xs font-semibold border transition-colors', user?.design_settings?.stickers === 'decorate' ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-500')}>✨ Stiker Dekorasi</button>
+                        </div>
+                      </div>
 
-                {designSubTab === 'tombol' && (
-                  <div>
-                    <p className="text-sm font-bold text-slate-800 mb-1">Gaya Tombol</p>
-                    <p className="text-xs text-slate-400 mb-3">Terapkan ke semua tombol link di halaman bio Anda.</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[{ key: 'fill', label: 'Fill' }, { key: 'outline', label: 'Outline' }, { key: 'ghost', label: 'Ghost' }].map((b) => (
-                        <button key={b.key} onClick={() => updateDesign('buttons', b.key)} className={cx('px-4 py-4 rounded-lg border transition-colors flex flex-col items-center gap-2', (user?.design_settings?.buttons || 'fill') === b.key ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50')}>
-                          <span className="w-full py-2 rounded-lg text-xs font-semibold text-center" style={b.key === 'outline' ? { border: `2px solid ${user?.theme_primary || '#3b82f6'}`, color: user?.theme_primary || '#3b82f6' } : b.key === 'ghost' ? { color: user?.theme_primary || '#3b82f6' } : { backgroundColor: user?.theme_primary || '#3b82f6', color: user?.theme_secondary || '#fff' }}>Link</span>
-                          <p className="text-[11px] text-slate-500">{b.label}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {designSubTab === 'lanjutan' && (
-                  <div className="space-y-6">
-                    <div>
-                      <p className="text-sm font-bold text-slate-800 mb-1">Stiker &amp; Footer</p>
-                      <div className="flex flex-wrap gap-3 mt-2">
-                        <button onClick={() => updateDesign('stickers', user?.design_settings?.stickers === 'decorate' ? 'none' : 'decorate')} className={cx('px-4 py-2 rounded-lg text-xs font-semibold border transition-colors', user?.design_settings?.stickers === 'decorate' ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-500')}>✨ Stiker Dekorasi</button>
+                      <div className="border-t border-slate-100 pt-4 space-y-2">
+                        <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Sosial Media (Footer Bio)</label>
+                        {[
+                          { key: 'social_instagram', icon: <Instagram size={16} />, ph: 'Link Instagram (opsional)' },
+                          { key: 'social_tiktok', icon: <Music2 size={16} />, ph: 'Link TikTok (opsional)' },
+                          { key: 'social_youtube', icon: <Youtube size={16} />, ph: 'Link YouTube (opsional)' },
+                          { key: 'social_facebook', icon: <Facebook size={16} />, ph: 'Link Facebook (opsional)' },
+                          { key: 'social_twitter', icon: <Twitter size={16} />, ph: 'Link Twitter/X (opsional)' },
+                          { key: 'social_linkedin', icon: <Linkedin size={16} />, ph: 'Link LinkedIn (opsional)' },
+                          { key: 'social_whatsapp', icon: <MessageCircle size={16} />, ph: 'Link WhatsApp (opsional)' },
+                          { key: 'social_telegram', icon: <Send size={16} />, ph: 'Link Telegram (opsional)' },
+                          { key: 'social_twitch', icon: <Twitch size={16} />, ph: 'Link Twitch (opsional)' },
+                        ].map((s) => (
+                          <div key={s.key} className="flex items-center gap-2">
+                            <span className="text-slate-400 flex-shrink-0">{s.icon}</span>
+                            <input type="text" placeholder={s.ph} value={user?.[s.key] || ''} onChange={(e) => setUser((prev: any) => ({ ...prev, [s.key]: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                          </div>
+                        ))}
+                        <p className="text-[10px] text-slate-400">Icon hanya akan muncul di footer bio jika linknya diisi.</p>
                       </div>
                     </div>
+                  )}
 
-                    <div className="border-t border-slate-100 pt-4 space-y-2">
-                      <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Sosial Media (Footer Bio)</label>
-                      {[
-                        { key: 'social_instagram', icon: <Instagram size={16} />, ph: 'Link Instagram (opsional)' },
-                        { key: 'social_tiktok', icon: <Music2 size={16} />, ph: 'Link TikTok (opsional)' },
-                        { key: 'social_youtube', icon: <Youtube size={16} />, ph: 'Link YouTube (opsional)' },
-                        { key: 'social_facebook', icon: <Facebook size={16} />, ph: 'Link Facebook (opsional)' },
-                        { key: 'social_twitter', icon: <Twitter size={16} />, ph: 'Link Twitter/X (opsional)' },
-                        { key: 'social_linkedin', icon: <Linkedin size={16} />, ph: 'Link LinkedIn (opsional)' },
-                        { key: 'social_whatsapp', icon: <MessageCircle size={16} />, ph: 'Link WhatsApp (opsional)' },
-                        { key: 'social_telegram', icon: <Send size={16} />, ph: 'Link Telegram (opsional)' },
-                        { key: 'social_twitch', icon: <Twitch size={16} />, ph: 'Link Twitch (opsional)' },
-                      ].map((s) => (
-                        <div key={s.key} className="flex items-center gap-2">
-                          <span className="text-slate-400 flex-shrink-0">{s.icon}</span>
-                          <input type="text" placeholder={s.ph} value={user?.[s.key] || ''} onChange={(e) => setUser((prev: any) => ({ ...prev, [s.key]: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-                      ))}
-                      <p className="text-[10px] text-slate-400">Icon hanya akan muncul di footer bio jika linknya diisi.</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="pt-5 mt-6 border-t border-slate-100 text-xs text-slate-400">*Perubahan akan tersimpan setelah klik Simpan Perubahan.</div>
+                  <div className="pt-5 mt-6 border-t border-slate-100 text-xs text-slate-400">*Perubahan akan tersimpan setelah klik Simpan Perubahan.</div>
+                </div>
               </div>
             )}
 
             {activeTab === 'shop' && (
-              <div className="space-y-4">
-                {showOrderModal && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 relative max-h-[80vh] flex flex-col">
-                      <button onClick={() => setShowOrderModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
-                      <h3 className="text-lg font-bold text-slate-800 mb-4">Daftar Pesanan</h3>
-                      <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
-                        {ordersLoading ? (
-                          <div className="py-10 text-center text-slate-500">Memuat pesanan...</div>
-                        ) : orders.length > 0 ? (
-                          orders.map((order) => (
-                            <div key={order.id} className="bg-slate-50 border border-slate-100 rounded-lg p-4">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <p className="font-semibold text-slate-800 text-sm">{order.customer_name || 'Pelanggan'}</p>
-                                  <p className="text-xs text-slate-500">{order.customer_email || '-'}</p>
+              <div className="min-h-[400px]">
+                <div className="space-y-4">
+                  {showOrderModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 relative max-h-[80vh] flex flex-col">
+                        <button onClick={() => setShowOrderModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
+                        <h3 className="text-lg font-bold text-slate-800 mb-4">Daftar Pesanan</h3>
+                        <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+                          {ordersLoading ? (
+                            <div className="py-10 text-center text-slate-500">Memuat pesanan...</div>
+                          ) : orders.length > 0 ? (
+                            orders.map((order) => (
+                              <div key={order.id} className="bg-slate-50 border border-slate-100 rounded-lg p-4">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <p className="font-semibold text-slate-800 text-sm">{order.customer_name || 'Pelanggan'}</p>
+                                    <p className="text-xs text-slate-500">{order.customer_email || '-'}</p>
+                                  </div>
+                                  <span className={cx('px-2 py-0.5 rounded-full text-[10px] font-semibold',
+                                    order.status === 'paid' ? 'bg-green-100 text-green-700' :
+                                    order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                                    order.status === 'delivered' ? 'bg-purple-100 text-purple-700' :
+                                    order.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                                  )}>
+                                    {order.status}
+                                  </span>
                                 </div>
-                                <span className={cx('px-2 py-0.5 rounded-full text-[10px] font-semibold',
-                                  order.status === 'paid' ? 'bg-green-100 text-green-700' :
-                                  order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                                  order.status === 'delivered' ? 'bg-purple-100 text-purple-700' :
-                                  order.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-                                )}>
-                                  {order.status}
-                                </span>
+                                <div className="mt-1 text-xs text-slate-400 flex justify-between">
+                                  <span>{new Date(order.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                  <span className="font-semibold text-slate-700">Rp {order.total_amount?.toLocaleString() || '0'}</span>
+                                </div>
                               </div>
-                              <div className="mt-1 text-xs text-slate-400 flex justify-between">
-                                <span>{new Date(order.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                                <span className="font-semibold text-slate-700">Rp {order.total_amount?.toLocaleString() || '0'}</span>
-                              </div>
+                            ))
+                          ) : (
+                            <div className="py-10 text-center text-slate-400">
+                              <ClipboardList size={48} className="mx-auto mb-2 text-slate-200" />
+                              <p className="font-medium">Belum ada pesanan.</p>
                             </div>
-                          ))
-                        ) : (
-                          <div className="py-10 text-center text-slate-400">
-                            <ClipboardList size={48} className="mx-auto mb-2 text-slate-200" />
-                            <p className="font-medium">Belum ada pesanan.</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {showProductModal && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
-                      <button onClick={() => setShowProductModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
-                      <h3 className="text-lg font-bold text-slate-800 mb-4">Tambah Produk Baru</h3>
-                      <div className="space-y-3">
-                        <input type="text" placeholder="Nama Produk" value={newProduct.title} onChange={(e) => setNewProduct({ ...newProduct, title: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-                        <input type="text" placeholder="Harga (misal: Rp 50.000)" value={newProduct.price} onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-                        <input type="text" placeholder="Link Produk (opsional)" value={newProduct.link} onChange={(e) => setNewProduct({ ...newProduct, link: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-                        <textarea placeholder="Deskripsi (opsional)" value={newProduct.description} onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" rows={2} />
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => document.getElementById('product-image-input')?.click()}>
-                          <input id="product-image-input" type="file" accept="image/*" className="hidden" onChange={(e) => setNewProduct({ ...newProduct, image: e.target.files?.[0] || null })} />
-                          {newProduct.image ? (<div className="flex items-center justify-center gap-2 text-blue-600"><Video size={16} /> <span className="text-sm">{newProduct.image.name}</span></div>) : (<div className="text-slate-400 text-sm">Upload Gambar Produk</div>)}
+                          )}
                         </div>
-                        <button onClick={handleAddProduct} disabled={uploadingProduct} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex justify-center gap-2">{uploadingProduct ? 'Menyimpan...' : 'Simpan Produk'}</button>
                       </div>
-                    </div>
-                  </div>
-                )}
-
-                {editingProduct && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
-                      <button onClick={() => setEditingProduct(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
-                      <h3 className="text-lg font-bold text-slate-800 mb-4">Edit Produk</h3>
-                      <div className="space-y-3">
-                        <input type="text" placeholder="Nama Produk" value={editingProduct.title || ''} onChange={(e) => setEditingProduct({ ...editingProduct, title: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-                        <input type="text" placeholder="Harga" value={editingProduct.price || ''} onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-                        <input type="text" placeholder="Link Produk" value={editingProduct.product_link || ''} onChange={(e) => setEditingProduct({ ...editingProduct, product_link: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-                        <textarea placeholder="Deskripsi" value={editingProduct.description || ''} onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" rows={2} />
-                        <button onClick={handleEditProduct} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">Simpan Perubahan</button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="bg-white rounded-xl border border-slate-200 p-4">
-                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Produk</p>
-                    <p className="text-2xl font-bold text-slate-800">{products.length}</p>
-                  </div>
-                  <div className="bg-white rounded-xl border border-slate-200 p-4">
-                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Penjualan</p>
-                    <p className="text-2xl font-bold text-green-600">Rp {shopStats.totalRevenue.toLocaleString()}</p>
-                  </div>
-                  <div className="bg-white rounded-xl border border-slate-200 p-4">
-                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Pesanan</p>
-                    <p className="text-2xl font-bold text-slate-800">{shopStats.totalOrders}</p>
-                  </div>
-                  <div className="bg-white rounded-xl border border-slate-200 p-4">
-                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Rating Toko</p>
-                    <div className="flex items-center gap-1">
-                      <p className="text-2xl font-bold text-yellow-500">{shopStats.averageRating}</p>
-                      <div className="flex text-yellow-400">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star key={star} size={14} fill={star <= Math.round(shopStats.averageRating) ? '#facc15' : 'none'} stroke={star <= Math.round(shopStats.averageRating) ? '#facc15' : '#d1d5db'} />
-                        ))}
-                      </div>
-                      <span className="text-[10px] text-slate-400 ml-1">({shopStats.totalReviews} ulasan)</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                  <div className="p-4 border-b border-slate-100 space-y-3">
-                    <div className="flex gap-2 overflow-x-auto">
-                      {[{ k: 'semua', l: 'Semua Produk' }, { k: 'aktif', l: 'Produk Aktif' }, { k: 'habis', l: 'Stok Habis' }, { k: 'arsip', l: 'Arsip' }].map((t) => (
-                        <button key={t.k} onClick={() => setShopStatusTab(t.k as any)} className={cx('px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors', shopStatusTab === t.k ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500')}>{t.l}</button>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input value={shopSearch} onChange={(e) => setShopSearch(e.target.value)} placeholder="Cari produk..." className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                      </div>
-                      <select value={shopSort} onChange={(e) => setShopSort(e.target.value as any)} className="text-xs border border-slate-200 rounded-lg px-2 py-2 text-slate-600">
-                        <option value="terbaru">Terbaru</option>
-                        <option value="harga">Harga</option>
-                        <option value="nama">Nama</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {filteredProducts.length > 0 ? (
-                    <div className="divide-y divide-slate-100">
-                      {filteredProducts.map((prod) => (
-                        <div key={prod.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors">
-                          <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0 flex items-center justify-center text-slate-300">
-                            {prod.image_url ? <img src={prod.image_url} alt={prod.title} className="w-full h-full object-cover" /> : <Package size={20} />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-slate-800 truncate">{prod.title}</p>
-                            <p className="text-[11px] text-slate-400 truncate">{prod.description || '—'}</p>
-                          </div>
-                          <span className="text-sm font-semibold text-slate-700 flex-shrink-0 w-24 text-right">{prod.price}</span>
-                          <span className="hidden sm:inline-flex text-[10px] font-semibold px-2 py-1 rounded-full bg-green-50 text-green-600 flex-shrink-0">Aktif</span>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <button onClick={() => setEditingProduct(prod)} className="text-slate-400 hover:text-blue-600 p-1.5 hover:bg-blue-50 rounded-full transition-colors"><Pencil size={15} /></button>
-                            <button onClick={() => handleDeleteProduct(prod.id)} className="text-slate-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-full transition-colors"><Trash2 size={15} /></button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="col-span-2 py-14 text-center text-slate-400 text-sm">
-                      <ShoppingBag size={36} className="mx-auto mb-2 text-slate-200" />
-                      {shopStatusTab === 'semua' ? 'Belum ada produk.' : `Tidak ada produk dengan status "${shopStatusTab}".`}
                     </div>
                   )}
+
+                  {showProductModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
+                        <button onClick={() => setShowProductModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
+                        <h3 className="text-lg font-bold text-slate-800 mb-4">Tambah Produk Baru</h3>
+                        <div className="space-y-3">
+                          <input type="text" placeholder="Nama Produk" value={newProduct.title} onChange={(e) => setNewProduct({ ...newProduct, title: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                          <input type="text" placeholder="Harga (misal: Rp 50.000)" value={newProduct.price} onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                          <input type="text" placeholder="Link Produk (opsional)" value={newProduct.link} onChange={(e) => setNewProduct({ ...newProduct, link: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                          <textarea placeholder="Deskripsi (opsional)" value={newProduct.description} onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" rows={2} />
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => document.getElementById('product-image-input')?.click()}>
+                            <input id="product-image-input" type="file" accept="image/*" className="hidden" onChange={(e) => setNewProduct({ ...newProduct, image: e.target.files?.[0] || null })} />
+                            {newProduct.image ? (<div className="flex items-center justify-center gap-2 text-blue-600"><Video size={16} /> <span className="text-sm">{newProduct.image.name}</span></div>) : (<div className="text-slate-400 text-sm">Upload Gambar Produk</div>)}
+                          </div>
+                          <button onClick={handleAddProduct} disabled={uploadingProduct} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex justify-center gap-2">{uploadingProduct ? 'Menyimpan...' : 'Simpan Produk'}</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {editingProduct && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
+                        <button onClick={() => setEditingProduct(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={24} /></button>
+                        <h3 className="text-lg font-bold text-slate-800 mb-4">Edit Produk</h3>
+                        <div className="space-y-3">
+                          <input type="text" placeholder="Nama Produk" value={editingProduct.title || ''} onChange={(e) => setEditingProduct({ ...editingProduct, title: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                          <input type="text" placeholder="Harga" value={editingProduct.price || ''} onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                          <input type="text" placeholder="Link Produk" value={editingProduct.product_link || ''} onChange={(e) => setEditingProduct({ ...editingProduct, product_link: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                          <textarea placeholder="Deskripsi" value={editingProduct.description || ''} onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" rows={2} />
+                          <button onClick={handleEditProduct} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">Simpan Perubahan</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="bg-white rounded-xl border border-slate-200 p-4">
+                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Produk</p>
+                      <p className="text-2xl font-bold text-slate-800">{products.length}</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-slate-200 p-4">
+                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Penjualan</p>
+                      <p className="text-2xl font-bold text-green-600">Rp {shopStats.totalRevenue.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-slate-200 p-4">
+                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Total Pesanan</p>
+                      <p className="text-2xl font-bold text-slate-800">{shopStats.totalOrders}</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-slate-200 p-4">
+                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">Rating Toko</p>
+                      <div className="flex items-center gap-1">
+                        <p className="text-2xl font-bold text-yellow-500">{shopStats.averageRating}</p>
+                        <div className="flex text-yellow-400">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star key={star} size={14} fill={star <= Math.round(shopStats.averageRating) ? '#facc15' : 'none'} stroke={star <= Math.round(shopStats.averageRating) ? '#facc15' : '#d1d5db'} />
+                          ))}
+                        </div>
+                        <span className="text-[10px] text-slate-400 ml-1">({shopStats.totalReviews} ulasan)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="p-4 border-b border-slate-100 space-y-3">
+                      <div className="flex gap-2 overflow-x-auto">
+                        {[{ k: 'semua', l: 'Semua Produk' }, { k: 'aktif', l: 'Produk Aktif' }, { k: 'habis', l: 'Stok Habis' }, { k: 'arsip', l: 'Arsip' }].map((t) => (
+                          <button key={t.k} onClick={() => setShopStatusTab(t.k as any)} className={cx('px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors', shopStatusTab === t.k ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500')}>{t.l}</button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input value={shopSearch} onChange={(e) => setShopSearch(e.target.value)} placeholder="Cari produk..." className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                        </div>
+                        <select value={shopSort} onChange={(e) => setShopSort(e.target.value as any)} className="text-xs border border-slate-200 rounded-lg px-2 py-2 text-slate-600">
+                          <option value="terbaru">Terbaru</option>
+                          <option value="harga">Harga</option>
+                          <option value="nama">Nama</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {filteredProducts.length > 0 ? (
+                      <div className="divide-y divide-slate-100">
+                        {filteredProducts.map((prod) => (
+                          <div key={prod.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors">
+                            <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0 flex items-center justify-center text-slate-300">
+                              {prod.image_url ? <img src={prod.image_url} alt={prod.title} className="w-full h-full object-cover" /> : <Package size={20} />}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-slate-800 truncate">{prod.title}</p>
+                              <p className="text-[11px] text-slate-400 truncate">{prod.description || '—'}</p>
+                            </div>
+                            <span className="text-sm font-semibold text-slate-700 flex-shrink-0 w-24 text-right">{prod.price}</span>
+                            <span className="hidden sm:inline-flex text-[10px] font-semibold px-2 py-1 rounded-full bg-green-50 text-green-600 flex-shrink-0">Aktif</span>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button onClick={() => setEditingProduct(prod)} className="text-slate-400 hover:text-blue-600 p-1.5 hover:bg-blue-50 rounded-full transition-colors"><Pencil size={15} /></button>
+                              <button onClick={() => handleDeleteProduct(prod.id)} className="text-slate-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-full transition-colors"><Trash2 size={15} /></button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="col-span-2 py-14 text-center text-slate-400 text-sm">
+                        <ShoppingBag size={36} className="mx-auto mb-2 text-slate-200" />
+                        {shopStatusTab === 'semua' ? 'Belum ada produk.' : `Tidak ada produk dengan status "${shopStatusTab}".`}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
 
             {activeTab === 'analytics' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                  {[
-                    { label: 'Total Klik', value: totalClicks, color: 'text-blue-600' },
-                    { label: 'Total Pengunjung', value: totalViews, color: 'text-slate-800' },
-                    { label: 'Rata-rata CTR', value: `${ctr}%`, color: 'text-green-600' },
-                    { label: 'Link Aktif', value: links.length, color: 'text-slate-800' },
-                    { label: 'Konversi', value: `${ctr}%`, color: 'text-pink-600' },
-                  ].map((s) => (
-                    <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-4">
-                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">{s.label}</p>
-                      <p className={cx('text-2xl font-bold', s.color)}>{s.value}</p>
-                    </div>
-                  ))}
-                </div>
+              <div className="min-h-[400px]">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                    {[
+                      { label: 'Total Klik', value: totalClicks, color: 'text-blue-600' },
+                      { label: 'Total Pengunjung', value: totalViews, color: 'text-slate-800' },
+                      { label: 'Rata-rata CTR', value: `${ctr}%`, color: 'text-green-600' },
+                      { label: 'Link Aktif', value: links.length, color: 'text-slate-800' },
+                      { label: 'Konversi', value: `${ctr}%`, color: 'text-pink-600' },
+                    ].map((s) => (
+                      <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-4">
+                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">{s.label}</p>
+                        <p className={cx('text-2xl font-bold', s.color)}>{s.value}</p>
+                      </div>
+                    ))}
+                  </div>
 
-                <div className="grid lg:grid-cols-[1.6fr_1fr] gap-4">
-                  <div className="bg-white rounded-xl border border-slate-200 p-5">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-bold text-slate-800">Performa Klik</h4>
-                      <div className="flex items-center gap-3 text-[10px] text-slate-500">
-                        <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-blue-600 inline-block" /> Klik</span>
-                        <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-blue-300 inline-block" /> Pengunjung</span>
+                  <div className="grid lg:grid-cols-[1.6fr_1fr] gap-4">
+                    <div className="bg-white rounded-xl border border-slate-200 p-5">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-bold text-slate-800">Performa Klik</h4>
+                        <div className="flex items-center gap-3 text-[10px] text-slate-500">
+                          <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-blue-600 inline-block" /> Klik</span>
+                          <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-blue-300 inline-block" /> Pengunjung</span>
+                        </div>
+                      </div>
+                      {analyticsLoading ? <div className="py-16 text-center text-slate-400 text-sm">Memuat data...</div> : <MiniLineChart series={dailySeries} />}
+                    </div>
+                    <div className="bg-white rounded-xl border border-slate-200 p-5">
+                      <h4 className="text-sm font-bold text-slate-800 mb-1">Sumber Trafik</h4>
+                      <DonutChart 
+                        segments={referrerStats.length > 0 ? referrerStats : [{ label: 'Belum ada data', value: 0, color: '#e2e8f0' }]} 
+                        centerLabel="Total" 
+                        centerValue={referrerStats.reduce((sum, s) => sum + s.value, 0)} 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid lg:grid-cols-[1.4fr_1fr_1fr] gap-4">
+                    <div className="bg-white rounded-xl border border-slate-200 p-5">
+                      <h4 className="text-sm font-bold text-slate-800 mb-3">Link Teratas</h4>
+                      <div className="space-y-2">
+                        {topLinks.slice(0, 5).map((l, i) => (
+                          <div key={l.id} className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="w-5 h-5 rounded-md bg-blue-50 text-blue-600 text-[10px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                              <span className="truncate text-slate-700">{l.title}</span>
+                            </div>
+                            <span className="text-slate-400 text-xs flex-shrink-0">{clicksByLink[l.id] || 0} klik</span>
+                          </div>
+                        ))}
+                        {topLinks.length === 0 && <p className="text-xs text-slate-400">Belum ada link.</p>}
                       </div>
                     </div>
-                    {analyticsLoading ? <div className="py-16 text-center text-slate-400 text-sm">Memuat data...</div> : <MiniLineChart series={dailySeries} />}
-                  </div>
-                  <div className="bg-white rounded-xl border border-slate-200 p-5">
-                    <h4 className="text-sm font-bold text-slate-800 mb-1">Sumber Trafik</h4>
-                    <DonutChart 
-                      segments={referrerStats.length > 0 ? referrerStats : [{ label: 'Belum ada data', value: 0, color: '#e2e8f0' }]} 
-                      centerLabel="Total" 
-                      centerValue={referrerStats.reduce((sum, s) => sum + s.value, 0)} 
-                    />
-                  </div>
-                </div>
-
-                <div className="grid lg:grid-cols-[1.4fr_1fr_1fr] gap-4">
-                  <div className="bg-white rounded-xl border border-slate-200 p-5">
-                    <h4 className="text-sm font-bold text-slate-800 mb-3">Link Teratas</h4>
-                    <div className="space-y-2">
-                      {topLinks.slice(0, 5).map((l, i) => (
-                        <div key={l.id} className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="w-5 h-5 rounded-md bg-blue-50 text-blue-600 text-[10px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
-                            <span className="truncate text-slate-700">{l.title}</span>
-                          </div>
-                          <span className="text-slate-400 text-xs flex-shrink-0">{clicksByLink[l.id] || 0} klik</span>
-                        </div>
-                      ))}
-                      {topLinks.length === 0 && <p className="text-xs text-slate-400">Belum ada link.</p>}
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-xl border border-slate-200 p-5">
-                    <h4 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-1.5"><Monitor size={14} /> Performa Berdasarkan Device</h4>
-                    <div className="space-y-2 mt-2">
-                      {deviceStats.length > 0 ? (
-                        deviceStats.map((d, i) => (
-                          <div key={i} className="flex items-center justify-between text-xs">
-                            <span className="text-slate-600">{d.label}</span>
-                            <span className="font-semibold text-slate-700">{d.value} pengunjung</span>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-[10px] text-slate-400">Belum ada data device.</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-xl border border-slate-200 p-5">
-                    <h4 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-1.5"><MapPin size={14} /> Lokasi Teratas</h4>
-                    <div className="space-y-2 mt-2">
-                      {locationStats.length > 0 ? (
-                        locationStats.map((l, i) => (
-                          <div key={i} className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2">
-                              <span className="w-4 h-4 rounded-full bg-blue-50 text-blue-600 text-[9px] font-bold flex items-center justify-center">{i + 1}</span>
-                              <span className="text-slate-600">{l.label}</span>
+                    <div className="bg-white rounded-xl border border-slate-200 p-5">
+                      <h4 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-1.5"><Monitor size={14} /> Performa Berdasarkan Device</h4>
+                      <div className="space-y-2 mt-2">
+                        {deviceStats.length > 0 ? (
+                          deviceStats.map((d, i) => (
+                            <div key={i} className="flex items-center justify-between text-xs">
+                              <span className="text-slate-600">{d.label}</span>
+                              <span className="font-semibold text-slate-700">{d.value} pengunjung</span>
                             </div>
-                            <span className="font-semibold text-slate-700">{l.value} pengunjung</span>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-[10px] text-slate-400">Belum ada data lokasi.</p>
-                      )}
+                          ))
+                        ) : (
+                          <p className="text-[10px] text-slate-400">Belum ada data device.</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-xl border border-slate-200 p-5">
+                      <h4 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-1.5"><MapPin size={14} /> Lokasi Teratas</h4>
+                      <div className="space-y-2 mt-2">
+                        {locationStats.length > 0 ? (
+                          locationStats.map((l, i) => (
+                            <div key={i} className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-2">
+                                <span className="w-4 h-4 rounded-full bg-blue-50 text-blue-600 text-[9px] font-bold flex items-center justify-center">{i + 1}</span>
+                                <span className="text-slate-600">{l.label}</span>
+                              </div>
+                              <span className="font-semibold text-slate-700">{l.value} pengunjung</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-[10px] text-slate-400">Belum ada data lokasi.</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

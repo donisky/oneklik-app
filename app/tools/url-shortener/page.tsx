@@ -12,6 +12,7 @@ import {
   Crown, Loader2, Globe, Palette, Lock, Sparkles, UserCircle
 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const BASE_URL = 'https://oneklik.my.id';
 
@@ -134,6 +135,41 @@ export default function ToolsUrlShortenerPage() {
     }
   };
 
+  // --- Helper untuk menampilkan avatar di tengah QR ---
+  const renderQRWithAvatar = () => {
+    if (!result) return null;
+    const avatarUrl = user?.avatar_url || null;
+    const initials = user?.full_name 
+      ? user.full_name.charAt(0).toUpperCase() 
+      : (session?.user?.email?.charAt(0).toUpperCase() || '?');
+
+    return (
+      <div className="relative inline-block">
+        <QRCodeSVG 
+          value={result.shortUrl} 
+          size={140} 
+          fgColor={design.fgColor} 
+          bgColor={design.bgColor}
+        />
+        {/* Avatar di tengah */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-full border-2 border-white shadow-md overflow-hidden w-10 h-10 flex items-center justify-center">
+          {avatarUrl ? (
+            <img 
+              src={avatarUrl} 
+              alt="Profile" 
+              className="w-full h-full object-cover transition-opacity duration-300 opacity-0"
+              onLoad={(e) => (e.currentTarget.style.opacity = '1')}
+            />
+          ) : (
+            <span className="text-xs font-bold text-blue-600 bg-blue-50 w-full h-full flex items-center justify-center">
+              {initials}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
@@ -175,7 +211,7 @@ export default function ToolsUrlShortenerPage() {
 
   // --- 5. KONTEN UTAMA (SUDAH LOGIN) ---
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col overflow-y-auto">
       <Toaster position="top-center" />
       
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 p-4 sticky top-0 z-10">
@@ -300,8 +336,8 @@ export default function ToolsUrlShortenerPage() {
                   </div>
                 </div>
                 <div className="md:border-l md:pl-6 flex flex-col items-center border-t md:border-t-0 pt-4 md:pt-0 border-gray-100 w-full md:w-auto">
-                  <div ref={qrRef} className="bg-white p-2 border rounded shadow-sm">
-                    <QRCodeSVG value={result.shortUrl} size={140} fgColor={design.fgColor} bgColor={design.bgColor} />
+                  <div ref={qrRef} className="bg-white p-2 border rounded shadow-sm relative">
+                    {renderQRWithAvatar()}
                   </div>
                   <p className="text-[10px] text-gray-400 mt-2">SCAN QR</p>
                 </div>
@@ -323,8 +359,22 @@ export default function ToolsUrlShortenerPage() {
                       { label: 'Elegant Ungu', fg: '#7C3AED', bg: '#F5F3FF' }
                     ].map((style, idx) => (
                       <div key={idx} onClick={() => setDesign({ fgColor: style.fg, bgColor: style.bg })} className="flex flex-col items-center p-4 rounded-xl border-2 transition-all cursor-pointer hover:shadow-md bg-white border-slate-200">
-                        <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
+                        <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100 relative">
                           <QRCodeSVG value={result.shortUrl} size={100} fgColor={style.fg} bgColor={style.bg} />
+                          {/* Avatar kecil di template preview */}
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-full border-2 border-white w-6 h-6 flex items-center justify-center overflow-hidden">
+                            {user?.avatar_url ? (
+                              <img 
+                                src={user.avatar_url} 
+                                alt="Profile" 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-[8px] font-bold text-blue-600">
+                                {user?.full_name?.charAt(0).toUpperCase() || '?'}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <p className="text-xs font-medium text-slate-600 mt-2">{style.label}</p>
                       </div>
