@@ -118,51 +118,65 @@ async function processCloudConvert(file: File, action: string, quality: string, 
 // --- PROSES: iLovePDF ---
 async function processILovePDF(file: File, action: string, outputFormat: string): Promise<Blob> {
   const apiKey = getNextILPKey();
-  if (!apiKey) throw new Error('ILP_QUOTA_EXCEEDED');
+  if (!apiKey) throw new Error('ILP_QUOTA_EXCEEDED'); // Tidak ada key tersisa
 
-  // 1. Mulai Task di iLovePDF
-  const startRes = await fetch('https://api.ilovepdf.com/v1/start', {
-    method: 'GET',
-    headers: { 'Authorization': `Bearer ${apiKey}` },
-  });
-  if (startRes.status === 429) throw new Error('ILP_QUOTA_EXCEEDED');
-  if (!startRes.ok) throw new Error('ILP_START_ERROR');
-  
-  const startData = await startRes.json();
-  const { task, server } = startData;
+  try {
+    // 1. Mulai Task di iLovePDF
+    const startRes = await fetch('https://api.ilovepdf.com/v1/start', {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+    });
 
-  // 2. Upload file
-  const uploadForm = new FormData();
-  uploadForm.append('file', file);
-  const uploadRes = await fetch(server, {
-    method: 'POST',
-    body: uploadForm,
-  });
-  if (!uploadRes.ok) throw new Error('ILP_UPLOAD_ERROR');
+    if (!startRes.ok) {
+      // Baca pesan error asli dari iLovePDF agar kita tahu persis masalahnya
+      const errorText = await startRes.text();
+      console.error('iLovePDF Start Error:', startRes.status, errorText);
 
-  // 3. Proses file (compress / convert)
-  const processRes = await fetch(`https://api.ilovepdf.com/v1/process`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      task: task,
-      tool: action === 'compress' ? 'compress' : 'convert',
-      output_format: outputFormat,
-    }),
-  });
-  if (processRes.status === 429) throw new Error('ILP_QUOTA_EXCEEDED');
-  if (!processRes.ok) throw new Error('ILP_PROCESS_ERROR');
+      // Jika status 429, 403, atau 400 -> anggap sebagai kuota habis / key invalid
+      if (startRes.status === 429 || startRes.status === 403 || startRes.status === 400) {
+        throw new Error('ILP_QUOTA_EXCEEDED');
+      }
+      throw new Error(`ILP_START_ERROR: ${startRes.status} - ${errorText}`);
+    }
 
-  // 4. Download hasil
-  const downloadRes = await fetch(`https://api.ilovepdf.com/v1/download/${task}`, {
-    headers: { 'Authorization': `Bearer ${apiKey}` },
-  });
-  if (!downloadRes.ok) throw new Error('ILP_DOWNLOAD_ERROR');
+    const startData = await startRes.json();
+    const { task, server } = startData;
 
-  return await downloadRes.blob();
+    // 2. Upload file
+    const uploadForm = new FormData();
+    uploadForm.append('file', file);
+    const uploadRes = await fetch(server, { method: 'POST', body: uploadForm });
+    if (!uploadRes.ok) throw new Error('ILP_UPLOAD_ERROR');
+
+    // 3. Proses file
+    const processRes = await fetch(`https://api.ilovepdf.com/v1/process`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task, tool: action === 'compress' ? 'compress' : 'convert', output_format: outputFormat }),
+    });
+    if (!processRes.ok) {
+      const errText = await processRes.text();
+      if (processRes.status === 429) throw new Error('ILP_QUOTA_EXCEEDED');
+      throw new Error(`ILP_PROCESS_ERROR: ${processRes.status} - ${errText}`);
+    }
+
+    // 4. Download hasil
+    const downloadRes = await fetch(`https://api.ilovepdf.com/v1/download/${task}`, {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+    });
+    if (!downloadRes.ok) throw new Error('ILP_DOWNLOAD_ERROR');
+
+    return await downloadRes.blob();
+
+  } catch (err: any) {
+    // Jika error adalah QUOTA, lemparkan ke atas agar sistem beralih ke provider berikutnya
+    if (err.message === 'ILP_QUOTA_EXCEEDED') {
+      throw new Error('ILP_QUOTA_EXCEEDED');
+    }
+    // Untuk error teknis lainnya, kita tetap lempar agar sistem tidak mati, tapi coba provider berikutnya
+    console.error('iLovePDF unexpected error:', err.message);
+    throw new Error('ILP_QUOTA_EXCEEDED'); // Paksa fallback ke provider berikutnya
+  }
 }
 
 // --- PROSES: Adobe (Acrobat) ---
