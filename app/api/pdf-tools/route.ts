@@ -5,7 +5,6 @@ import { NextRequest, NextResponse } from 'next/server';
 // ============================================
 export const runtime = 'nodejs';
 export const maxDuration = 60;
-
 // ============================================
 // 1. KONFIGURASI API KEYS (DARI ENVIRONMENT VARIABLES)
 // ============================================
