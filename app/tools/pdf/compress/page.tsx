@@ -15,6 +15,10 @@ import Link from 'next/link';
 import { saveAs } from 'file-saver';
 import { motion } from 'framer-motion';
 import { PDFDocument } from 'pdf-lib';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Konfigurasi worker PDF.js untuk render halaman
+pdfjsLib.GlobalWorkerOptions.workerSrc = '//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 /* =========================================================================
    COMPONENTS UI KUSTOM
@@ -93,7 +97,7 @@ export default function CompressPDF() {
     let ratio = 0.75;
     if (level === 'less') ratio = 0.85;        // Penghematan ~15%
     if (level === 'recommended') ratio = 0.45; // Penghematan ~55%
-    if (level === 'extreme') ratio = 0.25;     // Penghematan ~75%
+    if (level === 'extreme') ratio = 0.20;     // Penghematan ~80%
     
     const estimatedSize = Math.max(Math.round(file.size * ratio), 1024);
     const saving = Math.max(Math.round((1 - (estimatedSize / file.size)) * 100), 5);
@@ -149,7 +153,9 @@ export default function CompressPDF() {
     setIsSuccess(false);
   };
 
-  // --- LOGIKA KOMPRESI NYATA MENGGUNAKAN PDF-LIB ---
+  // =========================================================================
+  // LOGIKA KOMPRESI HYBRID (NATIVE CANVAS - SELEVEL KOMPETITOR)
+  // =========================================================================
   const handleCompress = async () => {
     if (!file) return alert('Pilih file PDF terlebih dahulu!');
     setIsCompressing(true);
@@ -157,24 +163,64 @@ export default function CompressPDF() {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
+      let compressedBytes: Uint8Array | Blob | null = null;
+
+      // --- LEVEL: LESS (Optimasi Struktur Saja - Pakai pdf-lib) ---
+      if (level === 'less') {
+        const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+        compressedBytes = await pdfDoc.save({
+          useObjectStreams: false,
+          addDefaultPage: false,
+        });
+      }
+      // --- LEVEL: RECOMMENDED & EXTREME (Pakai Canvas Native + JPG/PNG) ---
+      else {
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const pageCount = pdf.numPages;
+        const newPdf = await PDFDocument.create();
+
+        // Tentukan parameter kompresi
+        const scale = level === 'recommended' ? 0.8 : 0.4;
+        const quality = level === 'recommended' ? 0.7 : 0.5; // JPEG Quality
+
+        for (let i = 1; i <= pageCount; i++) {
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const context = canvas.getContext('2d')!;
+          
+          // Render halaman
+          await page.render({ canvasContext: context, viewport }).promise;
+
+          // Konversi canvas ke JPG dengan kualitas yang ditentukan
+          const blob = await new Promise<Blob | null>((resolve) => 
+            canvas.toBlob(resolve, 'image/jpeg', quality)
+          );
+          
+          if (!blob) throw new Error('Gagal mengonversi halaman ke gambar.');
+          
+          const imageBytes = await blob.arrayBuffer();
+          const jpgImage = await newPdf.embedJpg(imageBytes);
+          
+          const pageObj = newPdf.addPage([jpgImage.width, jpgImage.height]);
+          pageObj.drawImage(jpgImage, { x: 0, y: 0 });
+        }
+        compressedBytes = await newPdf.save();
+      }
+
+      // --- DOWNLOAD HASIL ---
+      if (!compressedBytes) throw new Error('Gagal memproses kompresi.');
+      let blob: Blob;
+      if (compressedBytes instanceof Blob) blob = compressedBytes;
+      else blob = new Blob([compressedBytes as any], { type: 'application/pdf' });
       
-      const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-
-      const compressedPdfBytes = await pdfDoc.save({
-        useObjectStreams: level !== 'less',
-        addDefaultPage: false,
-      });
-
-      // Diperbaiki dengan type casting (as any) untuk menghindari error TypeScript BlobPart
-      const blob = new Blob([compressedPdfBytes as any], { type: 'application/pdf' });
       const finalName = outputFileName ? `${outputFileName}.pdf` : `${file.name.replace(/\.[^/.]+$/, '')}_compressed.pdf`;
-      
       saveAs(blob, finalName);
       
       setIsSuccess(true);
-      setTimeout(() => {
-        setIsCompressing(false);
-      }, 2000);
+      setTimeout(() => setIsCompressing(false), 2000);
       
     } catch (err: any) {
       console.error('Compression error:', err);
@@ -523,8 +569,6 @@ export default function CompressPDF() {
             {/* 
               =========================================================================
               AREA KANAN: Panel Ringkasan (Responsif) & Tingkat Kompresi 
-              PERBAIKAN: sticky top-6 dipindahkan ke parent div pembungkus agar 
-              kedua panel menempel dengan sempurna saat di-scroll dan tidak saling menimpa.
               ========================================================================= 
             */}
             <div className="flex flex-col gap-6 sticky top-6 h-fit">
