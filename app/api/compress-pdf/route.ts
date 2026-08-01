@@ -1,53 +1,101 @@
+// app/api/compress-pdf/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { PDFDocument } from 'pdf-lib';
+
+const CLOUDCONVERT_API_KEY = 'MASUKKAN_API_KEY_ANDA_DISINI'; // Dapatkan di dashboard cloudconvert.com
 
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    const level = formData.get('level') as string || 'recommended'; // default recommended
+    const quality = formData.get('quality') as string || 'medium'; // 'low', 'medium', 'high'
 
     if (!file) {
-      return NextResponse.json({ error: 'Tidak ada file yang diunggah' }, { status: 400 });
+      return NextResponse.json({ error: 'File tidak ditemukan' }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const pdfDoc = await PDFDocument.load(bytes);
+    // 1. Dapatkan URL Upload dari CloudConvert
+    const uploadRes = await fetch('https://api.cloudconvert.com/v2/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        filename: file.name,
+      }),
+    });
 
-    // Simpan ulang dengan optimasi berdasarkan level
-    let options: any = { addDefaultPage: false };
-    
-    if (level === 'extreme') {
-      // Kompresi Ekstrem: Aktifkan object stream, buang semua metadata
-      options.useObjectStreams = true;
-      // pdf-lib tidak bisa re-encode gambar. Kita hanya bisa buang metadata.
-      // Untuk simulasi, kita akan menghapus metadata jika ada.
-      pdfDoc.setTitle('');
-      pdfDoc.setAuthor('');
-      pdfDoc.setSubject('');
-      pdfDoc.setKeywords([]);
-      pdfDoc.setCreator('');
-      pdfDoc.setProducer('');
-    } else if (level === 'recommended') {
-      // Kompresi Rekomendasi: Aktifkan object stream, pertahankan beberapa metadata dasar
-      options.useObjectStreams = true;
-    } else { // less
-      // Kompresi Rendah: Matikan object stream, pertahankan kualitas asli
-      options.useObjectStreams = false;
+    const uploadData = await uploadRes.json();
+    const { url, form } = uploadData.data;
+
+    // 2. Upload file asli ke CloudConvert
+    const uploadForm = new FormData();
+    Object.entries(form).forEach(([key, value]) => uploadForm.append(key, value as string));
+    uploadForm.append('file', file);
+
+    await fetch(url, {
+      method: 'POST',
+      body: uploadForm,
+    });
+
+    // 3. Konfigurasi Kompresi PDF (Persis iLovePDF)
+    const jobRes = await fetch('https://api.cloudconvert.com/v2/jobs', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        tasks: {
+          'compress': {
+            operation: 'compress',
+            input: 'upload',
+            engine: 'ghostscript', // Ghostscript Engine (Sama dengan iLovePDF)
+            profile: quality, // 'low' = 25 dpi, 'medium' = 72 dpi, 'high' = 150 dpi
+            output_format: 'pdf',
+          },
+        },
+      }),
+    });
+
+    const jobData = await jobRes.json();
+    const taskId = jobData.data.tasks.find((t: any) => t.name === 'compress').id;
+
+    // 4. Tunggu & Download Hasil
+    let resultUrl: string | null = null;
+    let attempts = 0;
+    while (!resultUrl && attempts < 20) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Polling tiap 1 detik
+      
+      const statusRes = await fetch(`https://api.cloudconvert.com/v2/tasks/${taskId}`, {
+        headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}` },
+      });
+      const statusData = await statusRes.json();
+      
+      if (statusData.data.status === 'finished') {
+        resultUrl = statusData.data.result.files[0].url;
+      } else if (statusData.data.status === 'error') {
+        throw new Error('Gagal mengompres');
+      }
+      attempts++;
     }
 
-    const compressedBytes = await pdfDoc.save(options);
+    if (!resultUrl) throw new Error('Timeout kompresi');
 
-    return new NextResponse(Buffer.from(compressedBytes), {
-      status: 200,
+    // 5. Ambil file hasil dari CloudConvert
+    const resultRes = await fetch(resultUrl);
+    const resultBlob = await resultRes.blob();
+
+    // 6. Kembalikan ke Browser
+    return new NextResponse(resultBlob, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="compressed_${file.name}"`,
+        'Content-Disposition': `attachment; filename="${file.name.replace('.pdf', '')}_compressed.pdf"`,
       },
     });
 
-  } catch (error) {
-    console.error('Compression error:', error);
-    return NextResponse.json({ error: 'Gagal mengkompres PDF' }, { status: 500 });
+  } catch (error: any) {
+    console.error('API Error:', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
