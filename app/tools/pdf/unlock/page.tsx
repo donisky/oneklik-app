@@ -45,6 +45,10 @@ export default function UnlockPDF() {
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  // --- STATE BARU: Deteksi status file ---
+  const [isLocked, setIsLocked] = useState(false);
+  const [needsPassword, setNeedsPassword] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClientComponentClient();
   const router = useRouter();
@@ -55,6 +59,34 @@ export default function UnlockPDF() {
       setLoading(false);
     });
   }, [supabase]);
+
+  // --- DETEKSI OTOMATIS SAAT FILE DIUPLOAD ---
+  useEffect(() => {
+    const checkFileLock = async () => {
+      if (!file) {
+        setIsLocked(false);
+        setNeedsPassword(false);
+        setPassword('');
+        setIsSuccess(false);
+        return;
+      }
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        // Coba buka tanpa password
+        await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+        // Berhasil: file tidak terkunci
+        setIsLocked(false);
+        setNeedsPassword(false);
+      } catch (err: any) {
+        // Gagal: file terkunci (kemungkinan butuh password)
+        setIsLocked(true);
+        setNeedsPassword(true);
+      }
+    };
+
+    checkFileLock();
+  }, [file]);
 
   // --- FORMAT UKURAN FILE ---
   const formatFileSize = (bytes: number) => {
@@ -99,9 +131,31 @@ export default function UnlockPDF() {
     setIsSuccess(false);
   };
 
-  // --- LOGIKA UNLOCK (DECRYPT) PDF MENGGUNAKAN PDF-LIB ---
+  // --- LOGIKA UNLOCK (MIRIP ILOVEPDF) ---
   const handleUnlock = async () => {
     if (!file) return;
+
+    // Kasus 1: File tidak terkunci sama sekali
+    if (!isLocked) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+        const pdfBytes = await pdfDoc.save();
+        const originalName = file.name.replace(/\.[^/.]+$/, "");
+        saveAs(new Blob([pdfBytes as any], { type: 'application/pdf' }), `${originalName}_unlocked.pdf`);
+        setIsSuccess(true);
+        setTimeout(() => {
+          setIsSuccess(false);
+          setFile(null);
+          setPassword('');
+        }, 3500);
+      } catch (error) {
+        alert("Terjadi kesalahan saat mengunduh file.");
+      }
+      return;
+    }
+
+    // Kasus 2: File terkunci, wajib password
     if (!password.trim()) {
       alert("Harap masukkan password terlebih dahulu!");
       return;
@@ -112,15 +166,10 @@ export default function UnlockPDF() {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      
-      // PERBAIKAN TS ERROR: Menambahkan 'as any' pada opsi loadOptions
       const pdfDoc = await PDFDocument.load(arrayBuffer, { password: password } as any);
       
-      // Jika berhasil tembus (tidak throw error), simpan PDF tanpa password
       const pdfBytes = await pdfDoc.save();
       const originalName = file.name.replace(/\.[^/.]+$/, "");
-      
-      // Fix TS Error Uint8Array to BlobPart dengan 'as any'
       saveAs(new Blob([pdfBytes as any], { type: 'application/pdf' }), `${originalName}_unlocked.pdf`);
       
       setIsSuccess(true);
@@ -388,9 +437,16 @@ export default function UnlockPDF() {
                         </div>
                         
                         <div className="flex items-center gap-3 flex-shrink-0">
-                          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-bold border border-red-100">
-                             <Lock size={12} /> Terkunci
-                          </span>
+                          {/* BADGE STATUS AKURAT (BERUBAH SESUAI DETEKSI) */}
+                          {isLocked ? (
+                            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-bold border border-red-100">
+                              <Lock size={12} /> Terkunci
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-600 rounded-lg text-xs font-bold border border-green-100">
+                              <Unlock size={12} /> Tidak Terkunci
+                            </span>
+                          )}
                           <button className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-blue-600 rounded-lg shadow-sm transition-colors">
                              <Eye size={16} />
                           </button>
@@ -401,64 +457,66 @@ export default function UnlockPDF() {
                      </div>
                   </div>
 
-                  {/* FORM INPUT PASSWORD */}
-                  <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-6">
-                     <h3 className="text-base font-bold text-slate-900 mb-1">Masukkan Password PDF</h3>
-                     <p className="text-xs text-slate-500 mb-6">File ini dilindungi password. Masukkan password untuk membukanya.</p>
-                     
-                     <div className="flex flex-col md:flex-row items-start gap-4">
-                        <div className="flex-1 w-full space-y-4">
-                           {/* Input with Icon & Toggle */}
-                           <div className="relative">
-                              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <Lock size={18} className="text-slate-400" />
-                              </div>
-                              <input 
-                                type={showPassword ? 'text' : 'password'}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Masukkan password"
-                                className="w-full pl-11 pr-11 py-3.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 focus:ring-2 focus:ring-purple-500 outline-none transition-shadow"
-                              />
-                              <button 
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)} 
-                                className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600"
-                              >
-                                {showPassword ? <EyeOff size={18}/> : <Eye size={18} />}
-                              </button>
-                           </div>
+                  {/* FORM INPUT PASSWORD (HANYA MUNCUL JIKA TERKUNCI) */}
+                  {isLocked && (
+                    <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-6">
+                       <h3 className="text-base font-bold text-slate-900 mb-1">Masukkan Password PDF</h3>
+                       <p className="text-xs text-slate-500 mb-6">File ini dilindungi password. Masukkan password untuk membukanya.</p>
+                       
+                       <div className="flex flex-col md:flex-row items-start gap-4">
+                          <div className="flex-1 w-full space-y-4">
+                             {/* Input with Icon & Toggle */}
+                             <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                  <Lock size={18} className="text-slate-400" />
+                                </div>
+                                <input 
+                                  type={showPassword ? 'text' : 'password'}
+                                  value={password}
+                                  onChange={(e) => setPassword(e.target.value)}
+                                  placeholder="Masukkan password"
+                                  className="w-full pl-11 pr-11 py-3.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 focus:ring-2 focus:ring-purple-500 outline-none transition-shadow"
+                                />
+                                <button 
+                                  type="button"
+                                  onClick={() => setShowPassword(!showPassword)} 
+                                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600"
+                                >
+                                  {showPassword ? <EyeOff size={18}/> : <Eye size={18} />}
+                                </button>
+                             </div>
 
-                           <button 
-                             onClick={handleUnlock}
-                             disabled={!password || isUnlocking}
-                             className={`
-                               w-full py-3.5 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all shadow-md
-                               ${isSuccess ? 'bg-green-500 text-white shadow-green-200' : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:opacity-90 text-white shadow-purple-200'}
-                               disabled:opacity-50 disabled:cursor-not-allowed
-                             `}
-                           >
-                             {isUnlocking ? (
-                               <><Loader2 size={18} className="animate-spin" /> Membuka...</>
-                             ) : isSuccess ? (
-                               <><CheckCircle2 size={18} /> Berhasil!</>
-                             ) : (
-                               <><UnlockKeyhole size={18} /> Unlock PDF</>
-                             )}
-                           </button>
-                        </div>
-                        
-                        {/* Info Box */}
-                        <div className="w-full md:w-64 bg-slate-50 rounded-xl p-5 border border-slate-100 flex flex-col justify-center h-full">
-                           <h4 className="text-sm font-bold text-blue-700 mb-1.5 flex items-center gap-1.5">
-                              Tidak tahu password?
-                           </h4>
-                           <p className="text-[11px] text-slate-500 leading-relaxed">
-                              Kami tidak dapat membuka password file Anda. Silakan hubungi pemilik file.
-                           </p>
-                        </div>
-                     </div>
-                  </div>
+                             <button 
+                               onClick={handleUnlock}
+                               disabled={!password || isUnlocking}
+                               className={`
+                                 w-full py-3.5 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all shadow-md
+                                 ${isSuccess ? 'bg-green-500 text-white shadow-green-200' : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:opacity-90 text-white shadow-purple-200'}
+                                 disabled:opacity-50 disabled:cursor-not-allowed
+                               `}
+                             >
+                               {isUnlocking ? (
+                                 <><Loader2 size={18} className="animate-spin" /> Membuka...</>
+                               ) : isSuccess ? (
+                                 <><CheckCircle2 size={18} /> Berhasil!</>
+                               ) : (
+                                 <><UnlockKeyhole size={18} /> Unlock PDF</>
+                               )}
+                             </button>
+                          </div>
+                          
+                          {/* Info Box */}
+                          <div className="w-full md:w-64 bg-slate-50 rounded-xl p-5 border border-slate-100 flex flex-col justify-center h-full">
+                             <h4 className="text-sm font-bold text-blue-700 mb-1.5 flex items-center gap-1.5">
+                                Tidak tahu password?
+                             </h4>
+                             <p className="text-[11px] text-slate-500 leading-relaxed">
+                                Kami tidak dapat membuka password file Anda. Silakan hubungi pemilik file.
+                             </p>
+                          </div>
+                       </div>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -500,9 +558,15 @@ export default function UnlockPDF() {
                   <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                     <span className="text-xs text-slate-500">Status</span>
                     {file ? (
-                       <span className="flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-500 rounded text-[9px] font-bold border border-red-100">
-                          <Lock size={10} /> Terkunci
-                       </span>
+                       isLocked ? (
+                         <span className="flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-500 rounded text-[9px] font-bold border border-red-100">
+                            <Lock size={10} /> Terkunci
+                         </span>
+                       ) : (
+                         <span className="flex items-center gap-1 px-1.5 py-0.5 bg-green-50 text-green-600 rounded text-[9px] font-bold border border-green-100">
+                            <Check size={10} /> Tidak Terkunci
+                         </span>
+                       )
                     ) : (
                        <span className="text-xs font-bold text-slate-800">-</span>
                     )}
@@ -513,7 +577,7 @@ export default function UnlockPDF() {
                   </div>
                   <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                     <span className="text-xs text-slate-500">Proteksi</span>
-                    <span className="text-xs font-bold text-slate-800">{file ? 'Password' : '-'}</span>
+                    <span className="text-xs font-bold text-slate-800">{file ? (isLocked ? 'Password' : 'Tidak Ada') : '-'}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-slate-500">Halaman</span>

@@ -130,6 +130,7 @@ export default function ConvertPDF() {
     setIsSuccess(false);
 
     try {
+      // ==================== CLIENT-SIDE (TETAP PERTAHANKAN) ====================
       if (conversionType === 'jpg-to-pdf') {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -151,6 +152,7 @@ export default function ConvertPDF() {
           setTimeout(() => { setFile(null); setPreview(null); setIsConverting(false); setIsSuccess(false); }, 3000);
         };
         reader.readAsDataURL(file);
+        return; // Selesai, keluar dari fungsi
       } 
       else if (conversionType === 'pdf-to-jpg') {
         const arrayBuffer = await file.arrayBuffer();
@@ -180,7 +182,7 @@ export default function ConvertPDF() {
               setTimeout(() => { setFile(null); setPreview(null); setIsConverting(false); setIsSuccess(false); }, 3000);
             }
           }, 'image/jpeg', 1.0);
-          return;
+          return; // Selesai, keluar dari fungsi
         }
 
         const JSZip = (await import('jszip')).default;
@@ -215,60 +217,49 @@ export default function ConvertPDF() {
         saveAs(content, `${outputFileName || 'konversi_pdf_ke_jpg'}.zip`);
         setIsSuccess(true);
         setTimeout(() => { setFile(null); setPreview(null); setIsConverting(false); setIsSuccess(false); }, 3000);
-      } 
-      else if (['word-to-pdf', 'pptx-to-pdf', 'excel-to-pdf', 'html-to-pdf'].includes(conversionType)) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('type', conversionType);
-
-        const response = await fetch('/api/convert-doc', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const errText = await response.text();
-          throw new Error(errText || 'Gagal mengonversi dokumen');
-        }
-        
-        const blob = await response.blob();
-        saveAs(blob, `${outputFileName || 'converted'}.pdf`);
-        
-        setIsSuccess(true);
-        setTimeout(() => { setFile(null); setPreview(null); setIsConverting(false); setIsSuccess(false); }, 3000);
+        return; // Selesai, keluar dari fungsi
       }
-      else if (['pdf-to-word', 'pdf-to-pptx', 'pdf-to-excel', 'pdf-to-pdfa'].includes(conversionType)) {
-        const target = conversionType.split('-')[2]; 
 
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('type', target);
+      // ==================== API CALL (MASTER ROUTE) ====================
+      // Untuk semua format lainnya (Word, Excel, PPT, PDFA, dll)
+      const formatMap: Record<string, string> = {
+        'word-to-pdf': 'pdf',
+        'pptx-to-pdf': 'pdf',
+        'excel-to-pdf': 'pdf',
+        'html-to-pdf': 'pdf',
+        'pdf-to-word': 'docx',
+        'pdf-to-pptx': 'pptx',
+        'pdf-to-excel': 'xlsx',
+        'pdf-to-pdfa': 'pdf'
+      };
+      const outputFormat = formatMap[conversionType];
 
-        const response = await fetch('/api/convert-pdf-out', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text(); 
-          throw new Error(`Server gagal memproses (Status: ${response.status}): ${errorText}`);
-        }
-        
-        const blob = await response.blob();
-        let ext = 'pdf';
-        if (target === 'word') ext = 'docx';
-        else if (target === 'excel') ext = 'xlsx';
-        else if (target === 'pptx') ext = 'pptx';
-
-        saveAs(blob, `${outputFileName || 'oneklik_convert'}.${ext}`);
-        
-        setIsSuccess(true);
-        setTimeout(() => { setFile(null); setPreview(null); setIsConverting(false); setIsSuccess(false); }, 3000);
+      if (!outputFormat) {
+        throw new Error('Tipe konversi tidak dikenali.');
       }
-      else {
-        alert('Tipe konversi tidak dikenali.');
-        setIsConverting(false);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('action', 'convert');
+      formData.append('outputFormat', outputFormat);
+
+      const response = await fetch('/api/pdf-tools', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server gagal memproses (Status: ${response.status}): ${errorText}`);
       }
+      
+      const blob = await response.blob();
+      let ext = outputFormat === 'pdf' ? 'pdf' : outputFormat;
+
+      saveAs(blob, `${outputFileName || 'oneklik_convert'}.${ext}`);
+      
+      setIsSuccess(true);
+      setTimeout(() => { setFile(null); setPreview(null); setIsConverting(false); setIsSuccess(false); }, 3000);
 
     } catch (error: any) {
       console.error('Full conversion error:', error);

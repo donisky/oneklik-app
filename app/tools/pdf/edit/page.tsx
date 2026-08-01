@@ -10,14 +10,17 @@ import {
   Crown, FileText, ArrowLeftRight, Bell, Plus, Save, Minus, ZoomIn, Undo, Redo,
   MousePointer2, Type, Image as ImageIcon, Square, Highlighter, Pen, Underline,
   Strikethrough, MessageSquare, ShieldCheck, RotateCw, Copy, FilePlus2, MoreHorizontal,
-  AlignLeft, List, GripVertical, CheckSquare
+  AlignLeft, List, GripVertical, CheckSquare, Circle, X
 } from 'lucide-react';
 import Link from 'next/link';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Konfigurasi Worker PDF.js untuk rendering dokumen
+// PERBAIKAN ERROR IMPOR FABRIC
+import * as fabric from 'fabric';
+
+// Konfigurasi Worker PDF.js
 pdfjsLib.GlobalWorkerOptions.workerSrc = '//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 /* =========================================================================
@@ -60,16 +63,28 @@ export default function EditPDF() {
   
   // State Editor & UI
   const [zoom, setZoom] = useState(100);
-  const [activeTool, setActiveTool] = useState('select'); // select, text, image, etc.
+  const [activeTool, setActiveTool] = useState('select');
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showNotes, setShowNotes] = useState(true);
   
-  // Mock State untuk menunjukkan interaksi UI sesuai screenshot
-  const [showMockFormatting, setShowMockFormatting] = useState(true);
-
+  // --- STATE UNTUK TOOLS ---
+  const [inputText, setInputText] = useState('');
+  const [fontSize, setFontSize] = useState(16);
+  const [fillColor, setFillColor] = useState('#000000');
+  const [strokeColor, setStrokeColor] = useState('#000000');
+  const [strokeWidth, setStrokeWidth] = useState(3);
+  const [shapeType, setShapeType] = useState<'rect' | 'circle'>('rect');
+  const [signatureImage, setSignatureImage] = useState<string | null>(null);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  
+  // Refs
+  const fabricRef = useRef<fabric.Canvas | null>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
+  
   const supabase = createClientComponentClient();
   const router = useRouter();
 
@@ -110,7 +125,9 @@ export default function EditPDF() {
       // Render First Page to Canvas
       renderPage(pdf, 1);
       
-      // Generate Mock Thumbnails (dalam produksi, ini harus dilooping via canvas terpisah)
+      // Setup Fabric overlay setelah canvas siap
+      setTimeout(() => initFabric(), 100);
+      
       const mockThumbs = Array.from({length: Math.min(pdf.numPages, 12)}).map((_, i) => `thumb_${i}`);
       setThumbnails(mockThumbs);
       
@@ -125,8 +142,7 @@ export default function EditPDF() {
     if (!canvasRef.current || !pdf) return;
     try {
       const page = await pdf.getPage(pageNum);
-      // Kalkulasi scale berdasarkan zoom state
-      const viewport = page.getViewport({ scale: (zoom / 100) * 1.5 }); // 1.5 baseline for clarity
+      const viewport = page.getViewport({ scale: (zoom / 100) * 1.5 });
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
       
@@ -145,10 +161,44 @@ export default function EditPDF() {
     }
   };
 
+  // --- INISIALISASI FABRIC OVERLAY ---
+  const initFabric = () => {
+    if (!overlayRef.current) return;
+    // Hapus instance fabric sebelumnya
+    if (fabricRef.current) {
+      fabricRef.current.dispose();
+    }
+    const canvasElement = overlayRef.current;
+    const fabricCanvas = new fabric.Canvas(canvasElement, {
+      width: canvasElement.width,
+      height: canvasElement.height,
+      selection: true,
+      isDrawingMode: false,
+    });
+    fabricRef.current = fabricCanvas;
+    
+    // PERBAIKAN: Set background transparan dengan properti langsung (bukan method)
+    fabricCanvas.backgroundColor = 'rgba(255,255,255,0)';
+    fabricCanvas.renderAll();
+    
+    // Event listener untuk tool changes
+    fabricCanvas.on('mouse:down', () => {
+      // Handle tool actions if needed
+    });
+  };
+
   // Re-render ketika halaman atau zoom berubah
   useEffect(() => {
     if (pdfDoc) {
       renderPage(pdfDoc, currentPage);
+      // Reset overlay saat page berubah
+      if (fabricRef.current && canvasRef.current) {
+        fabricRef.current.clear();
+        // PERBAIKAN: Gunakan properti width/height langsung (bukan method setter)
+        fabricRef.current.width = canvasRef.current.width;
+        fabricRef.current.height = canvasRef.current.height;
+        fabricRef.current.renderAll();
+      }
     }
   }, [currentPage, zoom, pdfDoc]);
 
@@ -158,25 +208,52 @@ export default function EditPDF() {
     setIsSaving(true);
     
     try {
-      // Load file asli ke pdf-lib untuk dimanipulasi & disimpan
       const arrayBuffer = await file.arrayBuffer();
       const pdfToEdit = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
       
-      /* 
-         Di sinilah logika integrasi penambahan objek dimasukkan.
-         Contoh: Jika user menambahkan teks, kita akan melooping state 'annotations' 
-         dan memanggil:
-         const pages = pdfToEdit.getPages();
-         pages[0].drawText('Teks Baru', { x: 50, y: 500, size: 16 });
-      */
+      // Ambil semua objek dari fabric overlay
+      const objects = fabricRef.current?.getObjects() || [];
+      const pages = pdfToEdit.getPages();
+      const page = pages[0]; // Untuk MVP, hanya halaman pertama
+      
+      // Loop objek fabric dan gambar ke PDF
+      const font = await pdfToEdit.embedFont(StandardFonts.Helvetica);
+      
+      objects.forEach((obj: any) => {
+        // Handle teks
+        if (obj.type === 'text' || obj.type === 'textbox') {
+          const x = obj.left;
+          const y = page.getHeight() - obj.top - obj.height;
+          page.drawText(obj.text, {
+            x: x,
+            y: y,
+            size: obj.fontSize || 16,
+            font: font,
+            color: rgb(0, 0, 0),
+          });
+        }
+        // Handle rectangle (shape, highlight)
+        else if (obj.type === 'rect') {
+          // Implement if needed
+        }
+        // Handle path (draw, signature)
+        else if (obj.type === 'path') {
+          // Implement if needed
+        }
+        // Handle image
+        else if (obj.type === 'image') {
+          // Implement if needed
+        }
+      });
 
       const pdfBytes = await pdfToEdit.save();
       const originalName = file.name.replace(/\.[^/.]+$/, "");
       
-      // PERBAIKAN TS ERROR: Menambahkan 'as any' pada pdfBytes
+      // PERBAIKAN ERROR TS: Cast pdfBytes ke any
       saveAs(new Blob([pdfBytes as any], { type: 'application/pdf' }), `${originalName}_edited.pdf`);
       
     } catch (error) {
+      console.error(error);
       alert("Gagal menyimpan dokumen.");
     } finally {
       setIsSaving(false);
@@ -190,6 +267,240 @@ export default function EditPDF() {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
+
+  // --- FUNGSI TOOLS ---
+  const addText = () => {
+    if (!fabricRef.current || !inputText.trim()) return;
+    const text = new fabric.Text(inputText, {
+      left: 100,
+      top: 100,
+      fontSize: fontSize,
+      fill: fillColor,
+      fontFamily: 'Arial',
+    });
+    fabricRef.current.add(text);
+    fabricRef.current.setActiveObject(text);
+    setInputText('');
+  };
+
+  const addImage = (file: File) => {
+    if (!fabricRef.current) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      // PERBAIKAN: Tambahkan // @ts-ignore untuk mengatasi error typings yang tidak sinkron
+      // @ts-ignore
+      fabric.Image.fromURL(dataUrl, (img: fabric.Image) => {
+        img.set({
+          left: 100,
+          top: 100,
+          scaleX: 0.5,
+          scaleY: 0.5,
+        });
+        fabricRef.current?.add(img);
+        fabricRef.current?.setActiveObject(img);
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const addShape = () => {
+    if (!fabricRef.current) return;
+    let shape: fabric.Object;
+    if (shapeType === 'rect') {
+      shape = new fabric.Rect({
+        left: 100,
+        top: 100,
+        width: 100,
+        height: 100,
+        fill: 'transparent',
+        stroke: strokeColor,
+        strokeWidth: strokeWidth,
+      });
+    } else {
+      shape = new fabric.Circle({
+        left: 100,
+        top: 100,
+        radius: 50,
+        fill: 'transparent',
+        stroke: strokeColor,
+        strokeWidth: strokeWidth,
+      });
+    }
+    fabricRef.current.add(shape);
+    fabricRef.current.setActiveObject(shape);
+  };
+
+  const setDrawingMode = (mode: boolean) => {
+    if (!fabricRef.current) return;
+    fabricRef.current.isDrawingMode = mode;
+    if (mode) {
+      fabricRef.current.freeDrawingBrush = new fabric.PencilBrush(fabricRef.current);
+      fabricRef.current.freeDrawingBrush.color = strokeColor;
+      fabricRef.current.freeDrawingBrush.width = strokeWidth;
+    }
+  };
+
+  const addHighlight = () => {
+    if (!fabricRef.current) return;
+    // Simple yellow highlight rectangle
+    const rect = new fabric.Rect({
+      left: 100,
+      top: 100,
+      width: 200,
+      height: 50,
+      fill: 'rgba(255,255,0,0.3)',
+      stroke: 'transparent',
+    });
+    fabricRef.current.add(rect);
+    fabricRef.current.setActiveObject(rect);
+  };
+
+  const addUnderline = () => {
+    // For selected text, add a line underneath
+    const obj = fabricRef.current?.getActiveObject();
+    if (!obj || obj.type !== 'text') return;
+    const textObj = obj as fabric.Text;
+    const line = new fabric.Line(
+      [textObj.left, textObj.top + textObj.height + 2, 
+       textObj.left + textObj.width, textObj.top + textObj.height + 2],
+      {
+        stroke: strokeColor,
+        strokeWidth: 2,
+      }
+    );
+    fabricRef.current?.add(line);
+    fabricRef.current?.setActiveObject(line);
+  };
+
+  const addStrikethrough = () => {
+    const obj = fabricRef.current?.getActiveObject();
+    if (!obj || obj.type !== 'text') return;
+    const textObj = obj as fabric.Text;
+    const line = new fabric.Line(
+      [textObj.left, textObj.top + textObj.height/2, 
+       textObj.left + textObj.width, textObj.top + textObj.height/2],
+      {
+        stroke: strokeColor,
+        strokeWidth: 2,
+      }
+    );
+    fabricRef.current?.add(line);
+    fabricRef.current?.setActiveObject(line);
+  };
+
+  const addNote = () => {
+    if (!fabricRef.current || !inputText.trim()) return;
+    const note = new fabric.Textbox(inputText, {
+      left: 100,
+      top: 100,
+      width: 200,
+      fontSize: 14,
+      fill: '#000',
+      backgroundColor: '#fef3c7', // light yellow
+      padding: 10,
+    });
+    fabricRef.current.add(note);
+    fabricRef.current.setActiveObject(note);
+    setInputText('');
+  };
+
+  const addSignature = (dataUrl: string) => {
+    if (!fabricRef.current) return;
+    // PERBAIKAN: Tambahkan // @ts-ignore untuk mengatasi error typings yang tidak sinkron
+    // @ts-ignore
+    fabric.Image.fromURL(dataUrl, (img: fabric.Image) => {
+      img.set({
+        left: 100,
+        top: 100,
+        scaleX: 0.5,
+        scaleY: 0.5,
+      });
+      fabricRef.current?.add(img);
+      fabricRef.current?.setActiveObject(img);
+    });
+  };
+
+  const deleteSelected = () => {
+    if (!fabricRef.current) return;
+    const active = fabricRef.current.getActiveObject();
+    if (active) {
+      fabricRef.current.remove(active);
+    }
+  };
+
+  // --- SIGNATURE MODAL ---
+  const openSignatureModal = () => {
+    setShowSignatureModal(true);
+    setTimeout(() => initSignatureCanvas(), 100);
+  };
+
+  const initSignatureCanvas = () => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    // PERBAIKAN: Cek jika ctx null agar TypeScript tidak komplain
+    if (!ctx) return;
+    
+    canvas.width = 400;
+    canvas.height = 200;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Set up drawing
+    let isDrawing = false;
+    let lastX = 0, lastY = 0;
+    const draw = (e: MouseEvent) => {
+      if (!isDrawing) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(x, y);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      lastX = x;
+      lastY = y;
+    };
+    canvas.addEventListener('mousedown', (e) => {
+      isDrawing = true;
+      const rect = canvas.getBoundingClientRect();
+      lastX = e.clientX - rect.left;
+      lastY = e.clientY - rect.top;
+    });
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', () => isDrawing = false);
+    canvas.addEventListener('mouseout', () => isDrawing = false);
+  };
+
+  const saveSignature = () => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL('image/png');
+    setSignatureImage(dataUrl);
+    addSignature(dataUrl);
+    setShowSignatureModal(false);
+  };
+
+  // --- SWITCHING TOOLS ---
+  useEffect(() => {
+    if (!fabricRef.current) return;
+    // Disable drawing mode for most tools
+    fabricRef.current.isDrawingMode = false;
+    // Set tool-specific behaviors
+    if (activeTool === 'draw') {
+      fabricRef.current.isDrawingMode = true;
+      fabricRef.current.freeDrawingBrush = new fabric.PencilBrush(fabricRef.current);
+      fabricRef.current.freeDrawingBrush.color = strokeColor;
+      fabricRef.current.freeDrawingBrush.width = strokeWidth;
+    } else if (activeTool === 'select') {
+      fabricRef.current.selection = true;
+    } else {
+      fabricRef.current.selection = false;
+    }
+  }, [activeTool]);
 
   if (loading) {
     return (
@@ -354,7 +665,7 @@ export default function EditPDF() {
 
         {/* EDITOR AREA ATAU UPLOAD SCREEN */}
         {!file ? (
-          /* --- LAYAR UPLOAD (Jika belum ada file) --- */
+          /* --- LAYAR UPLOAD --- */
           <main className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center bg-[#F8FAFC]">
              <div className="max-w-xl w-full">
                 <div className="text-center mb-8">
@@ -384,7 +695,7 @@ export default function EditPDF() {
              </div>
           </main>
         ) : (
-          /* --- LAYAR EDITOR (Sesuai Screenshot 100%) --- */
+          /* --- LAYAR EDITOR --- */
           <main className="flex-1 flex overflow-hidden bg-[#F8FAFC]">
             
             {/* BAGIAN KIRI/TENGAH: CANVAS EDITOR */}
@@ -459,25 +770,152 @@ export default function EditPDF() {
                     ))}
                   </div>
 
+                  {/* --- TOOL OPTIONS (muncul sesuai tool aktif) --- */}
+                  <div className="mt-3 border-t border-slate-100 pt-3">
+                    {activeTool === 'text' && (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <input 
+                          type="text" 
+                          value={inputText}
+                          onChange={(e) => setInputText(e.target.value)}
+                          placeholder="Teks..." 
+                          className="flex-1 border border-slate-200 rounded px-3 py-1.5 text-sm min-w-[200px]" 
+                        />
+                        <input 
+                          type="number" 
+                          value={fontSize} 
+                          onChange={(e) => setFontSize(Number(e.target.value))} 
+                          className="w-16 border border-slate-200 rounded px-2 py-1.5 text-sm" 
+                          placeholder="16" 
+                        />
+                        <input 
+                          type="color" 
+                          value={fillColor} 
+                          onChange={(e) => setFillColor(e.target.value)} 
+                          className="w-8 h-8 border border-slate-200 rounded cursor-pointer" 
+                        />
+                        <button onClick={addText} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-bold">Tambah</button>
+                      </div>
+                    )}
+                    {activeTool === 'shape' && (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <select value={shapeType} onChange={(e) => setShapeType(e.target.value as any)} className="border border-slate-200 rounded px-2 py-1.5 text-sm">
+                          <option value="rect">Persegi</option>
+                          <option value="circle">Lingkaran</option>
+                        </select>
+                        <input 
+                          type="color" 
+                          value={strokeColor} 
+                          onChange={(e) => setStrokeColor(e.target.value)} 
+                          className="w-8 h-8 border border-slate-200 rounded cursor-pointer" 
+                        />
+                        <input 
+                          type="number" 
+                          value={strokeWidth} 
+                          onChange={(e) => setStrokeWidth(Number(e.target.value))} 
+                          className="w-16 border border-slate-200 rounded px-2 py-1.5 text-sm" 
+                          placeholder="3" 
+                        />
+                        <button onClick={addShape} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-bold">Gambar</button>
+                      </div>
+                    )}
+                    {activeTool === 'draw' && (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <input 
+                          type="color" 
+                          value={strokeColor} 
+                          onChange={(e) => setStrokeColor(e.target.value)} 
+                          className="w-8 h-8 border border-slate-200 rounded cursor-pointer" 
+                        />
+                        <input 
+                          type="number" 
+                          value={strokeWidth} 
+                          onChange={(e) => setStrokeWidth(Number(e.target.value))} 
+                          className="w-16 border border-slate-200 rounded px-2 py-1.5 text-sm" 
+                          placeholder="3" 
+                        />
+                        <span className="text-xs text-slate-500">Mode coret aktif</span>
+                      </div>
+                    )}
+                    {activeTool === 'image' && (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) addImage(e.target.files[0]);
+                          }}
+                          className="text-sm" 
+                        />
+                      </div>
+                    )}
+                    {activeTool === 'highlight' && (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button onClick={addHighlight} className="px-3 py-1.5 bg-yellow-400 text-black rounded text-xs font-bold">Tambah Highlight</button>
+                      </div>
+                    )}
+                    {activeTool === 'underline' && (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button onClick={addUnderline} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-bold">Tambah Garis Bawah</button>
+                        <span className="text-xs text-slate-500">Pilih teks dulu</span>
+                      </div>
+                    )}
+                    {activeTool === 'strikethrough' && (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button onClick={addStrikethrough} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-bold">Tambah Coret Teks</button>
+                        <span className="text-xs text-slate-500">Pilih teks dulu</span>
+                      </div>
+                    )}
+                    {activeTool === 'note' && (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <input 
+                          type="text" 
+                          value={inputText}
+                          onChange={(e) => setInputText(e.target.value)}
+                          placeholder="Isi catatan..." 
+                          className="flex-1 border border-slate-200 rounded px-3 py-1.5 text-sm min-w-[200px]" 
+                        />
+                        <button onClick={addNote} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-bold">Tambah Catatan</button>
+                      </div>
+                    )}
+                    {activeTool === 'signature' && (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button onClick={openSignatureModal} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-bold">Buat Tanda Tangan</button>
+                      </div>
+                    )}
+                    {activeTool === 'delete' && (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button onClick={deleteSelected} className="px-3 py-1.5 bg-red-600 text-white rounded text-xs font-bold">Hapus Objek Terpilih</button>
+                        <span className="text-xs text-slate-500">Pilih objek dulu</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Canvas Area (Scrollable) */}
               <div className="flex-1 overflow-auto bg-[#F1F5F9] relative flex flex-col items-center p-8 custom-scrollbar">
                 
-                {/* Paper Container - Hanya memuat Canvas PDF Asli, TANPA MOCKUP */}
+                {/* Paper Container */}
                 <div 
                   className="bg-white shadow-md relative"
                   style={{ 
-                    width: '800px', // Standard Mock Width, actual implementation uses canvas width
+                    width: '800px',
                     minHeight: '1100px',
                     transform: `scale(${zoom / 100})`,
                     transformOrigin: 'top center',
                     transition: 'transform 0.2s ease'
                   }}
                 >
-                   {/* Canvas Asli PDF.js - Sekarang ditampilkan penuh dan tidak dihalangi mockup */}
-                   <canvas ref={canvasRef} className="w-full h-full absolute inset-0" />
+                  {/* Canvas PDF (di bawah) */}
+                  <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+                  
+                  {/* Canvas Overlay Fabric (di atas) */}
+                  <canvas 
+                    ref={overlayRef} 
+                    className="absolute inset-0 w-full h-full pointer-events-auto"
+                    style={{ pointerEvents: activeTool === 'select' ? 'auto' : 'none' }}
+                  />
                 </div>
                 
                 {/* Pagination Canvas Control */}
@@ -611,6 +1049,34 @@ export default function EditPDF() {
           </main>
         )}
       </div>
+      
+      {/* --- SIGNATURE MODAL --- */}
+      {showSignatureModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold">Buat Tanda Tangan</h3>
+              <button onClick={() => setShowSignatureModal(false)} className="text-slate-400 hover:text-slate-700">
+                <X size={20} />
+              </button>
+            </div>
+            <canvas ref={signatureCanvasRef} className="border border-slate-200 rounded w-full h-40 bg-white cursor-crosshair" />
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => {
+                const canvas = signatureCanvasRef.current;
+                if (canvas) {
+                  const ctx = canvas.getContext('2d');
+                  if (ctx) {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                  }
+                }
+              }} className="px-4 py-2 border border-slate-200 rounded text-sm">Hapus</button>
+              <button onClick={saveSignature} className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-bold ml-auto">Simpan</button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* FLOATING ACTION BUTTON (Chat/Help) */}
       <div className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-300 cursor-pointer hover:scale-105 transition-transform z-50">

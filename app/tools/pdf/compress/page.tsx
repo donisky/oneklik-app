@@ -155,7 +155,7 @@ export default function CompressPDF() {
   };
 
   // =========================================================================
-  // LOGIKA KOMPRESI (API CLOUDCONVERT - GHOSTSCRIPT ENGINE)
+  // LOGIKA KOMPRESI (API MASTER - Multi Provider)
   // =========================================================================
   const handleCompress = async () => {
     if (!file) return alert('Pilih file PDF terlebih dahulu!');
@@ -168,11 +168,12 @@ export default function CompressPDF() {
       
       // Mapping level UI ke profile CloudConvert
       const qualityMap = { less: 'high', recommended: 'medium', extreme: 'low' };
-      // --- PERBAIKAN ERROR TS7053: Akses map dengan type yang sudah dipastikan ---
       formData.append('quality', qualityMap[level]);
+      // === PERUBAHAN PENTING: Action untuk Master Route ===
+      formData.append('action', 'compress');
 
-      // Panggil API Route
-      const res = await fetch('/api/compress-pdf', {
+      // Panggil Master API Route
+      const res = await fetch('/api/pdf-tools', {
         method: 'POST',
         body: formData,
       });
