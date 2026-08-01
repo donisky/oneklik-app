@@ -11,23 +11,20 @@ export async function middleware(req: NextRequest) {
 
   // HANYA proteksi halaman /admin
   if (url.pathname.startsWith('/admin')) {
-    // 1. Jika belum login -> lempar ke login
     if (!session) {
       url.pathname = '/login';
       url.searchParams.set('redirectTo', req.nextUrl.pathname);
       return NextResponse.redirect(url);
     }
 
-    // 2. Ambil role dari database
     const { data: userData } = await supabase
       .from('users')
       .select('role')
       .eq('id', session.user.id)
       .maybeSingle();
 
-    // 3. Jika role bukan admin, atau userData tidak ditemukan -> lempar ke dashboard user biasa
     if (!userData || userData.role !== 'admin') {
-      url.pathname = '/dashboard'; // Atau bisa diarahkan ke '/'
+      url.pathname = '/dashboard';
       return NextResponse.redirect(url);
     }
   }
