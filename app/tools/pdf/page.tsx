@@ -90,11 +90,12 @@ export default function PDFToolsDashboard() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 lg:px-12 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           
-          <Link href="/" className="text-2xl font-black text-blue-600 tracking-tight flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-gradient-to-tr from-blue-600 via-indigo-600 to-blue-500 rounded-xl flex items-center justify-center text-white shadow-md shadow-blue-500/30">
-              <Zap size={18} className="fill-white" />
-            </div>
-            Oneklik<span className="text-blue-400">.id</span>
+          {/* --- LOGO ONEKLIK.ID DENGAN IKON BARU & GRADASI BIRU-UNGU --- */}
+          <Link href="/" className="flex items-center gap-2.5 text-2xl font-bold tracking-tight">
+            <img src="/icon-oneklik.svg" alt="Oneklik" className="w-8 h-8" />
+            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Oneklik<span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">.id</span>
+            </span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600 relative">
@@ -275,7 +276,7 @@ export default function PDFToolsDashboard() {
           <div className="text-slate-400 cursor-pointer hover:text-slate-600"><Info size={18} /></div>
         </div>
 
-        {/* --- GRID OF POPULAR TOOLS (7 CARDS + 1 FITUR LAINNYA CARD) --- */}
+        {/* --- GRID OF POPULAR TOOLS (7 CARDS, Edit PDF Advanced dihapus) --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           
           {/* 1. Gabung PDF */}
@@ -332,7 +333,7 @@ export default function PDFToolsDashboard() {
             </div>
           </Link>
 
-          {/* 4. Edit PDF (Baru) */}
+          {/* 4. Edit PDF */}
           <Link href="/tools/pdf/edit" className="block group relative">
             <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-6 flex flex-col h-full relative overflow-hidden">
               <div className="flex items-start justify-between mb-4">
@@ -351,7 +352,7 @@ export default function PDFToolsDashboard() {
             </div>
           </Link>
 
-          {/* 5. Split PDF (Baru) */}
+          {/* 5. Split PDF */}
           <Link href="/tools/pdf/split" className="block group relative">
             <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-6 flex flex-col h-full relative overflow-hidden">
               <div className="flex items-start justify-between mb-4">
@@ -370,7 +371,7 @@ export default function PDFToolsDashboard() {
             </div>
           </Link>
 
-          {/* 6. Unlock PDF (Baru) */}
+          {/* 6. Unlock PDF */}
           <Link href="/tools/pdf/unlock" className="block group relative">
             <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-6 flex flex-col h-full relative overflow-hidden">
               <div className="flex items-start justify-between mb-4">
@@ -389,25 +390,7 @@ export default function PDFToolsDashboard() {
             </div>
           </Link>
 
-          {/* 7. Edit PDF (Advanced) */}
-          <Link href="/tools/pdf/edit" className="block group relative">
-            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-6 flex flex-col h-full relative overflow-hidden">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-yellow-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-amber-200 group-hover:scale-110 transition-transform duration-300">
-                  <Edit3 size={26} />
-                </div>
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-1">Edit PDF (Advanced)</h3>
-              <p className="text-xs text-slate-500 leading-relaxed mb-6">
-                Annotate, highlight, coret teks, tambah catatan, tanda tangan, dan lainnya.
-              </p>
-              <div className="mt-auto inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 group-hover:translate-x-1 transition-transform">
-                Gunakan Sekarang <ArrowRight size={14} />
-              </div>
-            </div>
-          </Link>
-
-          {/* 8. Fitur Lainnya (Sidebar List Card) */}
+          {/* 7. Fitur Lainnya (Sidebar List Card) */}
           <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 mb-4 border-l-4 border-blue-600 pl-3">

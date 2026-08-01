@@ -689,7 +689,7 @@ export default function SplitPDF() {
                     { no: 4, title: 'Download', desc: 'Unduh file hasil split secara terpisah.' },
                   ].map((step) => (
                     <div key={step.no} className="flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 shadow-sm mt-0.5">{step.no}</div>
+                      <div className="w-6 h-6 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{step.no}</div>
                       <div>
                         <h4 className="text-xs font-bold text-slate-800 mb-0.5">{step.title}</h4>
                         <p className="text-[9px] text-slate-500 leading-relaxed pr-2">{step.desc}</p>
@@ -705,11 +705,16 @@ export default function SplitPDF() {
 
             </div>
 
-            {/* AREA KANAN: Panel Ringkasan, Pengaturan Lanjutan, Action Button */}
-            <div className="flex flex-col gap-6">
+            {/* 
+              =========================================================================
+              AREA KANAN: Panel Ringkasan, Pengaturan Lanjutan, Action Button
+              PERBAIKAN: sticky top-6 h-fit dipindahkan ke parent pembungkus
+              ========================================================================= 
+            */}
+            <div className="flex flex-col gap-6 sticky top-6 h-fit">
               
               {/* Ringkasan */}
-              <div className="bg-white rounded-[20px] border border-slate-200 shadow-sm p-6 sticky top-6">
+              <div className="bg-white rounded-[20px] border border-slate-200 shadow-sm p-6">
                 <h3 className="text-sm font-bold text-slate-900 mb-4">Ringkasan</h3>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center border-b border-slate-100 pb-3">

@@ -237,59 +237,59 @@ export default function CompressPDF() {
           <div>
             <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">TOOLS PDF</p>
             <div className="space-y-1">
-              {[
-                { icon: <FileText size={18} />, label: 'Merge PDF', path: '/tools/pdf/merge' },
-              ].map((item, idx) => (
-                <Link key={idx} href={item.path} className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
-                  <span className="text-slate-400">{item.icon}</span> {item.label}
-                </Link>
-              ))}
+              <Link href="/tools/pdf/merge" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
+                <span className="text-slate-400"><FileText size={18} /></span> Merge PDF
+              </Link>
               
               <div className="flex items-center gap-3 px-3 py-2.5 bg-blue-50 text-blue-700 rounded-xl text-sm font-semibold shadow-sm">
                 <CloudUpload size={18} className="text-blue-600" /> Compress PDF
               </div>
 
-              {[
-                { icon: <FileText size={18} />, label: 'Convert PDF', path: '/tools/pdf/convert' },
-                { icon: <Edit3 size={18} />, label: 'Edit PDF' },
-                { icon: <Scissors size={18} />, label: 'Split PDF' },
-                { icon: <Unlock size={18} />, label: 'Unlock PDF' },
-              ].map((item, idx) => (
-                <div key={idx} className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium cursor-pointer transition-colors">
-                  <span className="text-slate-400">{item.icon}</span> {item.label}
-                </div>
-              ))}
+              <Link href="/tools/pdf/convert" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
+                <span className="text-slate-400"><FileText size={18} /></span> Convert PDF
+              </Link>
+              <Link href="/tools/pdf/edit" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
+                <span className="text-slate-400"><Edit3 size={18} /></span> Edit PDF
+              </Link>
+              <Link href="/tools/pdf/split" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
+                <span className="text-slate-400"><Scissors size={18} /></span> Split PDF
+              </Link>
+              <Link href="/tools/pdf/unlock" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
+                <span className="text-slate-400"><Unlock size={18} /></span> Unlock PDF
+              </Link>
             </div>
           </div>
 
           <div>
             <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">TOOLS LAINNYA</p>
             <div className="space-y-1">
-              {[
-                { icon: <QrCode size={18} />, label: 'QR Code' },
-                { icon: <FileText size={18} />, label: 'CV Maker' },
-                { icon: <LinkIcon size={18} />, label: 'Short Link' },
-                { icon: <PenTool size={18} />, label: 'AI Writer' },
-              ].map((item, idx) => (
-                <div key={idx} className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium cursor-pointer transition-colors">
-                  <span className="text-slate-400">{item.icon}</span> {item.label}
-                </div>
-              ))}
+              <Link href="/tools/file-qr" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
+                <span className="text-slate-400"><QrCode size={18} /></span> QR Code
+              </Link>
+              <Link href="/tools/cv" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
+                <span className="text-slate-400"><FileText size={18} /></span> CV Maker
+              </Link>
+              <Link href="/tools/url-shortener" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
+                <span className="text-slate-400"><LinkIcon size={18} /></span> Short Link
+              </Link>
+              <Link href="/tools/ai" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
+                <span className="text-slate-400"><PenTool size={18} /></span> AI Writer
+              </Link>
             </div>
           </div>
 
           <div>
             <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">AKUN</p>
             <div className="space-y-1">
-              {[
-                { icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
-                { icon: <History size={18} />, label: 'Riwayat' },
-                { icon: <Settings size={18} />, label: 'Pengaturan' },
-              ].map((item, idx) => (
-                <div key={idx} className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium cursor-pointer transition-colors">
-                  <span className="text-slate-400">{item.icon}</span> {item.label}
-                </div>
-              ))}
+              <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
+                <span className="text-slate-400"><LayoutDashboard size={18} /></span> Dashboard
+              </Link>
+              <Link href="/dashboard/history" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
+                <span className="text-slate-400"><History size={18} /></span> Riwayat
+              </Link>
+              <Link href="/dashboard/settings" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors">
+                <span className="text-slate-400"><Settings size={18} /></span> Pengaturan
+              </Link>
             </div>
           </div>
         </div>
@@ -321,7 +321,7 @@ export default function CompressPDF() {
           <div className="flex items-center text-xs font-medium text-slate-500">
             <Home size={14} className="text-blue-600" />
             <ChevronRight size={14} className="mx-2 text-slate-300" />
-            <span>Tools PDF</span>
+            <Link href="/tools/pdf" className="hover:text-blue-600">Tools PDF</Link>
             <ChevronRight size={14} className="mx-2 text-slate-300" />
             <span className="text-slate-800 font-semibold">Compress PDF</span>
           </div>
@@ -520,11 +520,17 @@ export default function CompressPDF() {
               </div>
             </div>
 
-            {/* AREA KANAN: Panel Ringkasan (Responsif) & Tingkat Kompresi */}
-            <div className="flex flex-col gap-6">
+            {/* 
+              =========================================================================
+              AREA KANAN: Panel Ringkasan (Responsif) & Tingkat Kompresi 
+              PERBAIKAN: sticky top-6 dipindahkan ke parent div pembungkus agar 
+              kedua panel menempel dengan sempurna saat di-scroll dan tidak saling menimpa.
+              ========================================================================= 
+            */}
+            <div className="flex flex-col gap-6 sticky top-6 h-fit">
               
               {/* Ringkasan File Panel (Responsive & Auto Sync) */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sticky top-6">
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                 
                 <div className="flex items-center gap-2 mb-6">
                   <FileText size={20} className="text-blue-600" />
@@ -567,7 +573,7 @@ export default function CompressPDF() {
               </div>
 
               {/* Tingkat Kompresi Panel */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative">
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                 <h3 className="text-base font-bold text-slate-900 mb-4">Tingkat Kompresi</h3>
                 
                 <div className="space-y-3 mb-6">

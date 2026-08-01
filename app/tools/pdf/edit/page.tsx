@@ -225,7 +225,6 @@ export default function EditPDF() {
       {/* =====================================================================
           SIDEBAR KIRI
           ===================================================================== */}
-      {/* PERBAIKAN TAILWIND CSS CONFLICT: hidden lg:flex flex-col */}
       <aside className="w-[260px] bg-white border-r border-slate-200 hidden lg:flex flex-col flex-shrink-0 h-full overflow-y-auto custom-scrollbar relative z-20">
         <div className="h-16 flex items-center border-b border-slate-100 px-4 flex-shrink-0 sticky top-0 bg-white z-10">
           <OneklikLogo />
@@ -466,7 +465,7 @@ export default function EditPDF() {
               {/* Canvas Area (Scrollable) */}
               <div className="flex-1 overflow-auto bg-[#F1F5F9] relative flex flex-col items-center p-8 custom-scrollbar">
                 
-                {/* Paper Container */}
+                {/* Paper Container - Hanya memuat Canvas PDF Asli, TANPA MOCKUP */}
                 <div 
                   className="bg-white shadow-md relative"
                   style={{ 
@@ -477,79 +476,8 @@ export default function EditPDF() {
                     transition: 'transform 0.2s ease'
                   }}
                 >
-                   {/* Canvas Asli PDF.js (Disembunyikan sementara opacity kecil untuk demo UI) */}
-                   <canvas ref={canvasRef} className="w-full h-full absolute inset-0 opacity-10 pointer-events-none" />
-
-                   {/* --- MOCKUP KONTEN HALAMAN 100% SESUAI SCREENSHOT --- */}
-                   <div className="absolute inset-0 p-12 pointer-events-none">
-                      <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">PROPOSAL</h1>
-                      <h2 className="text-2xl text-slate-800 mt-2">PENAWARAN KERJASAMA</h2>
-                      
-                      {/* Active Text Box Mock */}
-                      <div className="absolute top-[160px] left-[48px] w-[500px] border border-blue-500 border-dashed bg-blue-50/30 p-4 pointer-events-auto cursor-move">
-                        <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-600 rounded-full"></div>
-                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-600 rounded-full"></div>
-                        <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-blue-600 rounded-full"></div>
-                        <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-blue-600 rounded-full"></div>
-                        <div className="absolute top-1/2 -left-1 w-2 h-2 bg-blue-600 rounded-full -translate-y-1/2"></div>
-                        <div className="absolute top-1/2 -right-1 w-2 h-2 bg-blue-600 rounded-full -translate-y-1/2"></div>
-                        <div className="absolute -top-1 left-1/2 w-2 h-2 bg-blue-600 rounded-full -translate-x-1/2"></div>
-                        <div className="absolute -bottom-1 left-1/2 w-2 h-2 bg-blue-600 rounded-full -translate-x-1/2"></div>
-
-                        {/* Floating Formatting Toolbar */}
-                        {showMockFormatting && (
-                          <div className="absolute -top-14 left-0 bg-white border border-slate-200 shadow-lg rounded-xl h-11 flex items-center px-2 gap-1 z-50">
-                            <div className="flex items-center gap-1 px-2 border-r border-slate-100 hover:bg-slate-50 cursor-pointer rounded h-8">
-                              <span className="text-xs font-semibold text-slate-700">Inter</span> <ChevronDown size={14} className="text-slate-400" />
-                            </div>
-                            <div className="flex items-center gap-1 px-2 border-r border-slate-100 hover:bg-slate-50 cursor-pointer rounded h-8">
-                              <span className="text-xs font-semibold text-slate-700">16</span> <ChevronDown size={14} className="text-slate-400" />
-                            </div>
-                            <div className="flex items-center gap-1 px-2 border-r border-slate-100 hover:bg-slate-50 cursor-pointer rounded h-8">
-                              <div className="w-4 h-4 rounded bg-purple-600"></div> <ChevronDown size={14} className="text-slate-400" />
-                            </div>
-                            <div className="flex items-center px-1">
-                              <button className="w-7 h-7 flex items-center justify-center text-slate-700 font-bold text-sm hover:bg-slate-100 rounded">B</button>
-                              <button className="w-7 h-7 flex items-center justify-center text-slate-700 font-bold text-sm hover:bg-slate-100 rounded underline">U</button>
-                              <button className="w-7 h-7 flex items-center justify-center text-slate-700 font-bold text-sm hover:bg-slate-100 rounded line-through">U</button>
-                              <button className="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded ml-1"><AlignLeft size={14} /></button>
-                              <button className="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded border-r border-slate-100"><List size={14} /></button>
-                              <button className="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-red-50 hover:text-red-500 rounded ml-1"><Trash2 size={14} /></button>
-                            </div>
-                          </div>
-                        )}
-                        <p className="text-slate-700 leading-relaxed font-sans text-[15px]">Kami sangat tertarik untuk menjalin kerja sama dengan perusahaan Anda dalam mengembangkan solusi digital yang inovatif dan berkelanjutan.</p>
-                      </div>
-
-                      {/* Mock Image & Shapes */}
-                      <div className="absolute right-12 top-[160px] w-64 h-64 bg-slate-200 rounded-lg overflow-hidden shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=600&auto=format&fit=crop" className="w-full h-full object-cover" alt="Building" />
-                      </div>
-                      <div className="absolute right-[200px] top-[140px] w-48 h-64 bg-blue-500 rounded-3xl -z-10 opacity-70"></div>
-
-                      <div className="absolute top-[480px] left-12">
-                        <h3 className="text-sm font-bold text-slate-900 tracking-widest uppercase mb-6">Tentang Kami <span className="block w-8 h-0.5 bg-blue-600 mt-2"></span></h3>
-                        
-                        <div className="flex gap-6">
-                          <p className="text-sm text-slate-600 w-64 leading-relaxed mt-2">
-                            Oneklik adalah platform digital all-in-one yang membantu kebutuhan harian Anda menjadi lebih mudah dan efisien.
-                          </p>
-                          
-                          <div className="w-48 bg-white border border-slate-100 p-5 rounded-2xl shadow-sm">
-                            <div className="w-8 h-8 rounded bg-blue-50 flex items-center justify-center text-blue-600 mb-3"><CheckSquare size={16} /></div>
-                            <h4 className="text-sm font-bold text-slate-800 mb-1">Mudah Digunakan</h4>
-                            <p className="text-xs text-slate-500 leading-relaxed">Antarmuka yang intuitif dan ramah pengguna.</p>
-                          </div>
-                          
-                          <div className="w-48 bg-white border border-slate-100 p-5 rounded-2xl shadow-sm">
-                            <div className="w-8 h-8 rounded bg-blue-50 flex items-center justify-center text-blue-600 mb-3"><ShieldCheck size={16} /></div>
-                            <h4 className="text-sm font-bold text-slate-800 mb-1">Aman & Terpercaya</h4>
-                            <p className="text-xs text-slate-500 leading-relaxed">Keamanan data Anda adalah prioritas kami.</p>
-                          </div>
-                        </div>
-                      </div>
-
-                   </div>
+                   {/* Canvas Asli PDF.js - Sekarang ditampilkan penuh dan tidak dihalangi mockup */}
+                   <canvas ref={canvasRef} className="w-full h-full absolute inset-0" />
                 </div>
                 
                 {/* Pagination Canvas Control */}
