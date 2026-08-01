@@ -47,14 +47,12 @@ const StarRating = ({ rating }: { rating: number }) => {
    MAIN COMPONENT
    ========================================================================= */
 
-// --- PERBAIKAN TYPESCRIPT: Tentukan type spesifik untuk level kompresi ---
 type CompressionLevel = 'less' | 'recommended' | 'extreme';
 
 export default function CompressPDF() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [file, setFile] = useState<File | null>(null);
-  // --- state level sekarang menggunakan type CompressionLevel ---
   const [level, setLevel] = useState<CompressionLevel>('recommended'); 
   const [isCompressing, setIsCompressing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -95,14 +93,11 @@ export default function CompressPDF() {
   const getCompressionEstimate = () => {
     if (!file) return { size: 0, saving: 0, ratio: 1 };
     let ratio = 0.75;
-    // Mapping ke profile CloudConvert: high, medium, low
     if (level === 'less') ratio = 0.85;        
     if (level === 'recommended') ratio = 0.45; 
     if (level === 'extreme') ratio = 0.20;     
-    
     const estimatedSize = Math.max(Math.round(file.size * ratio), 1024);
     const saving = Math.max(Math.round((1 - (estimatedSize / file.size)) * 100), 5);
-
     return {
       size: estimatedSize,
       saving: saving,
@@ -112,47 +107,23 @@ export default function CompressPDF() {
   const estimate = getCompressionEstimate();
 
   // --- DRAG & DROP LOGIC ---
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setIsDragging(false);
+    if (e.dataTransfer.files?.[0]?.type === 'application/pdf') {
+      setFile(e.dataTransfer.files[0]);
+      setIsSuccess(false);
+    } else alert('Hanya file PDF!');
   };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const selected = e.dataTransfer.files[0];
-      if (selected.type === 'application/pdf') {
-        setFile(selected);
-        setIsSuccess(false);
-      } else {
-        alert('Hanya file PDF yang diperbolehkan!');
-      }
-    }
-  };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const selected = e.target.files[0];
-      if (selected.type === 'application/pdf') {
-        setFile(selected);
-        setIsSuccess(false);
-      } else {
-        alert('Hanya file PDF yang diperbolehkan!');
-      }
+    if (e.target.files?.[0]) {
+      setFile(e.target.files[0]);
+      setIsSuccess(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
-
-  const removeFile = () => {
-    setFile(null);
-    setIsSuccess(false);
-  };
+  const removeFile = () => { setFile(null); setIsSuccess(false); };
 
   // =========================================================================
   // LOGIKA KOMPRESI (API MASTER - Multi Provider)
@@ -165,35 +136,32 @@ export default function CompressPDF() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
-      // Mapping level UI ke profile CloudConvert
       const qualityMap = { less: 'high', recommended: 'medium', extreme: 'low' };
       formData.append('quality', qualityMap[level]);
-      // === PERUBAHAN PENTING: Action untuk Master Route ===
       formData.append('action', 'compress');
 
-      // Panggil Master API Route
-      const res = await fetch('/api/pdf-tools', {
-        method: 'POST',
-        body: formData,
-      });
+      const res = await fetch('/api/pdf-tools', { method: 'POST', body: formData });
 
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'Gagal memproses kompresi oleh server');
+        // --- PERBAIKAN: Baca text terlebih dahulu, coba parse JSON, jika gagal gunakan text mentah ---
+        const errorText = await res.text();
+        let errorMessage = 'Gagal memproses kompresi oleh server';
+        try {
+          const errJson = JSON.parse(errorText);
+          if (errJson.error) errorMessage = errJson.error;
+        } catch {
+          // Jika gagal di-parse JSON, server mengirim HTML (kemungkinan 413, 502, dll.)
+          errorMessage = `Server error: ${res.status} - ${errorText.substring(0, 100)}...`;
+        }
+        throw new Error(errorMessage);
       }
 
-      // Ambil Blob hasil
       const blob = await res.blob();
-      
       const finalName = outputFileName ? `${outputFileName}.pdf` : `${file.name.replace(/\.[^/.]+$/, '')}_compressed.pdf`;
       saveAs(blob, finalName);
       
       setIsSuccess(true);
-      setTimeout(() => {
-        setIsCompressing(false);
-      }, 2000);
-      
+      setTimeout(() => setIsCompressing(false), 2000);
     } catch (err: any) {
       console.error('Compression API error:', err);
       alert('Gagal mengompres PDF: ' + (err.message || 'Koneksi ke server gagal.'));

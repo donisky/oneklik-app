@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // ============================================
-// 1. KONFIGURASI API KEYS (Isi dengan key Anda)
+// PERBAIKAN PENTING: Ubah runtime ke Node.js & tambahkan durasi
+// ============================================
+export const runtime = 'nodejs';   // Mencegah error 413 (file > 4.5MB)
+export const maxDuration = 60;     // Timeout 60 detik untuk file besar
+
+// ============================================
+// 1. KONFIGURASI API KEYS (TIDAK DIUBAH)
 // ============================================
 
 // CloudConvert (bisa multiple keys)
@@ -294,7 +300,6 @@ export async function POST(req: NextRequest) {
 
     // --- URUTAN PROVIDER SESUAI PERMINTAAN: ---
     // 1. CloudConvert  -> 2. iLovePDF  -> 3. Adobe  -> 4. iLovePDF (lagi)
-    // PERBAIKAN: Tambahkan tipe eksplisit Promise<Blob> agar TypeScript tidak menganggap ada void
     const providers: { name: string; func: () => Promise<Blob> }[] = [
       { name: 'CloudConvert', func: () => processCloudConvert(file, action, quality, outputFormat) },
       { name: 'ILovePDF', func: () => processILovePDF(file, action, outputFormat) },
@@ -316,10 +321,10 @@ export async function POST(req: NextRequest) {
         lastError = err;
         console.log(`❌ ${provider.name} gagal: ${err.message}`);
         
-        // Jika error adalah QUOTA atau Adobe belum dikonfigurasi, lanjut ke provider berikutnya
+        // Jika error adalah QUOTA, lanjut ke provider berikutnya
         if (err.message === 'CC_QUOTA_EXCEEDED' ||
             err.message === 'ILP_QUOTA_EXCEEDED' ||
-            err.message === 'ADOBE_NOT_CONFIGURED') {
+            err.message === 'ADOBE_QUOTA_EXCEEDED') {
           continue;
         }
         // Jika error teknis lainnya (bukan quota), tetap lanjut coba provider lain

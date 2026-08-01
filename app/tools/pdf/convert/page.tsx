@@ -249,8 +249,16 @@ export default function ConvertPDF() {
       });
 
       if (!response.ok) {
+        // === PERBAIKAN ERROR HANDLING ===
         const errorText = await response.text();
-        throw new Error(`Server gagal memproses (Status: ${response.status}): ${errorText}`);
+        let errorMessage = `Server gagal memproses (Status: ${response.status})`;
+        try {
+          const errJson = JSON.parse(errorText);
+          if (errJson.error) errorMessage = errJson.error;
+        } catch {
+          errorMessage = `Server error: ${response.status} - ${errorText.substring(0, 100)}...`;
+        }
+        throw new Error(errorMessage);
       }
       
       const blob = await response.blob();
