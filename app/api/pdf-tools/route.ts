@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Import default SDK
-import ILovePDFApi from '@ilovepdf/ilovepdf-nodejs';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -26,59 +24,93 @@ function getNextILPKey(): string {
 }
 
 // ============================================
-// 2. FUNGSI PROSES menggunakan SDK
+// 2. FUNGSI PROSES (REST API Manual - Stabil)
 // ============================================
 async function processILovePDF(file: File, action: string, outputFormat: string): Promise<Blob> {
   const apiKey = getNextILPKey();
   if (!apiKey) throw new Error('ILP_QUOTA_EXCEEDED');
 
   try {
-    // PERBAIKAN: Bypass error secretKey dengan casting ke any
-    const ilovepdf = new (ILovePDFApi as any)(apiKey);
+    // --- 1. GET START (Mendapatkan Task ID & Server URL) ---
+    const startRes = await fetch('https://api.ilovepdf.com/v1/start', {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+    });
 
-    // Buat task (compress / convert)
-    const task = ilovepdf.newTask(action === 'compress' ? 'compress' : 'convert');
-
-    // Upload file (perbaiki error Buffer)
-    const fileBuffer = Buffer.from(await file.arrayBuffer());
-    await task.addFile(fileBuffer as any, file.name);
-
-    // Proses file
-    if (action === 'compress') {
-      await task.process();
-    } else {
-      await task.process(outputFormat);
+    if (!startRes.ok) {
+      const errText = await startRes.text();
+      // 403 = Forbidden (Key salah / Akun belum diverifikasi)
+      // 429 = Kuota habis
+      if (startRes.status === 403 || startRes.status === 401) {
+        throw new Error(`ILP_AUTH_ERROR: ${errText}`);
+      }
+      if (startRes.status === 429) {
+        throw new Error('ILP_QUOTA_EXCEEDED');
+      }
+      throw new Error(`ILP_START_ERROR: ${errText}`);
     }
 
-    // Download hasil
-    const resultUint8 = await task.download();
-    return new Blob([Buffer.from(resultUint8 as any)]);
+    const startData = await startRes.json();
+    const { task, server } = startData;
+
+    // --- 2. UPLOAD FILE ---
+    const uploadForm = new FormData();
+    uploadForm.append('file', file);
+    const uploadRes = await fetch(server, { method: 'POST', body: uploadForm });
+
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text();
+      throw new Error(`ILP_UPLOAD_ERROR: ${errText}`);
+    }
+
+    // --- 3. PROCESS FILE (Compress atau Convert) ---
+    const processRes = await fetch('https://api.ilovepdf.com/v1/process', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: task,
+        tool: action === 'compress' ? 'compress' : 'convert',
+        output_format: outputFormat,
+      }),
+    });
+
+    if (!processRes.ok) {
+      const errText = await processRes.text();
+      if (processRes.status === 403 || processRes.status === 401) {
+        throw new Error(`ILP_AUTH_ERROR: ${errText}`);
+      }
+      if (processRes.status === 429) {
+        throw new Error('ILP_QUOTA_EXCEEDED');
+      }
+      throw new Error(`ILP_PROCESS_ERROR: ${errText}`);
+    }
+
+    // --- 4. DOWNLOAD HASIL ---
+    const downloadRes = await fetch(`https://api.ilovepdf.com/v1/download/${task}`, {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+    });
+
+    if (!downloadRes.ok) {
+      const errText = await downloadRes.text();
+      throw new Error(`ILP_DOWNLOAD_ERROR: ${errText}`);
+    }
+
+    const rawBytes = await downloadRes.arrayBuffer();
+    return new Blob([Buffer.from(rawBytes) as any]);
 
   } catch (err: any) {
-    // Log error asli dari SDK agar kita bisa melihat detailnya di Vercel Logs
-    console.error('🔥 ERROR ILOVEPDF SDK:', err);
-
-    // Coba ambil status code dari error response
-    const status = err?.response?.status || err?.status || 0;
-    const errorMsg = err?.response?.data || err?.message || 'Unknown SDK error';
-
-    // 1. Jika kuota habis (429)
-    if (status === 429) throw new Error('ILP_QUOTA_EXCEEDED');
-
-    // 2. Jika autentikasi gagal (403 / 401)
-    if (status === 403 || status === 401) {
-      throw new Error(`ILP_AUTH_ERROR: ${JSON.stringify(errorMsg)}`);
-    }
-
-    // 3. Jika endpoint tidak ditemukan (404) atau error lain (500)
-    // Kita lemparkan ke atas agar sistem mencoba Key berikutnya
-    console.warn(`⚠️ ILP Key gagal dengan error: ${status} - ${errorMsg}`);
-    throw new Error('ILP_QUOTA_EXCEEDED'); // Paksa fallback ke key berikutnya
+    // Propagasi error untuk Main Handler
+    if (err.message.startsWith('ILP_AUTH_ERROR')) throw new Error(err.message);
+    if (err.message === 'ILP_QUOTA_EXCEEDED') throw new Error('ILP_QUOTA_EXCEEDED');
+    throw new Error(err.message);
   }
 }
 
 // ============================================
-// 3. MAIN HANDLER (Round-Robin multi-key)
+// 3. MAIN HANDLER (Round-Robin Multi-Key)
 // ============================================
 export async function POST(req: NextRequest) {
   try {
@@ -87,57 +119,38 @@ export async function POST(req: NextRequest) {
     const action = formData.get('action') as string;
     const outputFormat = formData.get('outputFormat') as string || 'pdf';
 
-    if (!file) {
-      return NextResponse.json({ error: 'File tidak ditemukan' }, { status: 400 });
-    }
+    if (!file) return NextResponse.json({ error: 'File tidak ditemukan' }, { status: 400 });
 
     let resultBlob: Blob | null = null;
     let lastError: any = null;
 
-    // Loop mencoba semua key iLovePDF
     for (let attempt = 0; attempt < ILOVEPDF_KEYS.length; attempt++) {
       try {
         resultBlob = await processILovePDF(file, action, outputFormat);
-        console.log(`✅ Berhasil menggunakan iLovePDF Key ke-${(attempt % ILOVEPDF_KEYS.length) + 1}`);
+        console.log(`✅ Berhasil pakai ILP Key ke-${attempt + 1}`);
         break;
       } catch (err: any) {
         lastError = err;
-        console.log(`❌ Key ke-${(attempt % ILOVEPDF_KEYS.length) + 1} gagal: ${err.message}`);
-
-        // Lanjut ke key berikutnya jika error kuota atau autentikasi
-        if (err.message === 'ILP_QUOTA_EXCEEDED' || err.message.startsWith('ILP_AUTH_ERROR')) {
-          continue;
-        }
-        // Jika error teknis lainnya (misal: 404 dari SDK), hentikan loop dan laporkan
+        // Jika key ini error karena kuota atau auth, lanjut ke key berikutnya
+        if (err.message === 'ILP_QUOTA_EXCEEDED' || err.message.startsWith('ILP_AUTH_ERROR')) continue;
+        // Jika error teknis, berhenti loop
         break;
       }
     }
 
     if (!resultBlob) {
-      if (lastError) {
-        if (lastError.message.startsWith('ILP_AUTH_ERROR')) {
-          return NextResponse.json({
-            error: 'Akun iLovePDF belum terverifikasi atau API Key salah. Silakan login ke dashboard iloveapi.com, buat Public Key baru, lalu coba lagi.'
-          }, { status: 403 });
-        }
-        if (lastError.message === 'ILP_QUOTA_EXCEEDED') {
-          return NextResponse.json({
-            error: 'Semua kuota iLovePDF telah habis. Tambahkan key baru atau tunggu reset bulanan.'
-          }, { status: 429 });
-        }
+      if (lastError?.message.startsWith('ILP_AUTH_ERROR')) {
+        return NextResponse.json({ error: 'Akun iLovePDF belum diverifikasi. Silakan cek email Anda atau buat Public Key baru di dashboard iloveapi.com.' }, { status: 403 });
       }
-      return NextResponse.json({ error: lastError?.message || 'Semua key gagal diproses.' }, { status: 500 });
+      if (lastError?.message === 'ILP_QUOTA_EXCEEDED') {
+        return NextResponse.json({ error: 'Semua kuota iLovePDF telah habis. Tambahkan key baru atau tunggu reset.' }, { status: 429 });
+      }
+      return NextResponse.json({ error: lastError?.message || 'Gagal memproses file.' }, { status: 500 });
     }
 
     const ext = action === 'compress' ? 'pdf' : outputFormat;
     const fileName = `${file.name.replace(/\.[^.]+$/, '')}_${action}.${ext}`;
-
-    return new NextResponse(resultBlob, {
-      headers: {
-        'Content-Type': resultBlob.type,
-        'Content-Disposition': `attachment; filename="${fileName}"`,
-      },
-    });
+    return new NextResponse(resultBlob, { headers: { 'Content-Type': resultBlob.type, 'Content-Disposition': `attachment; filename="${fileName}"` } });
 
   } catch (error: any) {
     console.error('🔥 Master API Error:', error.message);
