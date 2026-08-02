@@ -43,44 +43,33 @@ export async function POST(req: NextRequest) {
     const convertTask = jobData.data.tasks.find((t: any) => t.name === 'convert-file');
     if (!uploadTask || !convertTask) throw new Error('Task tidak ditemukan.');
 
-    // ============================================================
-    // PERBAIKAN PENTING: Polling sampai CloudConvert kasih URL upload
-    // ============================================================
-    let uploadUrl: string | null = null;
-    let uploadAttempts = 0;
-    while (!uploadUrl && uploadAttempts < 30) { // Tunggu maksimal 30 detik
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const statusRes = await fetch(`https://api.cloudconvert.com/v2/tasks/${uploadTask.id}`, {
-        headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}` },
-      });
-      const statusData = await statusRes.json();
-      const taskData = statusData.data;
-      
-      // Ambil URL dari berbagai kemungkinan lokasi di respons
-      uploadUrl = taskData.upload_url || taskData.result?.url || taskData.upload_url_s3 || null;
-
-      if (uploadUrl) break; // Berhasil dapat URL!
-      
-      // Jika task upload error, berhenti
-      if (taskData.status === 'error') {
-        throw new Error('CC_UPLOAD_TASK_ERROR');
-      }
-      uploadAttempts++;
-    }
-
-    if (!uploadUrl) {
-      console.error('Gagal mendapatkan upload URL setelah 30 detik. Respons terakhir:', JSON.stringify(uploadTask));
+    // =========================================================================
+    // PERBAIKAN PENTING: Ambil S3 Upload URL & Parameter dari object "form"
+    // =========================================================================
+    const uploadFormPayload = uploadTask.result?.form;
+    if (!uploadFormPayload || !uploadFormPayload.url) {
+      console.error('CloudConvert gagal mengembalikan form upload.', uploadTask);
       throw new Error('URL upload tidak ditemukan.');
     }
 
-    // 2. Upload file ke URL yang didapat
-    const uploadForm = new FormData();
-    uploadForm.append('file', file);
-    const uploadRes = await fetch(uploadUrl, { method: 'POST', body: uploadForm });
-    if (!uploadRes.ok) throw new Error(`CC_UPLOAD_ERROR: ${await uploadRes.text()}`);
+    const uploadUrl = uploadFormPayload.url;
+    const uploadParams = uploadFormPayload.parameters || {};
 
-    // 3. Polling hasil konversi
+    // 2. Siapkan FormData dengan parameter S3 + File
+    const uploadForm = new FormData();
+    Object.entries(uploadParams).forEach(([key, value]) => {
+      uploadForm.append(key, value as string);
+    });
+    uploadForm.append('file', file);
+
+    // 3. Upload file ke S3
+    const uploadRes = await fetch(uploadUrl, { method: 'POST', body: uploadForm });
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text();
+      throw new Error(`CC_UPLOAD_ERROR: ${uploadRes.status} - ${errText}`);
+    }
+
+    // 4. Polling hasil konversi
     let attempts = 0;
     let resultUrl: string | null = null;
     while (!resultUrl && attempts < 30) {
@@ -96,7 +85,7 @@ export async function POST(req: NextRequest) {
     }
     if (!resultUrl) throw new Error('CC_TIMEOUT');
 
-    // 4. Download hasil
+    // 5. Download hasil
     const resultRes = await fetch(resultUrl);
     if (!resultRes.ok) throw new Error('CC_DOWNLOAD_ERROR');
     const resultBlob = await resultRes.blob();
