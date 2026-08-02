@@ -16,8 +16,6 @@ import Link from 'next/link';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import * as pdfjsLib from 'pdfjs-dist';
-
-// PERBAIKAN ERROR IMPOR FABRIC
 import * as fabric from 'fabric';
 
 // Konfigurasi Worker PDF.js
@@ -46,6 +44,16 @@ const ToggleSwitch = ({ enabled, onChange }: { enabled: boolean; onChange: () =>
   </button>
 );
 
+// Helper konversi Hex ke RGB untuk pdf-lib
+const hexToRgbPdf = (hex: string) => {
+  let cleanHex = hex.replace('#', '');
+  if (cleanHex.length === 3) cleanHex = cleanHex.split('').map(c => c+c).join('');
+  const r = parseInt(cleanHex.substring(0,2), 16) / 255;
+  const g = parseInt(cleanHex.substring(2,4), 16) / 255;
+  const b = parseInt(cleanHex.substring(4,6), 16) / 255;
+  return rgb(r, g, b);
+};
+
 /* =========================================================================
    MAIN COMPONENT
    ========================================================================= */
@@ -63,6 +71,7 @@ export default function EditPDF() {
   
   // State Editor & UI
   const [zoom, setZoom] = useState(100);
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 1100 });
   const [activeTool, setActiveTool] = useState('select');
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -75,8 +84,12 @@ export default function EditPDF() {
   const [strokeColor, setStrokeColor] = useState('#000000');
   const [strokeWidth, setStrokeWidth] = useState(3);
   const [shapeType, setShapeType] = useState<'rect' | 'circle'>('rect');
-  const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
+  
+  // --- UNDO/REDO STATE ---
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyStep, setHistoryStep] = useState<number>(-1);
+  const isHistoryAction = useRef(false);
   
   // Refs
   const fabricRef = useRef<fabric.Canvas | null>(null);
@@ -86,7 +99,6 @@ export default function EditPDF() {
   const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
   
   const supabase = createClientComponentClient();
-  const router = useRouter();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -122,12 +134,6 @@ export default function EditPDF() {
       setTotalPages(pdf.numPages);
       setCurrentPage(1);
       
-      // Render First Page to Canvas
-      renderPage(pdf, 1);
-      
-      // Setup Fabric overlay setelah canvas siap
-      setTimeout(() => initFabric(), 100);
-      
       const mockThumbs = Array.from({length: Math.min(pdf.numPages, 12)}).map((_, i) => `thumb_${i}`);
       setThumbnails(mockThumbs);
       
@@ -138,23 +144,40 @@ export default function EditPDF() {
     }
   };
 
+  // Re-render MURNI hanya saat pindah halaman / pdfDoc berubah.
+  // Zoom ditangani oleh CSS Transform agar tidak merusak resolusi dan titik koordinat Fabric
+  useEffect(() => {
+    if (pdfDoc) {
+      renderPage(pdfDoc, currentPage);
+    }
+  }, [currentPage, pdfDoc]);
+
   const renderPage = async (pdf: any, pageNum: number) => {
     if (!canvasRef.current || !pdf) return;
     try {
       const page = await pdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: (zoom / 100) * 1.5 });
+      const viewport = page.getViewport({ scale: 1.5 }); // Base scale tetap 1.5x untuk resolusi tajam
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
       
       if (context) {
         canvas.height = viewport.height;
         canvas.width = viewport.width;
+        setCanvasSize({ width: viewport.width, height: viewport.height });
         
-        const renderContext = {
-          canvasContext: context,
-          viewport: viewport
-        };
-        await page.render(renderContext).promise;
+        await page.render({ canvasContext: context, viewport: viewport }).promise;
+
+        if (!fabricRef.current) {
+          initFabric(viewport.width, viewport.height);
+        } else {
+          fabricRef.current.clear();
+          // PERBAIKAN TS ERROR: Menggunakan setDimensions alih-alih setWidth/setHeight
+          fabricRef.current.setDimensions({ width: viewport.width, height: viewport.height });
+          fabricRef.current.renderAll();
+          // Reset history untuk halaman baru
+          setHistory([]);
+          setHistoryStep(-1);
+        }
       }
     } catch (error) {
       console.error("Error rendering page", error);
@@ -162,44 +185,58 @@ export default function EditPDF() {
   };
 
   // --- INISIALISASI FABRIC OVERLAY ---
-  const initFabric = () => {
+  const initFabric = (width: number, height: number) => {
     if (!overlayRef.current) return;
-    // Hapus instance fabric sebelumnya
-    if (fabricRef.current) {
-      fabricRef.current.dispose();
-    }
-    const canvasElement = overlayRef.current;
-    const fabricCanvas = new fabric.Canvas(canvasElement, {
-      width: canvasElement.width,
-      height: canvasElement.height,
+    const fabricCanvas = new fabric.Canvas(overlayRef.current, {
+      width: width,
+      height: height,
       selection: true,
       isDrawingMode: false,
     });
     fabricRef.current = fabricCanvas;
     
-    fabricCanvas.backgroundColor = 'rgba(255,255,255,0)';
-    fabricCanvas.renderAll();
+    const saveHistory = () => {
+      if (isHistoryAction.current || !fabricRef.current) return;
+      const json = JSON.stringify(fabricRef.current.toJSON());
+      setHistory(prev => {
+        const newHistory = prev.slice(0, historyStep + 1);
+        newHistory.push(json);
+        return newHistory;
+      });
+      setHistoryStep(prev => prev + 1);
+    };
+
+    fabricCanvas.on('object:modified', saveHistory);
+    fabricCanvas.on('object:added', saveHistory);
+    fabricCanvas.on('object:removed', saveHistory);
     
-    fabricCanvas.on('mouse:down', () => {
-      // Handle tool actions if needed
-    });
+    // Initial blank state
+    saveHistory();
   };
 
-  // Re-render ketika halaman atau zoom berubah
-  useEffect(() => {
-    if (pdfDoc) {
-      renderPage(pdfDoc, currentPage);
-      // Reset overlay saat page berubah
-      if (fabricRef.current && canvasRef.current) {
-        fabricRef.current.clear();
-        fabricRef.current.width = canvasRef.current.width;
-        fabricRef.current.height = canvasRef.current.height;
-        fabricRef.current.renderAll();
-      }
+  const handleUndo = () => {
+    if (historyStep > 0 && fabricRef.current) {
+      isHistoryAction.current = true;
+      setHistoryStep(prev => prev - 1);
+      fabricRef.current.loadFromJSON(history[historyStep - 1], () => {
+        fabricRef.current?.renderAll();
+        isHistoryAction.current = false;
+      });
     }
-  }, [currentPage, zoom, pdfDoc]);
+  };
 
-  // --- PERBAIKAN UTAMA: SIMPAN DENGAN KONVERSI KOORDINAT YANG BENAR ---
+  const handleRedo = () => {
+    if (historyStep < history.length - 1 && fabricRef.current) {
+      isHistoryAction.current = true;
+      setHistoryStep(prev => prev + 1);
+      fabricRef.current.loadFromJSON(history[historyStep + 1], () => {
+        fabricRef.current?.renderAll();
+        isHistoryAction.current = false;
+      });
+    }
+  };
+
+  // --- LOGIKA SIMPAN DENGAN PDF-LIB ---
   const handleSave = async () => {
     if (!file) return;
     setIsSaving(true);
@@ -210,41 +247,78 @@ export default function EditPDF() {
       
       const objects = fabricRef.current?.getObjects() || [];
       const pages = pdfToEdit.getPages();
-      const page = pages[0]; // MVP: hanya halaman pertama
+      const page = pages[currentPage - 1]; // Menyimpan pada halaman yang aktif
       
       const font = await pdfToEdit.embedFont(StandardFonts.Helvetica);
-      const scale = 1.5; // Sama dengan scale yang digunakan di renderPage
+      const scale = 1.5; // Harus sama dengan base scale di renderPage
 
-      objects.forEach((obj: any) => {
-        // Hanya proses objek teks (dan textbox)
-        if (obj.type === 'text' || obj.type === 'textbox') {
-          // Konversi koordinat: X = left / scale, Y = (tinggi halaman - top) / scale
-          const x = obj.left / scale;
-          // Perhatikan bahwa obj.top adalah jarak dari atas canvas, sedangkan PDF Y dihitung dari bawah
-          // Selain itu, kita perlu memperhitungkan tinggi teks untuk posisi baseline yang tepat.
-          // Rumus: Y = (pageHeight - obj.top - obj.height) / scale
-          // (Karena teks ditaruh dengan dasar pada y, dan kita ingin posisi top-left)
-          // Alternatif: gunakan pageHeight - obj.top, lalu dikurangi sedikit offset.
-          // Berdasarkan percobaan sebelumnya, formula berikut cukup akurat:
-          const y = (page.getHeight() - obj.top) / scale - (obj.height / scale);
-          // (obj.height sudah dalam satuan canvas)
+      for (const obj of objects) {
+        const bounds = obj.getBoundingRect();
+        const pdfWidth = bounds.width / scale;
+        const pdfHeight = bounds.height / scale;
+        const pdfX = bounds.left / scale;
+        const pdfY = page.getHeight() - (bounds.top / scale) - pdfHeight;
 
-          page.drawText(obj.text, {
-            x: x,
-            y: y,
-            size: obj.fontSize * 1.5, // Menyesuaikan ukuran font agar proporsional
+        if (obj.type === 'text' || obj.type === 'textbox' || obj.type === 'i-text') {
+          // 1. Export Native Text agar tetap bisa diblok/search di PDF
+          const textObj = obj as fabric.Text;
+          let textColor = rgb(0,0,0);
+          if (textObj.fill && typeof textObj.fill === 'string') {
+            textColor = hexToRgbPdf(textObj.fill);
+          }
+          const fSize = (textObj.fontSize || 16) / scale;
+          // Penyesuaian baseline font PDF
+          const baselineY = page.getHeight() - (bounds.top / scale) - fSize * 0.85;
+
+          page.drawText(textObj.text || '', {
+            x: pdfX,
+            y: baselineY,
+            size: fSize,
             font: font,
-            color: rgb(0, 0, 0),
+            color: textColor,
+          });
+        } 
+        else if (obj.type === 'image' && (obj as any).getSrc) {
+          // 2. Export Image Native (Tanda Tangan / Gambar Asli)
+          const src = (obj as any).getSrc();
+          if (src) {
+            const base64Data = src.split(',')[1];
+            const imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+            let pdfImage;
+            if (src.includes('image/jpeg') || src.includes('image/jpg')) {
+              pdfImage = await pdfToEdit.embedJpg(imageBytes);
+            } else {
+              pdfImage = await pdfToEdit.embedPng(imageBytes);
+            }
+            page.drawImage(pdfImage, {
+              x: pdfX,
+              y: pdfY,
+              width: pdfWidth,
+              height: pdfHeight,
+            });
+          }
+        } 
+        else {
+          // 3. Export Hybrid (Bentuk, Coretan, Highlight, Garis) -> Resolusi Tinggi PNG
+          // Ini sangat aman untuk mempertahankan rotasi, bezier curve, dan opacity
+          const dataUrl = obj.toDataURL({ format: 'png', multiplier: 3 });
+          const base64Data = dataUrl.split(',')[1];
+          const imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+          const pdfImage = await pdfToEdit.embedPng(imageBytes);
+
+          page.drawImage(pdfImage, {
+            x: pdfX,
+            y: pdfY,
+            width: pdfWidth,
+            height: pdfHeight,
           });
         }
-        // Untuk tipe lain (gambar, rectangle) akan dikembangkan kemudian
-      });
+      }
 
       const pdfBytes = await pdfToEdit.save();
       const originalName = file.name.replace(/\.[^/.]+$/, "");
       saveAs(new Blob([pdfBytes as any], { type: 'application/pdf' }), `${originalName}_edited.pdf`);
       
-      alert("PDF berhasil diedit!");
     } catch (error) {
       console.error(error);
       alert("Gagal menyimpan dokumen.");
@@ -261,86 +335,65 @@ export default function EditPDF() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // --- FUNGSI TOOLS (Tidak diubah) ---
+  // --- FUNGSI ALAT FABRIC ---
   const addText = () => {
     if (!fabricRef.current || !inputText.trim()) return;
-    const text = new fabric.Text(inputText, {
-      left: 100,
-      top: 100,
+    const text = new fabric.IText(inputText, {
+      left: 100, top: 100,
       fontSize: fontSize,
       fill: fillColor,
-      fontFamily: 'Arial',
+      fontFamily: 'Helvetica',
+      editable: true
     });
     fabricRef.current.add(text);
     fabricRef.current.setActiveObject(text);
     setInputText('');
   };
 
-  const addImage = (file: File) => {
+  const addImage = (imgFile: File) => {
     if (!fabricRef.current) return;
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
       // @ts-ignore
       fabric.Image.fromURL(dataUrl, (img: fabric.Image) => {
-        img.set({
-          left: 100,
-          top: 100,
-          scaleX: 0.5,
-          scaleY: 0.5,
-        });
+        img.set({ left: 100, top: 100, scaleX: 0.5, scaleY: 0.5 });
         fabricRef.current?.add(img);
         fabricRef.current?.setActiveObject(img);
       });
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(imgFile);
   };
 
   const addShape = () => {
     if (!fabricRef.current) return;
-    let shape: fabric.Object;
+    let shape;
     if (shapeType === 'rect') {
       shape = new fabric.Rect({
-        left: 100,
-        top: 100,
-        width: 100,
-        height: 100,
-        fill: 'transparent',
-        stroke: strokeColor,
-        strokeWidth: strokeWidth,
+        left: 100, top: 100, width: 100, height: 100,
+        fill: 'transparent', stroke: strokeColor, strokeWidth: strokeWidth,
       });
     } else {
       shape = new fabric.Circle({
-        left: 100,
-        top: 100,
-        radius: 50,
-        fill: 'transparent',
-        stroke: strokeColor,
-        strokeWidth: strokeWidth,
+        left: 100, top: 100, radius: 50,
+        fill: 'transparent', stroke: strokeColor, strokeWidth: strokeWidth,
       });
     }
     fabricRef.current.add(shape);
     fabricRef.current.setActiveObject(shape);
   };
 
-  const setDrawingMode = (mode: boolean) => {
-    if (!fabricRef.current) return;
-    fabricRef.current.isDrawingMode = mode;
-    if (mode) {
-      fabricRef.current.freeDrawingBrush = new fabric.PencilBrush(fabricRef.current);
-      fabricRef.current.freeDrawingBrush.color = strokeColor;
-      fabricRef.current.freeDrawingBrush.width = strokeWidth;
-    }
-  };
-
   const addHighlight = () => {
     if (!fabricRef.current) return;
+    let cleanHex = fillColor.replace('#', '');
+    if (cleanHex.length === 3) cleanHex = cleanHex.split('').map(c => c+c).join('');
+    const r = parseInt(cleanHex.substring(0,2), 16);
+    const g = parseInt(cleanHex.substring(2,4), 16);
+    const b = parseInt(cleanHex.substring(4,6), 16);
+
     const rect = new fabric.Rect({
-      left: 100,
-      top: 100,
-      width: 200,
-      height: 50,
-      fill: 'rgba(255,255,0,0.3)',
+      left: 100, top: 100, width: 200, height: 25,
+      fill: `rgba(${r},${g},${b},0.3)`,
       stroke: 'transparent',
     });
     fabricRef.current.add(rect);
@@ -349,76 +402,51 @@ export default function EditPDF() {
 
   const addUnderline = () => {
     const obj = fabricRef.current?.getActiveObject();
-    if (!obj || obj.type !== 'text') return;
-    const textObj = obj as fabric.Text;
+    if (!obj || obj.type !== 'i-text' && obj.type !== 'text') {
+      alert('Pilih teks terlebih dahulu!');
+      return;
+    }
     const line = new fabric.Line(
-      [textObj.left, textObj.top + textObj.height + 2, 
-       textObj.left + textObj.width, textObj.top + textObj.height + 2],
-      {
-        stroke: strokeColor,
-        strokeWidth: 2,
-      }
+      [obj.left!, obj.top! + obj.height! + 2, obj.left! + obj.width! * obj.scaleX!, obj.top! + obj.height! + 2],
+      { stroke: strokeColor, strokeWidth: 2 }
     );
     fabricRef.current?.add(line);
-    fabricRef.current?.setActiveObject(line);
   };
 
   const addStrikethrough = () => {
     const obj = fabricRef.current?.getActiveObject();
-    if (!obj || obj.type !== 'text') return;
-    const textObj = obj as fabric.Text;
+    if (!obj || obj.type !== 'i-text' && obj.type !== 'text') {
+      alert('Pilih teks terlebih dahulu!');
+      return;
+    }
     const line = new fabric.Line(
-      [textObj.left, textObj.top + textObj.height/2, 
-       textObj.left + textObj.width, textObj.top + textObj.height/2],
-      {
-        stroke: strokeColor,
-        strokeWidth: 2,
-      }
+      [obj.left!, obj.top! + (obj.height! / 2), obj.left! + obj.width! * obj.scaleX!, obj.top! + (obj.height! / 2)],
+      { stroke: strokeColor, strokeWidth: 2 }
     );
     fabricRef.current?.add(line);
-    fabricRef.current?.setActiveObject(line);
   };
 
   const addNote = () => {
     if (!fabricRef.current || !inputText.trim()) return;
     const note = new fabric.Textbox(inputText, {
-      left: 100,
-      top: 100,
-      width: 200,
-      fontSize: 14,
-      fill: '#000',
-      backgroundColor: '#fef3c7',
-      padding: 10,
+      left: 100, top: 100, width: 200, fontSize: 14,
+      fill: '#000', backgroundColor: '#fef3c7', padding: 10,
     });
     fabricRef.current.add(note);
     fabricRef.current.setActiveObject(note);
     setInputText('');
   };
 
-  const addSignature = (dataUrl: string) => {
-    if (!fabricRef.current) return;
-    // @ts-ignore
-    fabric.Image.fromURL(dataUrl, (img: fabric.Image) => {
-      img.set({
-        left: 100,
-        top: 100,
-        scaleX: 0.5,
-        scaleY: 0.5,
-      });
-      fabricRef.current?.add(img);
-      fabricRef.current?.setActiveObject(img);
-    });
-  };
-
   const deleteSelected = () => {
     if (!fabricRef.current) return;
-    const active = fabricRef.current.getActiveObject();
-    if (active) {
-      fabricRef.current.remove(active);
+    const activeObjects = fabricRef.current.getActiveObjects();
+    if (activeObjects.length) {
+      activeObjects.forEach((obj) => fabricRef.current?.remove(obj));
+      fabricRef.current.discardActiveObject();
     }
   };
 
-  // --- SIGNATURE MODAL (tidak diubah) ---
+  // --- SIGNATURE MODAL ---
   const openSignatureModal = () => {
     setShowSignatureModal(true);
     setTimeout(() => initSignatureCanvas(), 100);
@@ -430,8 +458,7 @@ export default function EditPDF() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    canvas.width = 400;
-    canvas.height = 200;
+    canvas.width = 400; canvas.height = 200;
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -446,10 +473,10 @@ export default function EditPDF() {
       ctx.moveTo(lastX, lastY);
       ctx.lineTo(x, y);
       ctx.strokeStyle = '#000';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
       ctx.stroke();
-      lastX = x;
-      lastY = y;
+      lastX = x; lastY = y;
     };
     canvas.addEventListener('mousedown', (e) => {
       isDrawing = true;
@@ -466,15 +493,21 @@ export default function EditPDF() {
     const canvas = signatureCanvasRef.current;
     if (!canvas) return;
     const dataUrl = canvas.toDataURL('image/png');
-    setSignatureImage(dataUrl);
-    addSignature(dataUrl);
+    // @ts-ignore
+    fabric.Image.fromURL(dataUrl, (img: fabric.Image) => {
+      // Membuat background putih menjadi transparan (opsional, fabric blend bisa digunakan)
+      img.set({ left: 100, top: 100, scaleX: 0.5, scaleY: 0.5 });
+      fabricRef.current?.add(img);
+      fabricRef.current?.setActiveObject(img);
+    });
     setShowSignatureModal(false);
   };
 
-  // --- SWITCHING TOOLS (tidak diubah) ---
+  // --- PENGATURAN MODE ALAT ---
   useEffect(() => {
     if (!fabricRef.current) return;
     fabricRef.current.isDrawingMode = false;
+    
     if (activeTool === 'draw') {
       fabricRef.current.isDrawingMode = true;
       fabricRef.current.freeDrawingBrush = new fabric.PencilBrush(fabricRef.current);
@@ -482,10 +515,11 @@ export default function EditPDF() {
       fabricRef.current.freeDrawingBrush.width = strokeWidth;
     } else if (activeTool === 'select') {
       fabricRef.current.selection = true;
+      fabricRef.current.forEachObject(o => o.set('selectable', true));
     } else {
       fabricRef.current.selection = false;
     }
-  }, [activeTool]);
+  }, [activeTool, strokeColor, strokeWidth]);
 
   if (loading) {
     return (
@@ -500,7 +534,6 @@ export default function EditPDF() {
 
   const userName = session?.user?.user_metadata?.full_name || 'Andi Creator';
 
-  // --- TOOLS DATA ---
   const tools = [
     { id: 'select', icon: MousePointer2, label: 'Pilih' },
     { id: 'text', icon: Type, label: 'Teks' },
@@ -518,9 +551,7 @@ export default function EditPDF() {
   return (
     <div className="flex h-screen bg-[#F8FAFC] font-sans overflow-hidden text-slate-800">
       
-      {/* =====================================================================
-          SIDEBAR KIRI
-          ===================================================================== */}
+      {/* SIDEBAR KIRI */}
       <aside className="w-[260px] bg-white border-r border-slate-200 hidden lg:flex flex-col flex-shrink-0 h-full overflow-y-auto custom-scrollbar relative z-20">
         <div className="h-16 flex items-center border-b border-slate-100 px-4 flex-shrink-0 sticky top-0 bg-white z-10">
           <OneklikLogo />
@@ -560,22 +591,6 @@ export default function EditPDF() {
           </div>
 
           <div>
-            <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">TOOLS LAINNYA</p>
-            <div className="space-y-1">
-              {[
-                { icon: <QrCode size={18} />, label: 'QR Code' },
-                { icon: <FileText size={18} />, label: 'CV Maker' },
-                { icon: <LinkIcon size={18} />, label: 'Short Link' },
-                { icon: <PenTool size={18} />, label: 'AI Writer' },
-              ].map((item, idx) => (
-                <div key={idx} className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium cursor-pointer transition-colors">
-                  <span className="text-slate-400">{item.icon}</span> {item.label}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
             <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">AKUN</p>
             <div className="space-y-1">
               {[
@@ -608,9 +623,7 @@ export default function EditPDF() {
         </div>
       </aside>
 
-      {/* =====================================================================
-          MAIN LAYOUT (Header + Konten)
-          ===================================================================== */}
+      {/* MAIN LAYOUT (Header + Konten) */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         
         {/* HEADER ATAS */}
@@ -627,13 +640,6 @@ export default function EditPDF() {
             <button className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-100 hover:bg-blue-100 rounded-full text-xs font-semibold text-blue-700 transition-colors">
               <Crown size={14} className="text-blue-600" /> Premium
             </button>
-            <button className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-50 transition-colors">
-              <Moon size={18} />
-            </button>
-            <button className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-50 transition-colors relative">
-              <Bell size={18} />
-              <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></div>
-            </button>
             <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200 cursor-pointer">
               <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
                 <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=f1f5f9&color=475569`} alt="User" />
@@ -649,7 +655,6 @@ export default function EditPDF() {
 
         {/* EDITOR AREA ATAU UPLOAD SCREEN */}
         {!file ? (
-          /* --- LAYAR UPLOAD --- */
           <main className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center bg-[#F8FAFC]">
              <div className="max-w-xl w-full">
                 <div className="text-center mb-8">
@@ -679,7 +684,6 @@ export default function EditPDF() {
              </div>
           </main>
         ) : (
-          /* --- LAYAR EDITOR --- */
           <main className="flex-1 flex overflow-hidden bg-[#F8FAFC]">
             
             {/* BAGIAN KIRI/TENGAH: CANVAS EDITOR */}
@@ -695,7 +699,7 @@ export default function EditPDF() {
                       </button>
                       <h1 className="text-[22px] font-extrabold text-slate-900 tracking-tight">Edit PDF</h1>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-1 ml-[84px]">Edit, tambahkan teks, gambar, coret, highlight, dan lainnya dengan mudah.</p>
+                    <p className="text-[11px] text-slate-500 mt-1 ml-[84px]">Edit, tambahkan teks, gambar, coret, highlight, dan lainnya dengan presisi.</p>
                   </div>
                   
                   <button 
@@ -708,7 +712,6 @@ export default function EditPDF() {
                   </button>
                 </div>
 
-                {/* Info File & Tools Panel */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-4 shadow-sm">
                   
                   {/* Atas: Nama File & Zoom/Undo */}
@@ -732,8 +735,8 @@ export default function EditPDF() {
                       </div>
                       {/* Undo / Redo */}
                       <div className="flex items-center gap-1.5">
-                        <button className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50"><Undo size={14} /></button>
-                        <button className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-300"><Redo size={14} /></button>
+                        <button onClick={handleUndo} disabled={historyStep <= 0} className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-50 disabled:opacity-30"><Undo size={14} /></button>
+                        <button onClick={handleRedo} disabled={historyStep >= history.length - 1} className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-50 disabled:opacity-30"><Redo size={14} /></button>
                       </div>
                     </div>
                   </div>
@@ -754,213 +757,236 @@ export default function EditPDF() {
                     ))}
                   </div>
 
-                  {/* --- TOOL OPTIONS --- */}
-                  <div className="mt-3 border-t border-slate-100 pt-3">
+                  {/* --- OPSI ALAT AKTIF --- */}
+                  <div className="border-t border-slate-100 pt-3 px-2 flex flex-wrap items-center gap-3">
                     {activeTool === 'text' && (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <input 
-                          type="text" 
-                          value={inputText}
-                          onChange={(e) => setInputText(e.target.value)}
-                          placeholder="Teks..." 
-                          className="flex-1 border border-slate-200 rounded px-3 py-1.5 text-sm min-w-[200px]" 
-                        />
-                        <input 
-                          type="number" 
-                          value={fontSize} 
-                          onChange={(e) => setFontSize(Number(e.target.value))} 
-                          className="w-16 border border-slate-200 rounded px-2 py-1.5 text-sm" 
-                          placeholder="16" 
-                        />
-                        <input 
-                          type="color" 
-                          value={fillColor} 
-                          onChange={(e) => setFillColor(e.target.value)} 
-                          className="w-8 h-8 border border-slate-200 rounded cursor-pointer" 
-                        />
-                        <button onClick={addText} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-bold">Tambah</button>
-                      </div>
+                      <>
+                        <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder="Teks..." className="flex-1 border border-slate-200 rounded px-3 py-1.5 text-sm min-w-[200px]" />
+                        <input type="number" value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} className="w-16 border border-slate-200 rounded px-2 py-1.5 text-sm" placeholder="16" />
+                        <input type="color" value={fillColor} onChange={(e) => setFillColor(e.target.value)} className="w-8 h-8 border border-slate-200 rounded cursor-pointer" />
+                        <button onClick={addText} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors">Tambah Teks</button>
+                      </>
                     )}
                     {activeTool === 'shape' && (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <select value={shapeType} onChange={(e) => setShapeType(e.target.value as any)} className="border border-slate-200 rounded px-2 py-1.5 text-sm">
+                      <>
+                        <select value={shapeType} onChange={(e) => setShapeType(e.target.value as any)} className="border border-slate-200 rounded px-3 py-1.5 text-sm outline-none">
                           <option value="rect">Persegi</option>
                           <option value="circle">Lingkaran</option>
                         </select>
-                        <input 
-                          type="color" 
-                          value={strokeColor} 
-                          onChange={(e) => setStrokeColor(e.target.value)} 
-                          className="w-8 h-8 border border-slate-200 rounded cursor-pointer" 
-                        />
-                        <input 
-                          type="number" 
-                          value={strokeWidth} 
-                          onChange={(e) => setStrokeWidth(Number(e.target.value))} 
-                          className="w-16 border border-slate-200 rounded px-2 py-1.5 text-sm" 
-                          placeholder="3" 
-                        />
-                        <button onClick={addShape} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-bold">Gambar</button>
-                      </div>
+                        <input type="color" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="w-8 h-8 border border-slate-200 rounded cursor-pointer" />
+                        <input type="number" value={strokeWidth} onChange={(e) => setStrokeWidth(Number(e.target.value))} className="w-16 border border-slate-200 rounded px-2 py-1.5 text-sm" placeholder="3" />
+                        <button onClick={addShape} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors">Gambar Bentuk</button>
+                      </>
                     )}
                     {activeTool === 'draw' && (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <input 
-                          type="color" 
-                          value={strokeColor} 
-                          onChange={(e) => setStrokeColor(e.target.value)} 
-                          className="w-8 h-8 border border-slate-200 rounded cursor-pointer" 
-                        />
-                        <input 
-                          type="number" 
-                          value={strokeWidth} 
-                          onChange={(e) => setStrokeWidth(Number(e.target.value))} 
-                          className="w-16 border border-slate-200 rounded px-2 py-1.5 text-sm" 
-                          placeholder="3" 
-                        />
-                        <span className="text-xs text-slate-500">Mode coret aktif</span>
-                      </div>
+                      <>
+                        <input type="color" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="w-8 h-8 border border-slate-200 rounded cursor-pointer" />
+                        <input type="number" value={strokeWidth} onChange={(e) => setStrokeWidth(Number(e.target.value))} className="w-16 border border-slate-200 rounded px-2 py-1.5 text-sm" placeholder="3" />
+                        <span className="text-xs text-slate-500 font-medium ml-2 flex items-center gap-1.5"><Pen size={12}/> Mode coret aktif</span>
+                      </>
                     )}
                     {activeTool === 'image' && (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          onChange={(e) => {
-                            if (e.target.files?.[0]) addImage(e.target.files[0]);
-                          }}
-                          className="text-sm" 
-                        />
-                      </div>
+                      <>
+                        <input type="file" accept="image/*" onChange={(e) => { if (e.target.files?.[0]) addImage(e.target.files[0]); }} className="text-sm file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                      </>
                     )}
                     {activeTool === 'highlight' && (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <button onClick={addHighlight} className="px-3 py-1.5 bg-yellow-400 text-black rounded text-xs font-bold">Tambah Highlight</button>
-                      </div>
+                      <>
+                         <input type="color" value={fillColor} onChange={(e) => setFillColor(e.target.value)} className="w-8 h-8 border border-slate-200 rounded cursor-pointer" />
+                         <button onClick={addHighlight} className="px-4 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-slate-900 rounded-lg text-xs font-bold transition-colors">Tambah Highlight</button>
+                         <span className="text-xs text-slate-500 font-medium ml-2">Warna semi-transparan</span>
+                      </>
                     )}
                     {activeTool === 'underline' && (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <button onClick={addUnderline} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-bold">Tambah Garis Bawah</button>
-                        <span className="text-xs text-slate-500">Pilih teks dulu</span>
-                      </div>
+                      <>
+                        <input type="color" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="w-8 h-8 border border-slate-200 rounded cursor-pointer" />
+                        <button onClick={addUnderline} className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition-colors">Tambah Garis Bawah</button>
+                        <span className="text-xs text-slate-500 font-medium ml-2 flex items-center gap-1.5"><Info size={12}/> Pilih teks PDF yang ditambahkan sebelumnya</span>
+                      </>
                     )}
                     {activeTool === 'strikethrough' && (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <button onClick={addStrikethrough} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-bold">Tambah Coret Teks</button>
-                        <span className="text-xs text-slate-500">Pilih teks dulu</span>
-                      </div>
+                      <>
+                        <input type="color" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="w-8 h-8 border border-slate-200 rounded cursor-pointer" />
+                        <button onClick={addStrikethrough} className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition-colors">Tambah Coretan Teks</button>
+                      </>
                     )}
                     {activeTool === 'note' && (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <input 
-                          type="text" 
-                          value={inputText}
-                          onChange={(e) => setInputText(e.target.value)}
-                          placeholder="Isi catatan..." 
-                          className="flex-1 border border-slate-200 rounded px-3 py-1.5 text-sm min-w-[200px]" 
-                        />
-                        <button onClick={addNote} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-bold">Tambah Catatan</button>
-                      </div>
+                      <>
+                        <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder="Isi catatan..." className="flex-1 border border-slate-200 rounded px-3 py-1.5 text-sm min-w-[200px]" />
+                        <button onClick={addNote} className="px-4 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-lg text-xs font-bold transition-colors">Tambah Catatan</button>
+                      </>
                     )}
                     {activeTool === 'signature' && (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <button onClick={openSignatureModal} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-bold">Buat Tanda Tangan</button>
-                      </div>
+                      <button onClick={openSignatureModal} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors">Buat Tanda Tangan Baru</button>
                     )}
                     {activeTool === 'delete' && (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <button onClick={deleteSelected} className="px-3 py-1.5 bg-red-600 text-white rounded text-xs font-bold">Hapus Objek Terpilih</button>
-                        <span className="text-xs text-slate-500">Pilih objek dulu</span>
-                      </div>
+                      <>
+                        <button onClick={deleteSelected} className="px-4 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"><Trash2 size={14}/> Hapus Objek Terpilih</button>
+                      </>
                     )}
                   </div>
+
                 </div>
               </div>
 
-              {/* Canvas Area (Scrollable) */}
+              {/* Canvas Area (Scrollable & Zoomable via CSS) */}
               <div className="flex-1 overflow-auto bg-[#F1F5F9] relative flex flex-col items-center p-8 custom-scrollbar">
                 
-                {/* Paper Container */}
+                {/* Paper Container dengan CSS Transform untuk Zoom Presisi */}
                 <div 
-                  className="bg-white shadow-md relative"
+                  className="bg-white shadow-xl relative ring-1 ring-slate-200"
                   style={{ 
-                    width: '800px',
-                    minHeight: '1100px',
+                    width: `${canvasSize.width}px`,
+                    height: `${canvasSize.height}px`,
                     transform: `scale(${zoom / 100})`,
                     transformOrigin: 'top center',
-                    transition: 'transform 0.2s ease'
+                    transition: 'transform 0.15s ease-out'
                   }}
                 >
-                  <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
-                  <canvas 
-                    ref={overlayRef} 
-                    className="absolute inset-0 w-full h-full pointer-events-auto"
-                    style={{ pointerEvents: activeTool === 'select' ? 'auto' : 'none' }}
-                  />
+                  {/* Canvas Asli PDF.js (Layer Bawah) */}
+                  <canvas ref={canvasRef} className="absolute inset-0 z-0" />
+                  
+                  {/* Canvas Fabric.js (Layer Atas Interaktif) */}
+                  <div className="absolute inset-0 z-10">
+                    <canvas ref={overlayRef} />
+                  </div>
                 </div>
                 
+                {/* Pagination Canvas Control */}
                 <div className="mt-8 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center p-1 relative z-20 pointer-events-auto">
-                  <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} className="w-10 h-10 flex items-center justify-center text-slate-500"><ChevronLeft size={18} /></button>
-                  <div className="px-4 font-semibold text-sm text-slate-700 border-x border-slate-100">{currentPage} <span className="text-slate-400">/</span> {totalPages}</div>
-                  <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} className="w-10 h-10 flex items-center justify-center text-slate-500"><ChevronRight size={18} /></button>
-                  <div className="w-[1px] h-6 bg-slate-200 mx-1"></div>
-                  <button className="w-10 h-10 flex items-center justify-center text-slate-500"><Grid size={16} /></button>
+                  <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} className="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-50 rounded-lg"><ChevronLeft size={18} /></button>
+                  <div className="px-4 font-semibold text-sm text-slate-700 border-x border-slate-100 flex items-center justify-center">{currentPage} <span className="text-slate-400 font-normal mx-1">/</span> {totalPages}</div>
+                  <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} className="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-50 rounded-lg"><ChevronRight size={18} /></button>
                 </div>
                 
-                <div className="mt-6 flex items-center gap-2 text-[11px] text-blue-600 bg-blue-50/50 px-4 py-2 rounded-full border border-blue-100"><ShieldCheck size={14} /> File Anda aman dan akan otomatis terhapus setelah proses selesai.</div>
+                {/* Info Footer Bawah */}
+                <div className="mt-6 flex items-center gap-2 text-[11px] text-blue-600 bg-blue-50/50 px-4 py-2 rounded-full border border-blue-100 shadow-sm">
+                  <ShieldCheck size={14} /> Resolusi 1.5x HD aktif. File Anda aman dan akan otomatis terhapus setelah proses.
+                </div>
+
               </div>
             </div>
 
             {/* BAGIAN KANAN: PANEL HALAMAN & CATATAN */}
             <div className="w-[320px] bg-white border-l border-slate-200 flex flex-col h-full flex-shrink-0 z-20">
               <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-8">
+                
+                {/* PANEL HALAMAN GRID */}
                 <div>
-                  <div className="flex items-center justify-between mb-4"><h3 className="text-sm font-bold text-slate-900">Halaman</h3><span className="text-[11px] font-semibold text-slate-500">{totalPages} halaman</span></div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-slate-900">Halaman</h3>
+                    <span className="text-[11px] font-semibold text-slate-500">{totalPages} halaman</span>
+                  </div>
+                  
                   <div className="grid grid-cols-3 gap-3">
-                    {[1, 2, 3, 4, 5, 6].map((num) => (
+                    {/* Render Thumbnails Mockup */}
+                    {Array.from({length: Math.min(totalPages, 9)}).map((_, i) => {
+                      const num = i + 1;
+                      return (
                       <div key={num} className="flex flex-col items-center gap-2">
-                        <div className={`w-full aspect-[1/1.4] bg-slate-50 rounded-lg border-2 cursor-pointer transition-all flex items-center justify-center overflow-hidden ${currentPage === num ? 'border-purple-500 shadow-md ring-2 ring-purple-500/10' : 'border-slate-200 hover:border-purple-300'}`}>
-                           <div className="w-full h-full p-2 flex flex-col gap-1 relative opacity-50 pointer-events-none"><div className="w-3/4 h-2 bg-blue-200 rounded"></div><div className="w-1/2 h-2 bg-slate-200 rounded"></div><div className="w-full flex-1 bg-slate-100 rounded mt-1 overflow-hidden flex p-1 gap-1"><div className="w-1/2 h-full bg-slate-200 rounded-sm"></div><div className="flex-1 h-1/2 bg-slate-300 rounded-sm"></div></div></div>
+                        <div 
+                          onClick={() => setCurrentPage(num)}
+                          className={`
+                            w-full aspect-[1/1.4] bg-slate-50 rounded-lg border-2 cursor-pointer transition-all flex items-center justify-center overflow-hidden
+                            ${currentPage === num ? 'border-purple-500 shadow-md ring-2 ring-purple-500/10' : 'border-slate-200 hover:border-purple-300'}
+                          `}
+                        >
+                           <div className="text-[10px] text-slate-400 font-bold opacity-30">P.{num}</div>
                         </div>
-                        {currentPage === num ? <div className="bg-purple-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">{num}</div> : <span className="text-[10px] font-semibold text-slate-500">{num}</span>}
+                        {currentPage === num ? (
+                          <div className="bg-purple-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">{num}</div>
+                        ) : (
+                          <span className="text-[10px] font-semibold text-slate-500">{num}</span>
+                        )}
                       </div>
-                    ))}
-                    <div className="flex flex-col items-center gap-2"><button className="w-full aspect-[1/1.4] rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-400 transition-colors flex flex-col items-center justify-center text-blue-600 gap-1"><Plus size={16} /><span className="text-[9px] font-bold text-center leading-tight">Tambah<br/>Halaman</span></button></div>
+                    )})}
                   </div>
                 </div>
-                <div className="border-t border-slate-100 pt-6"><h3 className="text-sm font-bold text-slate-900 mb-3">Edit Halaman</h3><div className="space-y-1">{[
-                      { icon: <RotateCw size={14} />, label: 'Putar Halaman' },
-                      { icon: <Trash2 size={14} className="text-red-500" />, label: 'Hapus Halaman', textClass: 'text-red-600' },
-                      { icon: <FilePlus2 size={14} className="text-green-600" />, label: 'Ekstrak Halaman', textClass: 'text-green-700' },
-                      { icon: <ArrowLeftRight size={14} className="text-blue-500" />, label: 'Ganti Halaman', textClass: 'text-blue-600' },
-                      { icon: <Copy size={14} className="text-purple-500" />, label: 'Duplikat Halaman', textClass: 'text-purple-600' },
-                    ].map((act, i) => (<button key={i} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 rounded-lg transition-colors group"><div className="flex items-center gap-2.5"><span className="text-slate-400">{act.icon}</span><span className={`text-xs font-semibold ${act.textClass || 'text-slate-700'}`}>{act.label}</span></div>{i === 0 && <ChevronRight size={14} className="text-slate-300" />}</button>))}</div></div>
-                <div className="border-t border-slate-100 pt-6"><div className="flex items-center justify-between mb-4"><h3 className="text-sm font-bold text-slate-900">Catatan</h3></div><div className="flex items-center justify-between mb-4 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100"><span className="text-[11px] font-semibold text-slate-600">Tampilkan semua catatan</span><ToggleSwitch enabled={showNotes} onChange={() => setShowNotes(!showNotes)} /></div>{showNotes && (<div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 relative shadow-sm"><p className="text-xs font-medium text-slate-800 leading-relaxed mb-3">Perlu diperbarui pada bagian analisis pasar.</p><div className="flex items-center justify-between text-[9px] font-semibold text-slate-500"><span>Halaman 3 • 12 Mei 2024</span><MoreHorizontal size={14} className="cursor-pointer hover:text-slate-800" /></div></div>)}</div>
+
+                {/* PANEL EDIT HALAMAN (UI Mockup) */}
+                <div className="border-t border-slate-100 pt-6">
+                  <h3 className="text-sm font-bold text-slate-900 mb-3">Aksi Lanjutan</h3>
+                  <div className="space-y-1">
+                    {[
+                      { icon: <RotateCw size={14} />, label: 'Putar PDF (Rotasi)' },
+                      { icon: <FilePlus2 size={14} className="text-green-600" />, label: 'Ekstrak PDF Ini', textClass: 'text-green-700' },
+                      { icon: <ArrowLeftRight size={14} className="text-blue-500" />, label: 'Susun Ulang', textClass: 'text-blue-600' },
+                    ].map((act, i) => (
+                      <button key={i} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 rounded-lg transition-colors group">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-slate-400">{act.icon}</span>
+                          <span className={`text-xs font-semibold ${act.textClass || 'text-slate-700'}`}>{act.label}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
               </div>
             </div>
+
           </main>
         )}
       </div>
       
+      {/* MODAL TANDA TANGAN */}
       {showSignatureModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">Buat Tanda Tangan</h3><button onClick={() => setShowSignatureModal(false)} className="text-slate-400 hover:text-slate-700"><X size={20} /></button></div>
-            <canvas ref={signatureCanvasRef} className="border border-slate-200 rounded w-full h-40 bg-white cursor-crosshair" />
-            <div className="flex gap-2 mt-4">
-              <button onClick={() => { const canvas = signatureCanvasRef.current; if (canvas) { const ctx = canvas.getContext('2d'); if (ctx) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); } } }} className="px-4 py-2 border border-slate-200 rounded text-sm">Hapus</button>
-              <button onClick={saveSignature} className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-bold ml-auto">Simpan</button>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100">
+            <div className="flex justify-between items-center mb-5">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Tanda Tangan Digital</h3>
+                <p className="text-xs text-slate-500">Gambar tanda tangan Anda di kotak bawah ini.</p>
+              </div>
+              <button onClick={() => setShowSignatureModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden bg-slate-50/50 relative">
+               <canvas ref={signatureCanvasRef} className="w-full h-48 cursor-crosshair touch-none" />
+               <div className="absolute bottom-3 left-0 right-0 pointer-events-none flex justify-center">
+                 <div className="h-[2px] w-3/4 bg-slate-200/50 border-b border-dashed border-slate-300"></div>
+               </div>
+            </div>
+            
+            <div className="flex items-center gap-3 mt-5">
+              <button 
+                onClick={() => { 
+                  const canvas = signatureCanvasRef.current; 
+                  if (canvas) { 
+                    const ctx = canvas.getContext('2d'); 
+                    if (ctx) { 
+                      ctx.fillStyle = '#fff'; 
+                      ctx.fillRect(0, 0, canvas.width, canvas.height); 
+                    } 
+                  } 
+                }} 
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-sm font-bold transition-colors"
+              >
+                Hapus & Ulangi
+              </button>
+              <button 
+                onClick={saveSignature} 
+                className="flex-1 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-200 transition-colors"
+              >
+                Sisipkan
+              </button>
             </div>
           </div>
         </div>
       )}
       
+      {/* FLOATING ACTION BUTTON (Chat/Help) */}
       <div className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-300 cursor-pointer hover:scale-105 transition-transform z-50">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
       </div>
+
     </div>
   );
 }
 
+// Icon Tambahan 
 const ChevronLeft = ({size}: {size: number}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>;
 const Grid = ({size}: {size: number}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>;
+const Info = ({size}: {size: number}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>;
