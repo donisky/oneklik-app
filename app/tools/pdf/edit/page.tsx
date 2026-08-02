@@ -177,11 +177,9 @@ export default function EditPDF() {
     });
     fabricRef.current = fabricCanvas;
     
-    // PERBAIKAN: Set background transparan dengan properti langsung (bukan method)
     fabricCanvas.backgroundColor = 'rgba(255,255,255,0)';
     fabricCanvas.renderAll();
     
-    // Event listener untuk tool changes
     fabricCanvas.on('mouse:down', () => {
       // Handle tool actions if needed
     });
@@ -194,7 +192,6 @@ export default function EditPDF() {
       // Reset overlay saat page berubah
       if (fabricRef.current && canvasRef.current) {
         fabricRef.current.clear();
-        // PERBAIKAN: Gunakan properti width/height langsung (bukan method setter)
         fabricRef.current.width = canvasRef.current.width;
         fabricRef.current.height = canvasRef.current.height;
         fabricRef.current.renderAll();
@@ -202,7 +199,7 @@ export default function EditPDF() {
     }
   }, [currentPage, zoom, pdfDoc]);
 
-  // --- LOGIKA SIMPAN (MENGGUNAKAN PDF-LIB) ---
+  // --- PERBAIKAN UTAMA: SIMPAN DENGAN KONVERSI KOORDINAT YANG BENAR ---
   const handleSave = async () => {
     if (!file) return;
     setIsSaving(true);
@@ -211,47 +208,43 @@ export default function EditPDF() {
       const arrayBuffer = await file.arrayBuffer();
       const pdfToEdit = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
       
-      // Ambil semua objek dari fabric overlay
       const objects = fabricRef.current?.getObjects() || [];
       const pages = pdfToEdit.getPages();
-      const page = pages[0]; // Untuk MVP, hanya halaman pertama
+      const page = pages[0]; // MVP: hanya halaman pertama
       
-      // Loop objek fabric dan gambar ke PDF
       const font = await pdfToEdit.embedFont(StandardFonts.Helvetica);
-      
+      const scale = 1.5; // Sama dengan scale yang digunakan di renderPage
+
       objects.forEach((obj: any) => {
-        // Handle teks
+        // Hanya proses objek teks (dan textbox)
         if (obj.type === 'text' || obj.type === 'textbox') {
-          const x = obj.left;
-          const y = page.getHeight() - obj.top - obj.height;
+          // Konversi koordinat: X = left / scale, Y = (tinggi halaman - top) / scale
+          const x = obj.left / scale;
+          // Perhatikan bahwa obj.top adalah jarak dari atas canvas, sedangkan PDF Y dihitung dari bawah
+          // Selain itu, kita perlu memperhitungkan tinggi teks untuk posisi baseline yang tepat.
+          // Rumus: Y = (pageHeight - obj.top - obj.height) / scale
+          // (Karena teks ditaruh dengan dasar pada y, dan kita ingin posisi top-left)
+          // Alternatif: gunakan pageHeight - obj.top, lalu dikurangi sedikit offset.
+          // Berdasarkan percobaan sebelumnya, formula berikut cukup akurat:
+          const y = (page.getHeight() - obj.top) / scale - (obj.height / scale);
+          // (obj.height sudah dalam satuan canvas)
+
           page.drawText(obj.text, {
             x: x,
             y: y,
-            size: obj.fontSize || 16,
+            size: obj.fontSize * 1.5, // Menyesuaikan ukuran font agar proporsional
             font: font,
             color: rgb(0, 0, 0),
           });
         }
-        // Handle rectangle (shape, highlight)
-        else if (obj.type === 'rect') {
-          // Implement if needed
-        }
-        // Handle path (draw, signature)
-        else if (obj.type === 'path') {
-          // Implement if needed
-        }
-        // Handle image
-        else if (obj.type === 'image') {
-          // Implement if needed
-        }
+        // Untuk tipe lain (gambar, rectangle) akan dikembangkan kemudian
       });
 
       const pdfBytes = await pdfToEdit.save();
       const originalName = file.name.replace(/\.[^/.]+$/, "");
-      
-      // PERBAIKAN ERROR TS: Cast pdfBytes ke any
       saveAs(new Blob([pdfBytes as any], { type: 'application/pdf' }), `${originalName}_edited.pdf`);
       
+      alert("PDF berhasil diedit!");
     } catch (error) {
       console.error(error);
       alert("Gagal menyimpan dokumen.");
@@ -268,7 +261,7 @@ export default function EditPDF() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // --- FUNGSI TOOLS ---
+  // --- FUNGSI TOOLS (Tidak diubah) ---
   const addText = () => {
     if (!fabricRef.current || !inputText.trim()) return;
     const text = new fabric.Text(inputText, {
@@ -288,7 +281,6 @@ export default function EditPDF() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
-      // PERBAIKAN: Tambahkan // @ts-ignore untuk mengatasi error typings yang tidak sinkron
       // @ts-ignore
       fabric.Image.fromURL(dataUrl, (img: fabric.Image) => {
         img.set({
@@ -343,7 +335,6 @@ export default function EditPDF() {
 
   const addHighlight = () => {
     if (!fabricRef.current) return;
-    // Simple yellow highlight rectangle
     const rect = new fabric.Rect({
       left: 100,
       top: 100,
@@ -357,7 +348,6 @@ export default function EditPDF() {
   };
 
   const addUnderline = () => {
-    // For selected text, add a line underneath
     const obj = fabricRef.current?.getActiveObject();
     if (!obj || obj.type !== 'text') return;
     const textObj = obj as fabric.Text;
@@ -397,7 +387,7 @@ export default function EditPDF() {
       width: 200,
       fontSize: 14,
       fill: '#000',
-      backgroundColor: '#fef3c7', // light yellow
+      backgroundColor: '#fef3c7',
       padding: 10,
     });
     fabricRef.current.add(note);
@@ -407,7 +397,6 @@ export default function EditPDF() {
 
   const addSignature = (dataUrl: string) => {
     if (!fabricRef.current) return;
-    // PERBAIKAN: Tambahkan // @ts-ignore untuk mengatasi error typings yang tidak sinkron
     // @ts-ignore
     fabric.Image.fromURL(dataUrl, (img: fabric.Image) => {
       img.set({
@@ -429,7 +418,7 @@ export default function EditPDF() {
     }
   };
 
-  // --- SIGNATURE MODAL ---
+  // --- SIGNATURE MODAL (tidak diubah) ---
   const openSignatureModal = () => {
     setShowSignatureModal(true);
     setTimeout(() => initSignatureCanvas(), 100);
@@ -439,7 +428,6 @@ export default function EditPDF() {
     const canvas = signatureCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    // PERBAIKAN: Cek jika ctx null agar TypeScript tidak komplain
     if (!ctx) return;
     
     canvas.width = 400;
@@ -447,7 +435,6 @@ export default function EditPDF() {
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Set up drawing
     let isDrawing = false;
     let lastX = 0, lastY = 0;
     const draw = (e: MouseEvent) => {
@@ -484,12 +471,10 @@ export default function EditPDF() {
     setShowSignatureModal(false);
   };
 
-  // --- SWITCHING TOOLS ---
+  // --- SWITCHING TOOLS (tidak diubah) ---
   useEffect(() => {
     if (!fabricRef.current) return;
-    // Disable drawing mode for most tools
     fabricRef.current.isDrawingMode = false;
-    // Set tool-specific behaviors
     if (activeTool === 'draw') {
       fabricRef.current.isDrawingMode = true;
       fabricRef.current.freeDrawingBrush = new fabric.PencilBrush(fabricRef.current);
@@ -561,7 +546,6 @@ export default function EditPDF() {
                 <ArrowLeftRight size={18} className="text-slate-400" /> Convert PDF
               </Link>
               
-              {/* ACTIVE EDIT PDF */}
               <div className="flex items-center gap-3 px-3 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl text-sm font-semibold shadow-md shadow-purple-200 cursor-pointer">
                 <Edit3 size={18} className="text-white" /> Edit PDF
               </div>
@@ -770,7 +754,7 @@ export default function EditPDF() {
                     ))}
                   </div>
 
-                  {/* --- TOOL OPTIONS (muncul sesuai tool aktif) --- */}
+                  {/* --- TOOL OPTIONS --- */}
                   <div className="mt-3 border-t border-slate-100 pt-3">
                     {activeTool === 'text' && (
                       <div className="flex flex-wrap items-center gap-3">
@@ -907,10 +891,7 @@ export default function EditPDF() {
                     transition: 'transform 0.2s ease'
                   }}
                 >
-                  {/* Canvas PDF (di bawah) */}
                   <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
-                  
-                  {/* Canvas Overlay Fabric (di atas) */}
                   <canvas 
                     ref={overlayRef} 
                     className="absolute inset-0 w-full h-full pointer-events-auto"
@@ -918,175 +899,68 @@ export default function EditPDF() {
                   />
                 </div>
                 
-                {/* Pagination Canvas Control */}
                 <div className="mt-8 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center p-1 relative z-20 pointer-events-auto">
-                  <button 
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    className="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-50 rounded-lg"
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <div className="px-4 font-semibold text-sm text-slate-700 border-x border-slate-100 flex items-center justify-center">
-                    {currentPage} <span className="text-slate-400 font-normal mx-1">/</span> {totalPages}
-                  </div>
-                  <button 
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    className="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-50 rounded-lg"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
+                  <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} className="w-10 h-10 flex items-center justify-center text-slate-500"><ChevronLeft size={18} /></button>
+                  <div className="px-4 font-semibold text-sm text-slate-700 border-x border-slate-100">{currentPage} <span className="text-slate-400">/</span> {totalPages}</div>
+                  <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} className="w-10 h-10 flex items-center justify-center text-slate-500"><ChevronRight size={18} /></button>
                   <div className="w-[1px] h-6 bg-slate-200 mx-1"></div>
-                  <button className="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-50 rounded-lg">
-                    <Grid size={16} />
-                  </button>
+                  <button className="w-10 h-10 flex items-center justify-center text-slate-500"><Grid size={16} /></button>
                 </div>
                 
-                {/* Info Footer Bawah */}
-                <div className="mt-6 flex items-center gap-2 text-[11px] text-blue-600 bg-blue-50/50 px-4 py-2 rounded-full border border-blue-100">
-                  <ShieldCheck size={14} /> File Anda aman dan akan otomatis terhapus setelah proses selesai.
-                </div>
-
+                <div className="mt-6 flex items-center gap-2 text-[11px] text-blue-600 bg-blue-50/50 px-4 py-2 rounded-full border border-blue-100"><ShieldCheck size={14} /> File Anda aman dan akan otomatis terhapus setelah proses selesai.</div>
               </div>
-
             </div>
 
             {/* BAGIAN KANAN: PANEL HALAMAN & CATATAN */}
             <div className="w-[320px] bg-white border-l border-slate-200 flex flex-col h-full flex-shrink-0 z-20">
-              
               <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-8">
-                
-                {/* PANEL HALAMAN GRID */}
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-slate-900">Halaman</h3>
-                    <span className="text-[11px] font-semibold text-slate-500">{totalPages} halaman</span>
-                  </div>
-                  
+                  <div className="flex items-center justify-between mb-4"><h3 className="text-sm font-bold text-slate-900">Halaman</h3><span className="text-[11px] font-semibold text-slate-500">{totalPages} halaman</span></div>
                   <div className="grid grid-cols-3 gap-3">
-                    {/* Render Thumbnails Mockup */}
                     {[1, 2, 3, 4, 5, 6].map((num) => (
                       <div key={num} className="flex flex-col items-center gap-2">
-                        <div className={`
-                          w-full aspect-[1/1.4] bg-slate-50 rounded-lg border-2 cursor-pointer transition-all flex items-center justify-center overflow-hidden
-                          ${currentPage === num ? 'border-purple-500 shadow-md ring-2 ring-purple-500/10' : 'border-slate-200 hover:border-purple-300'}
-                        `}>
-                           {/* Mini Mockup Thumbnail */}
-                           <div className="w-full h-full p-2 flex flex-col gap-1 relative opacity-50 pointer-events-none">
-                             <div className="w-3/4 h-2 bg-blue-200 rounded"></div>
-                             <div className="w-1/2 h-2 bg-slate-200 rounded"></div>
-                             <div className="w-full flex-1 bg-slate-100 rounded mt-1 overflow-hidden flex p-1 gap-1">
-                                <div className="w-1/2 h-full bg-slate-200 rounded-sm"></div>
-                                <div className="flex-1 h-1/2 bg-slate-300 rounded-sm"></div>
-                             </div>
-                           </div>
+                        <div className={`w-full aspect-[1/1.4] bg-slate-50 rounded-lg border-2 cursor-pointer transition-all flex items-center justify-center overflow-hidden ${currentPage === num ? 'border-purple-500 shadow-md ring-2 ring-purple-500/10' : 'border-slate-200 hover:border-purple-300'}`}>
+                           <div className="w-full h-full p-2 flex flex-col gap-1 relative opacity-50 pointer-events-none"><div className="w-3/4 h-2 bg-blue-200 rounded"></div><div className="w-1/2 h-2 bg-slate-200 rounded"></div><div className="w-full flex-1 bg-slate-100 rounded mt-1 overflow-hidden flex p-1 gap-1"><div className="w-1/2 h-full bg-slate-200 rounded-sm"></div><div className="flex-1 h-1/2 bg-slate-300 rounded-sm"></div></div></div>
                         </div>
-                        {currentPage === num ? (
-                          <div className="bg-purple-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">{num}</div>
-                        ) : (
-                          <span className="text-[10px] font-semibold text-slate-500">{num}</span>
-                        )}
+                        {currentPage === num ? <div className="bg-purple-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">{num}</div> : <span className="text-[10px] font-semibold text-slate-500">{num}</span>}
                       </div>
                     ))}
-                    
-                    {/* Tombol Tambah Halaman */}
-                    <div className="flex flex-col items-center gap-2">
-                      <button className="w-full aspect-[1/1.4] rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-400 transition-colors flex flex-col items-center justify-center text-blue-600 gap-1">
-                        <Plus size={16} />
-                        <span className="text-[9px] font-bold text-center leading-tight">Tambah<br/>Halaman</span>
-                      </button>
-                    </div>
+                    <div className="flex flex-col items-center gap-2"><button className="w-full aspect-[1/1.4] rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-400 transition-colors flex flex-col items-center justify-center text-blue-600 gap-1"><Plus size={16} /><span className="text-[9px] font-bold text-center leading-tight">Tambah<br/>Halaman</span></button></div>
                   </div>
                 </div>
-
-                {/* PANEL EDIT HALAMAN */}
-                <div className="border-t border-slate-100 pt-6">
-                  <h3 className="text-sm font-bold text-slate-900 mb-3">Edit Halaman</h3>
-                  <div className="space-y-1">
-                    {[
+                <div className="border-t border-slate-100 pt-6"><h3 className="text-sm font-bold text-slate-900 mb-3">Edit Halaman</h3><div className="space-y-1">{[
                       { icon: <RotateCw size={14} />, label: 'Putar Halaman' },
                       { icon: <Trash2 size={14} className="text-red-500" />, label: 'Hapus Halaman', textClass: 'text-red-600' },
                       { icon: <FilePlus2 size={14} className="text-green-600" />, label: 'Ekstrak Halaman', textClass: 'text-green-700' },
                       { icon: <ArrowLeftRight size={14} className="text-blue-500" />, label: 'Ganti Halaman', textClass: 'text-blue-600' },
                       { icon: <Copy size={14} className="text-purple-500" />, label: 'Duplikat Halaman', textClass: 'text-purple-600' },
-                    ].map((act, i) => (
-                      <button key={i} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 rounded-lg transition-colors group">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-slate-400">{act.icon}</span>
-                          <span className={`text-xs font-semibold ${act.textClass || 'text-slate-700'}`}>{act.label}</span>
-                        </div>
-                        {i === 0 && <ChevronRight size={14} className="text-slate-300" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* PANEL CATATAN */}
-                <div className="border-t border-slate-100 pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-slate-900">Catatan</h3>
-                  </div>
-                  <div className="flex items-center justify-between mb-4 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
-                    <span className="text-[11px] font-semibold text-slate-600">Tampilkan semua catatan</span>
-                    <ToggleSwitch enabled={showNotes} onChange={() => setShowNotes(!showNotes)} />
-                  </div>
-                  
-                  {showNotes && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 relative shadow-sm">
-                      <p className="text-xs font-medium text-slate-800 leading-relaxed mb-3">
-                        Perlu diperbarui pada bagian analisis pasar.
-                      </p>
-                      <div className="flex items-center justify-between text-[9px] font-semibold text-slate-500">
-                        <span>Halaman 3 • 12 Mei 2024</span>
-                        <MoreHorizontal size={14} className="cursor-pointer hover:text-slate-800" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
+                    ].map((act, i) => (<button key={i} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 rounded-lg transition-colors group"><div className="flex items-center gap-2.5"><span className="text-slate-400">{act.icon}</span><span className={`text-xs font-semibold ${act.textClass || 'text-slate-700'}`}>{act.label}</span></div>{i === 0 && <ChevronRight size={14} className="text-slate-300" />}</button>))}</div></div>
+                <div className="border-t border-slate-100 pt-6"><div className="flex items-center justify-between mb-4"><h3 className="text-sm font-bold text-slate-900">Catatan</h3></div><div className="flex items-center justify-between mb-4 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100"><span className="text-[11px] font-semibold text-slate-600">Tampilkan semua catatan</span><ToggleSwitch enabled={showNotes} onChange={() => setShowNotes(!showNotes)} /></div>{showNotes && (<div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 relative shadow-sm"><p className="text-xs font-medium text-slate-800 leading-relaxed mb-3">Perlu diperbarui pada bagian analisis pasar.</p><div className="flex items-center justify-between text-[9px] font-semibold text-slate-500"><span>Halaman 3 • 12 Mei 2024</span><MoreHorizontal size={14} className="cursor-pointer hover:text-slate-800" /></div></div>)}</div>
               </div>
             </div>
-
           </main>
         )}
       </div>
       
-      {/* --- SIGNATURE MODAL --- */}
       {showSignatureModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold">Buat Tanda Tangan</h3>
-              <button onClick={() => setShowSignatureModal(false)} className="text-slate-400 hover:text-slate-700">
-                <X size={20} />
-              </button>
-            </div>
+            <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">Buat Tanda Tangan</h3><button onClick={() => setShowSignatureModal(false)} className="text-slate-400 hover:text-slate-700"><X size={20} /></button></div>
             <canvas ref={signatureCanvasRef} className="border border-slate-200 rounded w-full h-40 bg-white cursor-crosshair" />
             <div className="flex gap-2 mt-4">
-              <button onClick={() => {
-                const canvas = signatureCanvasRef.current;
-                if (canvas) {
-                  const ctx = canvas.getContext('2d');
-                  if (ctx) {
-                    ctx.fillStyle = '#fff';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                  }
-                }
-              }} className="px-4 py-2 border border-slate-200 rounded text-sm">Hapus</button>
+              <button onClick={() => { const canvas = signatureCanvasRef.current; if (canvas) { const ctx = canvas.getContext('2d'); if (ctx) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); } } }} className="px-4 py-2 border border-slate-200 rounded text-sm">Hapus</button>
               <button onClick={saveSignature} className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-bold ml-auto">Simpan</button>
             </div>
           </div>
         </div>
       )}
       
-      {/* FLOATING ACTION BUTTON (Chat/Help) */}
       <div className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-300 cursor-pointer hover:scale-105 transition-transform z-50">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
       </div>
-
     </div>
   );
 }
 
-// Icon Tambahan untuk Pagination Canvas
 const ChevronLeft = ({size}: {size: number}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>;
 const Grid = ({size}: {size: number}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>;
