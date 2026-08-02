@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Import SDK secara default
 import ILovePDFApi from '@ilovepdf/ilovepdf-nodejs';
 
 export const runtime = 'nodejs';
@@ -30,39 +29,40 @@ function getNextILPKey(): string {
 // ============================================
 async function processILovePDF(file: File, action: string, outputFormat: string): Promise<Blob> {
   const apiKey = getNextILPKey();
-  if (!apiKey) throw new Error('ILP_QUOTA_EXCEEDED');
+  if (!apiKey) throw new Error('ILP_QUOTA_EXCEEDED'); // Jika key kosong, anggap kuota habis
 
   try {
-    // === PERBAIKAN ERROR 1: Inisialisasi SDK tanpa secretKey ===
-    // Menggunakan 'as any' pada konstruktor untuk melewati validasi argumen TypeScript
     const ilovepdf = new (ILovePDFApi as any)(apiKey);
-
-    // Buat task
     const task = ilovepdf.newTask(action === 'compress' ? 'compress' : 'convert');
-
-    // === PERBAIKAN ERROR 2: Kirim Buffer tanpa error TypeScript ===
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     await task.addFile(fileBuffer as any, file.name);
 
-    // Proses task
     if (action === 'compress') {
       await task.process();
     } else {
       await task.process(outputFormat);
     }
 
-    // Download hasil
     const resultUint8 = await task.download();
-    
-    // Kembalikan sebagai Blob
     return new Blob([Buffer.from(resultUint8 as any)]);
 
   } catch (err: any) {
-    // Tangani error kuota / invalid key
-    if (err.message?.includes('429') || err.message?.includes('403') || err.message?.includes('401')) {
+    // === PERBAIKAN LOGIKA ERROR ===
+    const msg = (err.message || '').toLowerCase();
+
+    // 1. Jika error 403 atau 401 -> Artinya akun belum diverifikasi atau API Key salah.
+    // Ini bukan kuota habis, jadi kita lempar error spesifik agar sistem bisa mencoba key berikutnya.
+    if (msg.includes('403') || msg.includes('401')) {
+      throw new Error('ILP_AUTH_ERROR: Akun iLovePDF belum diverifikasi atau API Key salah.');
+    }
+
+    // 2. Jika error 429 -> Benar-benar kuota habis
+    if (msg.includes('429')) {
       throw new Error('ILP_QUOTA_EXCEEDED');
     }
-    throw new Error(err.message || 'ILP_PROCESS_ERROR');
+
+    // 3. Error teknis lainnya (misal: 500, 404 dari SDK)
+    throw new Error(msg || 'ILP_PROCESS_ERROR');
   }
 }
 
@@ -93,18 +93,33 @@ export async function POST(req: NextRequest) {
         lastError = err;
         console.log(`❌ Key ke-${(attempt % ILOVEPDF_KEYS.length) + 1} gagal: ${err.message}`);
 
-        if (err.message === 'ILP_QUOTA_EXCEEDED') continue;
+        // Jika error adalah QUOTA atau AUTH (verifikasi/key salah), lanjut ke key berikutnya
+        if (err.message === 'ILP_QUOTA_EXCEEDED' || err.message.startsWith('ILP_AUTH_ERROR')) {
+          continue;
+        }
+        // Jika error teknis lainnya, hentikan loop dan laporkan
         break;
       }
     }
 
     if (!resultBlob) {
-      if (lastError && lastError.message === 'ILP_QUOTA_EXCEEDED') {
-        return NextResponse.json({ 
-          error: 'Semua kuota iLovePDF telah habis. Tambahkan key baru atau tunggu reset bulanan.' 
-        }, { status: 429 });
+      // === PERBAIKAN: Berikan pesan yang tepat sesuai jenis error ===
+      if (lastError) {
+        // Jika semua key gagal karena autentikasi/verifikasi
+        if (lastError.message.startsWith('ILP_AUTH_ERROR')) {
+          return NextResponse.json({
+            error: 'Akun iLovePDF belum terverifikasi atau API Key salah. Silakan login ke dashboard iloveapi.com, klik link verifikasi di email, lalu coba lagi.'
+          }, { status: 403 });
+        }
+        // Jika semua key gagal karena kuota
+        if (lastError.message === 'ILP_QUOTA_EXCEEDED') {
+          return NextResponse.json({
+            error: 'Semua kuota iLovePDF telah habis. Tambahkan key baru atau tunggu reset bulanan.'
+          }, { status: 429 });
+        }
       }
-      return NextResponse.json({ error: lastError?.message || 'Semua key gagal' }, { status: 500 });
+      // Fallback error umum
+      return NextResponse.json({ error: lastError?.message || 'Semua key gagal diproses.' }, { status: 500 });
     }
 
     const ext = action === 'compress' ? 'pdf' : outputFormat;
