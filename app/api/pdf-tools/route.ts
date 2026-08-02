@@ -16,18 +16,42 @@ export async function POST(req: NextRequest) {
     if (!file) return NextResponse.json({ error: 'File tidak ditemukan' }, { status: 400 });
     if (!CLOUDCONVERT_API_KEY) return NextResponse.json({ error: 'API Key CloudConvert tidak ditemukan.' }, { status: 500 });
 
-    // 1. Buat Job
-    const jobPayload = {
+    // 1. Buat Job dengan pemilihan engine yang tepat
+    const jobPayload: any = {
       tasks: {
         'upload-file': { operation: 'import/upload', filename: file.name },
         'convert-file': {
           operation: 'convert',
           input: ['upload-file'],
-          output_format: action === 'compress' ? 'pdf' : outputFormat,
-          ...(action === 'compress' ? { engine: 'ghostscript', profile: quality } : { engine: 'office' })
         }
       }
     };
+
+    // === PERBAIKAN LOGIKA ENGINE ===
+    if (action === 'compress') {
+      // Compress PDF ke PDF yang lebih kecil
+      jobPayload.tasks['convert-file'].output_format = 'pdf';
+      jobPayload.tasks['convert-file'].engine = 'ghostscript';
+      jobPayload.tasks['convert-file'].profile = quality; // high, medium, low
+    } else if (action === 'convert') {
+      // Convert berdasarkan format tujuan
+      jobPayload.tasks['convert-file'].output_format = outputFormat;
+
+      // Jika convert ke JPG/PNG -> pakai ghostscript
+      if (['jpg', 'jpeg', 'png', 'gif'].includes(outputFormat)) {
+        jobPayload.tasks['convert-file'].engine = 'ghostscript';
+      } 
+      // Jika convert ke DOCX/XLSX/PPTX -> pakai engine 'office' (untuk PDF ke Office)
+      else if (['docx', 'xlsx', 'pptx'].includes(outputFormat)) {
+        jobPayload.tasks['convert-file'].engine = 'office';
+      } 
+      // Fallback ke ghostscript
+      else {
+        jobPayload.tasks['convert-file'].engine = 'ghostscript';
+      }
+    } else {
+      throw new Error('Aksi tidak dikenali.');
+    }
 
     const jobRes = await fetch('https://api.cloudconvert.com/v2/jobs', {
       method: 'POST',
@@ -58,11 +82,9 @@ export async function POST(req: NextRequest) {
     uploadForm.append('file', file);
 
     const uploadRes = await fetch(uploadUrl, { method: 'POST', body: uploadForm });
-    if (!uploadRes.ok) {
-      throw new Error(`CC_UPLOAD_ERROR: ${uploadRes.status} - ${await uploadRes.text()}`);
-    }
+    if (!uploadRes.ok) throw new Error(`CC_UPLOAD_ERROR: ${uploadRes.status} - ${await uploadRes.text()}`);
 
-    // 4. Polling Hasil Konversi (Dengan Error Detail dari CloudConvert)
+    // 4. Polling Hasil Konversi
     let attempts = 0;
     let resultUrl: string | null = null;
     while (!resultUrl && attempts < 30) {
@@ -76,7 +98,6 @@ export async function POST(req: NextRequest) {
         resultUrl = statusData.data.result.files[0].url;
         break;
       } else if (statusData.data.status === 'error') {
-        // === PERBAIKAN: Ambil pesan error asli dari CloudConvert ===
         const errorMessage = statusData.data.message || statusData.data.error || 'Unknown CloudConvert error';
         console.error('🔥 CloudConvert Conversion Error:', errorMessage);
         throw new Error(`CC_PROCESS_ERROR: ${errorMessage}`);
