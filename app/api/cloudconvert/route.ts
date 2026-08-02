@@ -22,90 +22,66 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'API Key CloudConvert tidak ditemukan.' }, { status: 500 });
     }
 
-    // 1. Inisialisasi SDK
+    // Inisialisasi SDK
     const cloudConvert = new CloudConvert(CLOUDCONVERT_API_KEY);
-
-    // 2. Persiapkan Buffer file
     const fileBuffer = Buffer.from(await file.arrayBuffer());
 
-    // 3. Buat Job
-    let jobPayload: any = {
-      tasks: {}
-    };
+    // Buat Job
+    let jobPayload: any = { tasks: {} };
 
     if (action === 'compress') {
       jobPayload.tasks = {
-        'import-file': {
-          operation: 'import/upload',
-          filename: file.name,
-        },
-        'compress-file': {
-          operation: 'convert',
-          input: 'import-file',
-          engine: 'ghostscript',
-          profile: quality, // high, medium, low
-          output_format: 'pdf',
-        },
-        'export-file': {
-          operation: 'export/url',
-          input: 'compress-file',
-          inline: false,
-        }
+        'import-file': { operation: 'import/upload', filename: file.name },
+        'compress-file': { operation: 'convert', input: 'import-file', engine: 'ghostscript', profile: quality, output_format: 'pdf' },
+        'export-file': { operation: 'export/url', input: 'compress-file', inline: false }
       };
     } else {
       let engine = 'ghostscript';
-      if (['docx', 'xlsx', 'pptx'].includes(outputFormat)) {
-        engine = 'office';
-      }
-
+      if (['docx', 'xlsx', 'pptx'].includes(outputFormat)) engine = 'office';
       jobPayload.tasks = {
-        'import-file': {
-          operation: 'import/upload',
-          filename: file.name,
-        },
-        'convert-file': {
-          operation: 'convert',
-          input: 'import-file',
-          engine: engine,
-          output_format: outputFormat,
-        },
-        'export-file': {
-          operation: 'export/url',
-          input: 'convert-file',
-          inline: false,
-        }
+        'import-file': { operation: 'import/upload', filename: file.name },
+        'convert-file': { operation: 'convert', input: 'import-file', engine, output_format: outputFormat },
+        'export-file': { operation: 'export/url', input: 'convert-file', inline: false }
       };
     }
 
     // Eksekusi pembuatan job
     let job = await cloudConvert.jobs.create(jobPayload);
 
-    // 4. Cari Task Import
+    // Cari Task Import
     const importTask = job.tasks.find((t: any) => t.operation === 'import/upload' && t.name === 'import-file');
-    
-    if (!importTask) {
-      throw new Error('Tidak dapat menemukan task import/upload.');
-    }
+    if (!importTask) throw new Error('Tidak dapat menemukan task import/upload.');
 
-    // === PERBAIKAN ERROR TS: Gunakan objek importTask, bukan ID-nya ===
+    // Upload file
     await cloudConvert.tasks.upload(importTask, fileBuffer, file.name);
 
-    // 5. Tunggu Job Selesai
+    // Tunggu Job Selesai
     job = await cloudConvert.jobs.wait(job.id);
 
-    // 6. Ambil URL hasil export
+    // === CEK ERROR TASK LAINNYA ===
+    // Jika ada task yang error, kita akan mengetahuinya di sini
+    const errorTask = job.tasks.find((t: any) => t.status === 'error');
+    if (errorTask) {
+      console.error('🔥 CloudConvert Error Task:', errorTask);
+      throw new Error(`Task ${errorTask.name} gagal: ${errorTask.message || errorTask.code}`);
+    }
+
+    // Cari Export Task
     const exportTask = job.tasks.find((t: any) => t.operation === 'export/url');
     
-    if (!exportTask || !exportTask.result || !exportTask.result.files || exportTask.result.files.length === 0) {
+    if (!exportTask) throw new Error('Tidak dapat menemukan task export/url.');
+    if (exportTask.status !== 'finished') {
+      throw new Error(`Export task tidak selesai. Status: ${exportTask.status}`);
+    }
+    
+    if (!exportTask.result || !exportTask.result.files || exportTask.result.files.length === 0) {
       throw new Error('Export task gagal atau tidak mengembalikan file.');
     }
 
     const resultUrl = exportTask.result.files[0].url;
-    if (!resultUrl) {
-      throw new Error('URL hasil export tidak ditemukan.');
-    }
+    if (!resultUrl) throw new Error('URL hasil export tidak ditemukan.');
 
-    // 7. Download hasil
+    // Download hasil
     const resultRes = await fetch(resultUrl);
     if (!resultRes.ok) throw new Error('CC_DOWNLOAD_ERROR');
 
@@ -122,6 +98,7 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('🔥 CloudConvert SDK Error:', error.message);
+    // Jika error 429 (Quota habis)
     if (error.message?.includes('429')) {
       return NextResponse.json({ error: 'Kuota CloudConvert hari ini habis.' }, { status: 429 });
     }
