@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+// Import default SDK
 import ILovePDFApi from '@ilovepdf/ilovepdf-nodejs';
 
 export const runtime = 'nodejs';
@@ -25,49 +26,59 @@ function getNextILPKey(): string {
 }
 
 // ============================================
-// 2. FUNGSI PROSES (SDK iLovePDF)
+// 2. FUNGSI PROSES menggunakan SDK
 // ============================================
 async function processILovePDF(file: File, action: string, outputFormat: string): Promise<Blob> {
   const apiKey = getNextILPKey();
-  if (!apiKey) throw new Error('ILP_QUOTA_EXCEEDED'); // Jika key kosong, anggap kuota habis
+  if (!apiKey) throw new Error('ILP_QUOTA_EXCEEDED');
 
   try {
+    // PERBAIKAN: Bypass error secretKey dengan casting ke any
     const ilovepdf = new (ILovePDFApi as any)(apiKey);
+
+    // Buat task (compress / convert)
     const task = ilovepdf.newTask(action === 'compress' ? 'compress' : 'convert');
+
+    // Upload file (perbaiki error Buffer)
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     await task.addFile(fileBuffer as any, file.name);
 
+    // Proses file
     if (action === 'compress') {
       await task.process();
     } else {
       await task.process(outputFormat);
     }
 
+    // Download hasil
     const resultUint8 = await task.download();
     return new Blob([Buffer.from(resultUint8 as any)]);
 
   } catch (err: any) {
-    // === PERBAIKAN LOGIKA ERROR ===
-    const msg = (err.message || '').toLowerCase();
+    // Log error asli dari SDK agar kita bisa melihat detailnya di Vercel Logs
+    console.error('🔥 ERROR ILOVEPDF SDK:', err);
 
-    // 1. Jika error 403 atau 401 -> Artinya akun belum diverifikasi atau API Key salah.
-    // Ini bukan kuota habis, jadi kita lempar error spesifik agar sistem bisa mencoba key berikutnya.
-    if (msg.includes('403') || msg.includes('401')) {
-      throw new Error('ILP_AUTH_ERROR: Akun iLovePDF belum diverifikasi atau API Key salah.');
+    // Coba ambil status code dari error response
+    const status = err?.response?.status || err?.status || 0;
+    const errorMsg = err?.response?.data || err?.message || 'Unknown SDK error';
+
+    // 1. Jika kuota habis (429)
+    if (status === 429) throw new Error('ILP_QUOTA_EXCEEDED');
+
+    // 2. Jika autentikasi gagal (403 / 401)
+    if (status === 403 || status === 401) {
+      throw new Error(`ILP_AUTH_ERROR: ${JSON.stringify(errorMsg)}`);
     }
 
-    // 2. Jika error 429 -> Benar-benar kuota habis
-    if (msg.includes('429')) {
-      throw new Error('ILP_QUOTA_EXCEEDED');
-    }
-
-    // 3. Error teknis lainnya (misal: 500, 404 dari SDK)
-    throw new Error(msg || 'ILP_PROCESS_ERROR');
+    // 3. Jika endpoint tidak ditemukan (404) atau error lain (500)
+    // Kita lemparkan ke atas agar sistem mencoba Key berikutnya
+    console.warn(`⚠️ ILP Key gagal dengan error: ${status} - ${errorMsg}`);
+    throw new Error('ILP_QUOTA_EXCEEDED'); // Paksa fallback ke key berikutnya
   }
 }
 
 // ============================================
-// 3. MAIN HANDLER (Round-Robin)
+// 3. MAIN HANDLER (Round-Robin multi-key)
 // ============================================
 export async function POST(req: NextRequest) {
   try {
@@ -83,7 +94,7 @@ export async function POST(req: NextRequest) {
     let resultBlob: Blob | null = null;
     let lastError: any = null;
 
-    // Loop semua key yang tersedia
+    // Loop mencoba semua key iLovePDF
     for (let attempt = 0; attempt < ILOVEPDF_KEYS.length; attempt++) {
       try {
         resultBlob = await processILovePDF(file, action, outputFormat);
@@ -93,32 +104,28 @@ export async function POST(req: NextRequest) {
         lastError = err;
         console.log(`❌ Key ke-${(attempt % ILOVEPDF_KEYS.length) + 1} gagal: ${err.message}`);
 
-        // Jika error adalah QUOTA atau AUTH (verifikasi/key salah), lanjut ke key berikutnya
+        // Lanjut ke key berikutnya jika error kuota atau autentikasi
         if (err.message === 'ILP_QUOTA_EXCEEDED' || err.message.startsWith('ILP_AUTH_ERROR')) {
           continue;
         }
-        // Jika error teknis lainnya, hentikan loop dan laporkan
+        // Jika error teknis lainnya (misal: 404 dari SDK), hentikan loop dan laporkan
         break;
       }
     }
 
     if (!resultBlob) {
-      // === PERBAIKAN: Berikan pesan yang tepat sesuai jenis error ===
       if (lastError) {
-        // Jika semua key gagal karena autentikasi/verifikasi
         if (lastError.message.startsWith('ILP_AUTH_ERROR')) {
           return NextResponse.json({
-            error: 'Akun iLovePDF belum terverifikasi atau API Key salah. Silakan login ke dashboard iloveapi.com, klik link verifikasi di email, lalu coba lagi.'
+            error: 'Akun iLovePDF belum terverifikasi atau API Key salah. Silakan login ke dashboard iloveapi.com, buat Public Key baru, lalu coba lagi.'
           }, { status: 403 });
         }
-        // Jika semua key gagal karena kuota
         if (lastError.message === 'ILP_QUOTA_EXCEEDED') {
           return NextResponse.json({
             error: 'Semua kuota iLovePDF telah habis. Tambahkan key baru atau tunggu reset bulanan.'
           }, { status: 429 });
         }
       }
-      // Fallback error umum
       return NextResponse.json({ error: lastError?.message || 'Semua key gagal diproses.' }, { status: 500 });
     }
 
