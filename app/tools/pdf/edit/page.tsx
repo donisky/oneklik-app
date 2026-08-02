@@ -10,7 +10,7 @@ import {
   Crown, FileText, ArrowLeftRight, Bell, Plus, Save, Minus, ZoomIn, Undo, Redo,
   MousePointer2, Type, Image as ImageIcon, Square, Highlighter, Pen, Underline,
   Strikethrough, MessageSquare, ShieldCheck, RotateCw, Copy, FilePlus2, MoreHorizontal,
-  AlignLeft, List, GripVertical, CheckSquare, Circle, X
+  AlignLeft, List, GripVertical, CheckSquare, Circle, X, Info
 } from 'lucide-react';
 import Link from 'next/link';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
@@ -67,7 +67,6 @@ export default function EditPDF() {
   const [pdfDoc, setPdfDoc] = useState<any>(null); // pdfjs doc
   const [totalPages, setTotalPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [thumbnails, setThumbnails] = useState<string[]>([]);
   
   // State Editor & UI
   const [zoom, setZoom] = useState(100);
@@ -127,16 +126,13 @@ export default function EditPDF() {
 
   const loadPDF = async (selectedFile: File) => {
     setFile(selectedFile);
+    setZoom(100); // Reset zoom
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       setPdfDoc(pdf);
       setTotalPages(pdf.numPages);
       setCurrentPage(1);
-      
-      const mockThumbs = Array.from({length: Math.min(pdf.numPages, 12)}).map((_, i) => `thumb_${i}`);
-      setThumbnails(mockThumbs);
-      
     } catch (error) {
       console.error("Error loading PDF:", error);
       alert("Gagal memuat file PDF. File mungkin rusak atau dilindungi password.");
@@ -144,8 +140,6 @@ export default function EditPDF() {
     }
   };
 
-  // Re-render MURNI hanya saat pindah halaman / pdfDoc berubah.
-  // Zoom ditangani oleh CSS Transform agar tidak merusak resolusi dan titik koordinat Fabric
   useEffect(() => {
     if (pdfDoc) {
       renderPage(pdfDoc, currentPage);
@@ -156,7 +150,7 @@ export default function EditPDF() {
     if (!canvasRef.current || !pdf) return;
     try {
       const page = await pdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 1.5 }); // Base scale tetap 1.5x untuk resolusi tajam
+      const viewport = page.getViewport({ scale: 1.5 }); // Base render scale HD
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
       
@@ -171,10 +165,8 @@ export default function EditPDF() {
           initFabric(viewport.width, viewport.height);
         } else {
           fabricRef.current.clear();
-          // PERBAIKAN TS ERROR: Menggunakan setDimensions alih-alih setWidth/setHeight
           fabricRef.current.setDimensions({ width: viewport.width, height: viewport.height });
           fabricRef.current.renderAll();
-          // Reset history untuk halaman baru
           setHistory([]);
           setHistoryStep(-1);
         }
@@ -210,8 +202,7 @@ export default function EditPDF() {
     fabricCanvas.on('object:added', saveHistory);
     fabricCanvas.on('object:removed', saveHistory);
     
-    // Initial blank state
-    saveHistory();
+    saveHistory(); // state awal kosong
   };
 
   const handleUndo = () => {
@@ -247,10 +238,10 @@ export default function EditPDF() {
       
       const objects = fabricRef.current?.getObjects() || [];
       const pages = pdfToEdit.getPages();
-      const page = pages[currentPage - 1]; // Menyimpan pada halaman yang aktif
+      const page = pages[currentPage - 1];
       
       const font = await pdfToEdit.embedFont(StandardFonts.Helvetica);
-      const scale = 1.5; // Harus sama dengan base scale di renderPage
+      const scale = 1.5;
 
       for (const obj of objects) {
         const bounds = obj.getBoundingRect();
@@ -260,14 +251,12 @@ export default function EditPDF() {
         const pdfY = page.getHeight() - (bounds.top / scale) - pdfHeight;
 
         if (obj.type === 'text' || obj.type === 'textbox' || obj.type === 'i-text') {
-          // 1. Export Native Text agar tetap bisa diblok/search di PDF
           const textObj = obj as fabric.Text;
           let textColor = rgb(0,0,0);
           if (textObj.fill && typeof textObj.fill === 'string') {
             textColor = hexToRgbPdf(textObj.fill);
           }
           const fSize = (textObj.fontSize || 16) / scale;
-          // Penyesuaian baseline font PDF
           const baselineY = page.getHeight() - (bounds.top / scale) - fSize * 0.85;
 
           page.drawText(textObj.text || '', {
@@ -278,29 +267,8 @@ export default function EditPDF() {
             color: textColor,
           });
         } 
-        else if (obj.type === 'image' && (obj as any).getSrc) {
-          // 2. Export Image Native (Tanda Tangan / Gambar Asli)
-          const src = (obj as any).getSrc();
-          if (src) {
-            const base64Data = src.split(',')[1];
-            const imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-            let pdfImage;
-            if (src.includes('image/jpeg') || src.includes('image/jpg')) {
-              pdfImage = await pdfToEdit.embedJpg(imageBytes);
-            } else {
-              pdfImage = await pdfToEdit.embedPng(imageBytes);
-            }
-            page.drawImage(pdfImage, {
-              x: pdfX,
-              y: pdfY,
-              width: pdfWidth,
-              height: pdfHeight,
-            });
-          }
-        } 
         else {
-          // 3. Export Hybrid (Bentuk, Coretan, Highlight, Garis) -> Resolusi Tinggi PNG
-          // Ini sangat aman untuk mempertahankan rotasi, bezier curve, dan opacity
+          // Export Hybrid (Gambar, Tanda Tangan, Bentuk, Coretan)
           const dataUrl = obj.toDataURL({ format: 'png', multiplier: 3 });
           const base64Data = dataUrl.split(',')[1];
           const imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
@@ -321,7 +289,7 @@ export default function EditPDF() {
       
     } catch (error) {
       console.error(error);
-      alert("Gagal menyimpan dokumen.");
+      alert("Gagal menyimpan dokumen. File mungkin memiliki proteksi.");
     } finally {
       setIsSaving(false);
     }
@@ -350,17 +318,21 @@ export default function EditPDF() {
     setInputText('');
   };
 
+  // MENGGUNAKAN STANDAR HTML IMAGE (Mengatasi Fabric v6 Breaking Change)
   const addImage = (imgFile: File) => {
     if (!fabricRef.current) return;
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
-      // @ts-ignore
-      fabric.Image.fromURL(dataUrl, (img: fabric.Image) => {
-        img.set({ left: 100, top: 100, scaleX: 0.5, scaleY: 0.5 });
-        fabricRef.current?.add(img);
-        fabricRef.current?.setActiveObject(img);
-      });
+      const imgElement = new Image();
+      imgElement.src = dataUrl;
+      imgElement.onload = () => {
+        const imgInstance = new fabric.Image(imgElement, {
+          left: 100, top: 100, scaleX: 0.5, scaleY: 0.5
+        });
+        fabricRef.current?.add(imgInstance);
+        fabricRef.current?.setActiveObject(imgInstance);
+      };
     };
     reader.readAsDataURL(imgFile);
   };
@@ -402,12 +374,12 @@ export default function EditPDF() {
 
   const addUnderline = () => {
     const obj = fabricRef.current?.getActiveObject();
-    if (!obj || obj.type !== 'i-text' && obj.type !== 'text') {
-      alert('Pilih teks terlebih dahulu!');
+    if (!obj || (obj.type !== 'i-text' && obj.type !== 'text')) {
+      alert('Pilih teks yang Anda tambahkan terlebih dahulu!');
       return;
     }
     const line = new fabric.Line(
-      [obj.left!, obj.top! + obj.height! + 2, obj.left! + obj.width! * obj.scaleX!, obj.top! + obj.height! + 2],
+      [obj.left!, obj.top! + obj.height! * (obj.scaleY || 1) + 2, obj.left! + obj.width! * (obj.scaleX || 1), obj.top! + obj.height! * (obj.scaleY || 1) + 2],
       { stroke: strokeColor, strokeWidth: 2 }
     );
     fabricRef.current?.add(line);
@@ -415,12 +387,12 @@ export default function EditPDF() {
 
   const addStrikethrough = () => {
     const obj = fabricRef.current?.getActiveObject();
-    if (!obj || obj.type !== 'i-text' && obj.type !== 'text') {
-      alert('Pilih teks terlebih dahulu!');
+    if (!obj || (obj.type !== 'i-text' && obj.type !== 'text')) {
+      alert('Pilih teks yang Anda tambahkan terlebih dahulu!');
       return;
     }
     const line = new fabric.Line(
-      [obj.left!, obj.top! + (obj.height! / 2), obj.left! + obj.width! * obj.scaleX!, obj.top! + (obj.height! / 2)],
+      [obj.left!, obj.top! + (obj.height! * (obj.scaleY || 1) / 2), obj.left! + obj.width! * (obj.scaleX || 1), obj.top! + (obj.height! * (obj.scaleY || 1) / 2)],
       { stroke: strokeColor, strokeWidth: 2 }
     );
     fabricRef.current?.add(line);
@@ -493,19 +465,22 @@ export default function EditPDF() {
     const canvas = signatureCanvasRef.current;
     if (!canvas) return;
     const dataUrl = canvas.toDataURL('image/png');
-    // @ts-ignore
-    fabric.Image.fromURL(dataUrl, (img: fabric.Image) => {
-      // Membuat background putih menjadi transparan (opsional, fabric blend bisa digunakan)
-      img.set({ left: 100, top: 100, scaleX: 0.5, scaleY: 0.5 });
-      fabricRef.current?.add(img);
-      fabricRef.current?.setActiveObject(img);
-    });
+    const imgElement = new Image();
+    imgElement.src = dataUrl;
+    imgElement.onload = () => {
+      const imgInstance = new fabric.Image(imgElement, {
+        left: 100, top: 100, scaleX: 0.5, scaleY: 0.5
+      });
+      fabricRef.current?.add(imgInstance);
+      fabricRef.current?.setActiveObject(imgInstance);
+    };
     setShowSignatureModal(false);
   };
 
-  // --- PENGATURAN MODE ALAT ---
+  // --- PENGATURAN MODE ALAT (UX yang Diperbaiki) ---
   useEffect(() => {
     if (!fabricRef.current) return;
+    
     fabricRef.current.isDrawingMode = false;
     
     if (activeTool === 'draw') {
@@ -513,11 +488,18 @@ export default function EditPDF() {
       fabricRef.current.freeDrawingBrush = new fabric.PencilBrush(fabricRef.current);
       fabricRef.current.freeDrawingBrush.color = strokeColor;
       fabricRef.current.freeDrawingBrush.width = strokeWidth;
-    } else if (activeTool === 'select') {
-      fabricRef.current.selection = true;
-      fabricRef.current.forEachObject(o => o.set('selectable', true));
     } else {
-      fabricRef.current.selection = false;
+      const isSelectMode = activeTool === 'select';
+      fabricRef.current.selection = isSelectMode;
+      // Jangan biarkan objek bisa digeser saat mode draw/highlight
+      fabricRef.current.forEachObject(o => {
+        o.set('selectable', isSelectMode);
+        o.set('evented', isSelectMode);
+      });
+      if (!isSelectMode) {
+        fabricRef.current.discardActiveObject();
+        fabricRef.current.requestRenderAll();
+      }
     }
   }, [activeTool, strokeColor, strokeWidth]);
 
@@ -829,41 +811,56 @@ export default function EditPDF() {
                 </div>
               </div>
 
-              {/* Canvas Area (Scrollable & Zoomable via CSS) */}
-              <div className="flex-1 overflow-auto bg-[#F1F5F9] relative flex flex-col items-center p-8 custom-scrollbar">
-                
-                {/* Paper Container dengan CSS Transform untuk Zoom Presisi */}
-                <div 
-                  className="bg-white shadow-xl relative ring-1 ring-slate-200"
-                  style={{ 
-                    width: `${canvasSize.width}px`,
-                    height: `${canvasSize.height}px`,
-                    transform: `scale(${zoom / 100})`,
-                    transformOrigin: 'top center',
-                    transition: 'transform 0.15s ease-out'
-                  }}
-                >
-                  {/* Canvas Asli PDF.js (Layer Bawah) */}
-                  <canvas ref={canvasRef} className="absolute inset-0 z-0" />
+              {/* Canvas Area (Scrollable & Zoomable via CSS) - PERBAIKAN BUG LAYOUT */}
+              <div className="flex-1 overflow-auto bg-[#F1F5F9] relative custom-scrollbar flex flex-col items-center">
+                <div className="min-h-full min-w-full flex flex-col items-center justify-start p-8">
                   
-                  {/* Canvas Fabric.js (Layer Atas Interaktif) */}
-                  <div className="absolute inset-0 z-10">
-                    <canvas ref={overlayRef} />
+                  {/* Outer Wrapper untuk memanipulasi Scroll DOM secara dinamis tanpa merusak batas */}
+                  <div 
+                    style={{ 
+                      width: canvasSize.width * (zoom / 100), 
+                      height: canvasSize.height * (zoom / 100),
+                      position: 'relative',
+                      transition: 'width 0.15s ease-out, height 0.15s ease-out'
+                    }}
+                    className="shrink-0 flex items-start justify-center shadow-xl ring-1 ring-slate-200 bg-white"
+                  >
+                    {/* Inner Paper (Canvas Content) dengan Origin Top-Left agar Zoom Terarah */}
+                    <div 
+                      style={{ 
+                        width: `${canvasSize.width}px`,
+                        height: `${canvasSize.height}px`,
+                        transform: `scale(${zoom / 100})`,
+                        transformOrigin: 'top left',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        transition: 'transform 0.15s ease-out'
+                      }}
+                    >
+                      {/* Canvas Asli PDF.js (Layer Bawah) */}
+                      <canvas ref={canvasRef} className="absolute top-0 left-0 z-0 pointer-events-none" />
+                      
+                      {/* Canvas Fabric.js (Layer Atas Interaktif) */}
+                      <div className="absolute top-0 left-0 w-full h-full z-10">
+                        <canvas ref={overlayRef} />
+                      </div>
+                    </div>
                   </div>
-                </div>
-                
-                {/* Pagination Canvas Control */}
-                <div className="mt-8 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center p-1 relative z-20 pointer-events-auto">
-                  <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} className="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-50 rounded-lg"><ChevronLeft size={18} /></button>
-                  <div className="px-4 font-semibold text-sm text-slate-700 border-x border-slate-100 flex items-center justify-center">{currentPage} <span className="text-slate-400 font-normal mx-1">/</span> {totalPages}</div>
-                  <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} className="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-50 rounded-lg"><ChevronRight size={18} /></button>
-                </div>
-                
-                {/* Info Footer Bawah */}
-                <div className="mt-6 flex items-center gap-2 text-[11px] text-blue-600 bg-blue-50/50 px-4 py-2 rounded-full border border-blue-100 shadow-sm">
-                  <ShieldCheck size={14} /> Resolusi 1.5x HD aktif. File Anda aman dan akan otomatis terhapus setelah proses.
-                </div>
+                  
+                  {/* Pagination Canvas Control */}
+                  <div className="mt-8 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center p-1 relative z-20 pointer-events-auto shrink-0">
+                    <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} className="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-50 rounded-lg"><ChevronLeft size={18} /></button>
+                    <div className="px-4 font-semibold text-sm text-slate-700 border-x border-slate-100 flex items-center justify-center">{currentPage} <span className="text-slate-400 font-normal mx-1">/</span> {totalPages}</div>
+                    <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} className="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-50 rounded-lg"><ChevronRight size={18} /></button>
+                  </div>
+                  
+                  {/* Info Footer Bawah */}
+                  <div className="mt-6 flex items-center gap-2 text-[11px] text-blue-600 bg-blue-50/50 px-4 py-2 rounded-full border border-blue-100 shadow-sm shrink-0">
+                    <ShieldCheck size={14} /> Resolusi HD. File Anda aman dan akan otomatis terhapus setelah proses.
+                  </div>
 
+                </div>
               </div>
             </div>
 
@@ -880,7 +877,7 @@ export default function EditPDF() {
                   
                   <div className="grid grid-cols-3 gap-3">
                     {/* Render Thumbnails Mockup */}
-                    {Array.from({length: Math.min(totalPages, 9)}).map((_, i) => {
+                    {Array.from({length: Math.min(totalPages, 15)}).map((_, i) => {
                       const num = i + 1;
                       return (
                       <div key={num} className="flex flex-col items-center gap-2">
@@ -989,4 +986,3 @@ export default function EditPDF() {
 // Icon Tambahan 
 const ChevronLeft = ({size}: {size: number}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>;
 const Grid = ({size}: {size: number}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>;
-const Info = ({size}: {size: number}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>;
