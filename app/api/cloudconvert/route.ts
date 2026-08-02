@@ -22,39 +22,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'API Key CloudConvert tidak ditemukan di environment.' }, { status: 500 });
     }
 
-    // 1. Dapatkan URL Upload dari CloudConvert
-    const uploadRes = await fetch('https://api.cloudconvert.com/v2/upload', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: file.name }),
-    });
-
-    if (!uploadRes.ok) {
-      const errText = await uploadRes.text();
-      throw new Error(`CC_UPLOAD_ERROR: ${uploadRes.status} - ${errText}`);
-    }
-
-    const uploadData = await uploadRes.json();
-    const { url, form } = uploadData.data;
-
-    // 2. Upload file asli ke CloudConvert
-    const uploadForm = new FormData();
-    Object.entries(form).forEach(([key, value]) => uploadForm.append(key, value as string));
-    uploadForm.append('file', file);
-
-    const uploadFileRes = await fetch(url, { method: 'POST', body: uploadForm });
-    if (!uploadFileRes.ok) throw new Error('CC_FILE_UPLOAD_ERROR');
-
-    // 3. Buat Job di CloudConvert
+    // 1. Buat JOB (Compress/Convert) langsung dengan input: 'upload'
+    // CloudConvert akan memberikan URL upload secara dinamis di task ini!
     const jobRes = await fetch('https://api.cloudconvert.com/v2/jobs', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: { 
+        'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}`, 
+        'Content-Type': 'application/json' 
+      },
       body: JSON.stringify({
         tasks: {
           main: {
             operation: action === 'compress' ? 'compress' : 'convert',
             input: 'upload',
-            engine: 'ghostscript', // Menggunakan engine paling stabil
+            filename: file.name,
+            engine: 'ghostscript',
             profile: quality,
             output_format: outputFormat,
           }
@@ -71,13 +53,34 @@ export async function POST(req: NextRequest) {
     }
 
     const jobData = await jobRes.json();
-    const taskId = jobData.data.tasks.find((t: any) => t.name === 'main').id;
+    // Ambil task 'main' yang baru saja dibuat
+    const task = jobData.data.tasks.find((t: any) => t.name === 'main');
+    const taskId = task.id;
+    const uploadUrl = task.result?.url || task.upload_url; // URL upload yang diberikan CloudConvert
 
-    // 4. Polling Hasil
+    if (!uploadUrl) {
+      throw new Error('CloudConvert tidak memberikan URL upload.');
+    }
+
+    // 2. Upload file asli ke URL yang diberikan CloudConvert
+    const uploadForm = new FormData();
+    uploadForm.append('file', file);
+    const uploadFileRes = await fetch(uploadUrl, { 
+      method: 'POST', 
+      body: uploadForm 
+    });
+    
+    if (!uploadFileRes.ok) {
+      const errText = await uploadFileRes.text();
+      throw new Error(`CC_FILE_UPLOAD_ERROR: ${uploadFileRes.status} - ${errText}`);
+    }
+
+    // 3. Polling Hasil (Tunggu sampai selesai)
     let resultUrl: string | null = null;
     let attempts = 0;
     while (!resultUrl && attempts < 30) {
       await new Promise(resolve => setTimeout(resolve, 1000));
+      
       const statusRes = await fetch(`https://api.cloudconvert.com/v2/tasks/${taskId}`, {
         headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}` },
       });
@@ -94,7 +97,7 @@ export async function POST(req: NextRequest) {
 
     if (!resultUrl) throw new Error('CC_TIMEOUT');
 
-    // 5. Download hasil & kembalikan ke Frontend
+    // 4. Download hasil & kembalikan ke Frontend
     const resultRes = await fetch(resultUrl);
     if (!resultRes.ok) throw new Error('CC_DOWNLOAD_ERROR');
 
