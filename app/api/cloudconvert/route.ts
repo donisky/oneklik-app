@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import CloudConvert from 'cloudconvert';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -21,121 +22,90 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'API Key CloudConvert tidak ditemukan.' }, { status: 500 });
     }
 
-    // ============================================================
-    // LANGKAH 1: Dapatkan URL Upload dari endpoint /v2/upload
-    // ============================================================
-    const uploadReq = await fetch('https://api.cloudconvert.com/v2/upload', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        filename: file.name,
-      }),
-    });
+    // 1. Inisialisasi SDK
+    const cloudConvert = new CloudConvert(CLOUDCONVERT_API_KEY);
 
-    if (!uploadReq.ok) {
-      const errText = await uploadReq.text();
-      throw new Error(`CC_UPLOAD_REQ_ERROR: ${uploadReq.status} - ${errText}`);
-    }
+    // 2. Persiapkan Buffer file
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
 
-    const uploadData = await uploadReq.json();
-    const { id: uploadId, url: uploadUrl, form } = uploadData.data;
-
-    // ============================================================
-    // LANGKAH 2: Upload file ke URL yang diberikan
-    // ============================================================
-    const uploadForm = new FormData();
-    Object.entries(form).forEach(([key, value]) => uploadForm.append(key, value as string));
-    uploadForm.append('file', file);
-
-    const uploadFileRes = await fetch(uploadUrl, {
-      method: 'POST',
-      body: uploadForm,
-    });
-
-    if (!uploadFileRes.ok) {
-      const errText = await uploadFileRes.text();
-      throw new Error(`CC_UPLOAD_FILE_ERROR: ${uploadFileRes.status} - ${errText}`);
-    }
-
-    // ============================================================
-    // LANGKAH 3: Buat Job Compress / Convert
-    // ============================================================
-    let convertTask: any = {
-      operation: 'convert',
-      input: { id: uploadId }, // Gunakan ID upload yang sudah didapat
-      output_format: action === 'compress' ? 'pdf' : outputFormat,
+    // 3. Buat Job
+    let jobPayload: any = {
+      tasks: {}
     };
 
     if (action === 'compress') {
-      convertTask.engine = 'ghostscript';
-      convertTask.profile = quality; // high, medium, low
+      jobPayload.tasks = {
+        'import-file': {
+          operation: 'import/upload',
+          filename: file.name,
+        },
+        'compress-file': {
+          operation: 'convert',
+          input: 'import-file',
+          engine: 'ghostscript',
+          profile: quality, // high, medium, low
+          output_format: 'pdf',
+        },
+        'export-file': {
+          operation: 'export/url',
+          input: 'compress-file',
+          inline: false,
+        }
+      };
     } else {
+      let engine = 'ghostscript';
       if (['docx', 'xlsx', 'pptx'].includes(outputFormat)) {
-        convertTask.engine = 'office';
-      } else {
-        convertTask.engine = 'ghostscript';
+        engine = 'office';
       }
+
+      jobPayload.tasks = {
+        'import-file': {
+          operation: 'import/upload',
+          filename: file.name,
+        },
+        'convert-file': {
+          operation: 'convert',
+          input: 'import-file',
+          engine: engine,
+          output_format: outputFormat,
+        },
+        'export-file': {
+          operation: 'export/url',
+          input: 'convert-file',
+          inline: false,
+        }
+      };
     }
 
-    const jobPayload = {
-      tasks: {
-        'convert-file': convertTask,
-      },
-    };
+    // Eksekusi pembuatan job
+    let job = await cloudConvert.jobs.create(jobPayload);
 
-    const jobRes = await fetch('https://api.cloudconvert.com/v2/jobs', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(jobPayload),
-    });
-
-    if (jobRes.status === 429) {
-      return NextResponse.json({ error: 'Kuota CloudConvert hari ini habis.' }, { status: 429 });
-    }
-    if (!jobRes.ok) {
-      const errText = await jobRes.text();
-      throw new Error(`CC_JOB_ERROR: ${jobRes.status} - ${errText}`);
+    // 4. Cari Task Import
+    const importTask = job.tasks.find((t: any) => t.operation === 'import/upload' && t.name === 'import-file');
+    
+    if (!importTask) {
+      throw new Error('Tidak dapat menemukan task import/upload.');
     }
 
-    const jobData = await jobRes.json();
-    const convertTaskRes = jobData.data.tasks.find((t: any) => t.name === 'convert-file');
+    // === PERBAIKAN ERROR TS: Gunakan objek importTask, bukan ID-nya ===
+    await cloudConvert.tasks.upload(importTask, fileBuffer, file.name);
 
-    if (!convertTaskRes) {
-      throw new Error('Task convert tidak ditemukan di respons CloudConvert.');
+    // 5. Tunggu Job Selesai
+    job = await cloudConvert.jobs.wait(job.id);
+
+    // 6. Ambil URL hasil export
+    const exportTask = job.tasks.find((t: any) => t.operation === 'export/url');
+    
+    if (!exportTask || !exportTask.result || !exportTask.result.files || exportTask.result.files.length === 0) {
+      throw new Error('Export task gagal atau tidak mengembalikan file.');
     }
 
-    // ============================================================
-    // LANGKAH 4: Polling hasil job
-    // ============================================================
-    let resultUrl: string | null = null;
-    let attempts = 0;
-    while (!resultUrl && attempts < 40) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const statusRes = await fetch(`https://api.cloudconvert.com/v2/tasks/${convertTaskRes.id}`, {
-        headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}` },
-      });
-      const statusData = await statusRes.json();
-
-      if (statusData.data.status === 'finished') {
-        resultUrl = statusData.data.result.files[0].url;
-        break;
-      } else if (statusData.data.status === 'error') {
-        throw new Error('CC_PROCESS_ERROR');
-      }
-      attempts++;
+    const resultUrl = exportTask.result.files[0].url;
+    if (!resultUrl) {
+      throw new Error('URL hasil export tidak ditemukan.');
     }
 
-    if (!resultUrl) throw new Error('CC_TIMEOUT');
-
-    // ============================================================
-    // LANGKAH 5: Download hasil
-    // ============================================================
+    // 7. Download hasil
     const resultRes = await fetch(resultUrl);
     if (!resultRes.ok) throw new Error('CC_DOWNLOAD_ERROR');
 
@@ -149,8 +119,12 @@ export async function POST(req: NextRequest) {
         'Content-Disposition': `attachment; filename="${fileName}"`,
       },
     });
+
   } catch (error: any) {
-    console.error('🔥 CloudConvert API Error:', error.message);
+    console.error('🔥 CloudConvert SDK Error:', error.message);
+    if (error.message?.includes('429')) {
+      return NextResponse.json({ error: 'Kuota CloudConvert hari ini habis.' }, { status: 429 });
+    }
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
