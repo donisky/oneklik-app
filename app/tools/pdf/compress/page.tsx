@@ -140,7 +140,7 @@ export default function CompressPDF() {
       formData.append('quality', qualityMap[level]);
       formData.append('action', 'compress');
 
-      const res = await fetch('/api/cloudconvert', { method: 'POST', body: formData });
+      const res = await fetch('/api/pdf-tools', { method: 'POST', body: formData });
 
       if (!res.ok) {
         // --- PERBAIKAN: Baca text terlebih dahulu, coba parse JSON, jika gagal gunakan text mentah ---

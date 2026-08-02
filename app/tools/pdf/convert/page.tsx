@@ -243,7 +243,7 @@ export default function ConvertPDF() {
       formData.append('action', 'convert');
       formData.append('outputFormat', outputFormat);
 
-      const response = await fetch('/api/cloudconvert', {
+      const response = await fetch('/api/pdf-tools', {
         method: 'POST',
         body: formData,
       });
