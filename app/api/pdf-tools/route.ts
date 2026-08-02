@@ -43,15 +43,44 @@ export async function POST(req: NextRequest) {
     const convertTask = jobData.data.tasks.find((t: any) => t.name === 'convert-file');
     if (!uploadTask || !convertTask) throw new Error('Task tidak ditemukan.');
 
-    // 2. Upload file
-    const uploadUrl = uploadTask.result?.url || uploadTask.upload_url;
-    if (!uploadUrl) throw new Error('URL upload tidak ditemukan.');
+    // ============================================================
+    // PERBAIKAN PENTING: Polling sampai CloudConvert kasih URL upload
+    // ============================================================
+    let uploadUrl: string | null = null;
+    let uploadAttempts = 0;
+    while (!uploadUrl && uploadAttempts < 30) { // Tunggu maksimal 30 detik
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const statusRes = await fetch(`https://api.cloudconvert.com/v2/tasks/${uploadTask.id}`, {
+        headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}` },
+      });
+      const statusData = await statusRes.json();
+      const taskData = statusData.data;
+      
+      // Ambil URL dari berbagai kemungkinan lokasi di respons
+      uploadUrl = taskData.upload_url || taskData.result?.url || taskData.upload_url_s3 || null;
+
+      if (uploadUrl) break; // Berhasil dapat URL!
+      
+      // Jika task upload error, berhenti
+      if (taskData.status === 'error') {
+        throw new Error('CC_UPLOAD_TASK_ERROR');
+      }
+      uploadAttempts++;
+    }
+
+    if (!uploadUrl) {
+      console.error('Gagal mendapatkan upload URL setelah 30 detik. Respons terakhir:', JSON.stringify(uploadTask));
+      throw new Error('URL upload tidak ditemukan.');
+    }
+
+    // 2. Upload file ke URL yang didapat
     const uploadForm = new FormData();
     uploadForm.append('file', file);
     const uploadRes = await fetch(uploadUrl, { method: 'POST', body: uploadForm });
-    if (!uploadRes.ok) throw new Error('CC_UPLOAD_ERROR');
+    if (!uploadRes.ok) throw new Error(`CC_UPLOAD_ERROR: ${await uploadRes.text()}`);
 
-    // 3. Polling hasil
+    // 3. Polling hasil konversi
     let attempts = 0;
     let resultUrl: string | null = null;
     while (!resultUrl && attempts < 30) {
