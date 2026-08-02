@@ -11,29 +11,45 @@ export async function POST(req: NextRequest) {
     const file = formData.get('file') as File;
     const action = formData.get('action') as string;
     const quality = formData.get('quality') as string || 'medium';
+    const outputFormat = formData.get('outputFormat') as string || 'pdf';
 
     if (!file) return NextResponse.json({ error: 'File tidak ditemukan' }, { status: 400 });
     if (!CLOUDCONVERT_API_KEY) return NextResponse.json({ error: 'API Key CloudConvert tidak ditemukan.' }, { status: 500 });
 
     // ================================================================
-    // PERBAIKAN PENTING: Gunakan operation: 'compress' (bukan convert)
+    // PERBAIKAN FINAL: Kembali ke operation: 'convert' dengan engine yang benar
     // ================================================================
-    const jobPayload: any = {
+    let convertTaskPayload: any = {
+      operation: 'convert',
+      input: ['upload-file'],
+      output_format: action === 'compress' ? 'pdf' : outputFormat,
+    };
+
+    // Tentukan Engine berdasarkan aksi
+    if (action === 'compress') {
+      // Compress PDF: Wajib pakai Ghostscript + Profile
+      convertTaskPayload.engine = 'ghostscript';
+      convertTaskPayload.profile = quality; // high, medium, low
+    } else if (action === 'convert') {
+      // Convert PDF ke format lain
+      if (['jpg', 'jpeg', 'png'].includes(outputFormat)) {
+        convertTaskPayload.engine = 'ghostscript';
+      } else if (['docx', 'xlsx', 'pptx'].includes(outputFormat)) {
+        convertTaskPayload.engine = 'office';
+      } else {
+        convertTaskPayload.engine = 'ghostscript'; // Fallback ke ghostscript
+      }
+    }
+
+    const jobPayload = {
       tasks: {
-        'upload-file': {
-          operation: 'import/upload',
-          filename: file.name
-        },
-        'compress-file': {
-          operation: 'compress', // Operasi kompresi resmi CloudConvert
-          input: ['upload-file'],
-          profile: quality // high, medium, low
-        }
+        'upload-file': { operation: 'import/upload', filename: file.name },
+        'convert-file': convertTaskPayload
       }
     };
 
-    // === CETAK PAYLOAD KE VERCEL LOGS (WAJIB DICEK!) ===
-    console.log('📤 PAYLOAD YANG DIKIRIM KE CLOUDCONVERT:', JSON.stringify(jobPayload, null, 2));
+    // === CETAK PAYLOAD KE VERCEL LOGS UNTUK VERIFIKASI ===
+    console.log('📤 FINAL PAYLOAD KE CLOUDCONVERT:', JSON.stringify(jobPayload, null, 2));
 
     const jobRes = await fetch('https://api.cloudconvert.com/v2/jobs', {
       method: 'POST',
@@ -50,10 +66,10 @@ export async function POST(req: NextRequest) {
 
     const jobData = await jobRes.json();
     const uploadTask = jobData.data.tasks.find((t: any) => t.name === 'upload-file');
-    const compressTask = jobData.data.tasks.find((t: any) => t.name === 'compress-file');
-    if (!uploadTask || !compressTask) throw new Error('Task tidak ditemukan.');
+    const convertTask = jobData.data.tasks.find((t: any) => t.name === 'convert-file');
+    if (!uploadTask || !convertTask) throw new Error('Task tidak ditemukan.');
 
-    // S3 Upload
+    // S3 Upload dengan parameter form
     const uploadFormPayload = uploadTask.result?.form;
     if (!uploadFormPayload || !uploadFormPayload.url) throw new Error('URL upload tidak ditemukan.');
 
@@ -67,12 +83,12 @@ export async function POST(req: NextRequest) {
     const uploadRes = await fetch(uploadUrl, { method: 'POST', body: uploadForm });
     if (!uploadRes.ok) throw new Error(`CC_UPLOAD_ERROR: ${uploadRes.status} - ${await uploadRes.text()}`);
 
-    // Polling Hasil Compress
+    // Polling Hasil Convert/Compress
     let attempts = 0;
     let resultUrl: string | null = null;
     while (!resultUrl && attempts < 30) {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const statusRes = await fetch(`https://api.cloudconvert.com/v2/tasks/${compressTask.id}`, {
+      const statusRes = await fetch(`https://api.cloudconvert.com/v2/tasks/${convertTask.id}`, {
         headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}` },
       });
       const statusData = await statusRes.json();
@@ -82,7 +98,7 @@ export async function POST(req: NextRequest) {
         break;
       } else if (statusData.data.status === 'error') {
         const errorMessage = statusData.data.message || statusData.data.error || 'Unknown CloudConvert error';
-        console.error('🔥 CloudConvert Compress Error:', errorMessage);
+        console.error('🔥 CloudConvert Conversion Error:', errorMessage);
         throw new Error(`CC_PROCESS_ERROR: ${errorMessage}`);
       }
       attempts++;
@@ -92,7 +108,8 @@ export async function POST(req: NextRequest) {
     const resultRes = await fetch(resultUrl);
     if (!resultRes.ok) throw new Error('CC_DOWNLOAD_ERROR');
     const resultBlob = await resultRes.blob();
-    const fileName = `${file.name.replace(/\.[^.]+$/, '')}_compressed.pdf`;
+    const ext = action === 'compress' ? 'pdf' : outputFormat;
+    const fileName = `${file.name.replace(/\.[^.]+$/, '')}_${action}.${ext}`;
 
     return new NextResponse(resultBlob, {
       headers: { 'Content-Type': resultBlob.type, 'Content-Disposition': `attachment; filename="${fileName}"` },
