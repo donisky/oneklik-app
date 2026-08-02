@@ -4,7 +4,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 // ============================================
-// 1. KONFIGURASI API KEYS (Public Key)
+// 1. KONFIGURASI API KEYS
 // ============================================
 const ILOVEPDF_KEYS = [
   process.env.ILOVEPDF_KEY_1 || '',
@@ -15,7 +15,6 @@ const ILOVEPDF_KEYS = [
 ].filter(key => key !== '');
 
 let ilpIndex = 0;
-let tokenCache: { token: string; expiresAt: number } | null = null;
 
 function getNextILPKey(): string {
   if (ILOVEPDF_KEYS.length === 0) return '';
@@ -25,20 +24,16 @@ function getNextILPKey(): string {
 }
 
 // ============================================
-// 2. FUNGSI AUTH (Mendapatkan Signed Token)
+// 2. FUNGSI AUTH (Selalu minta token baru setiap kali)
 // ============================================
 async function getILovePDFToken(publicKey: string): Promise<string> {
-  // Cek cache token (valid 1 jam)
-  if (tokenCache && Date.now() < tokenCache.expiresAt) {
-    return tokenCache.token;
-  }
-
   const authRes = await fetch('https://api.ilovepdf.com/v1/auth', {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json',
-      'Origin': 'https://oneklik.my.id', // Mengatasi error "Invalid origin"
-      'Referer': 'https://oneklik.my.id'
+      'Origin': 'https://oneklik.my.id',
+      'Referer': 'https://oneklik.my.id',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
     },
     body: JSON.stringify({ public_key: publicKey }),
   });
@@ -63,23 +58,19 @@ async function getILovePDFToken(publicKey: string): Promise<string> {
     throw new Error('ILP_AUTH_ERROR: Respons auth tidak mengandung token.');
   }
 
-  // Simpan ke cache
-  tokenCache = { token: authData.token, expiresAt: Date.now() + 60 * 60 * 1000 };
   return authData.token;
 }
 
 // ============================================
-// 3. FUNGSI PROSES UTAMA (Workflow REST API)
+// 3. FUNGSI PROSES UTAMA
 // ============================================
 async function processILovePDF(file: File, action: string, outputFormat: string): Promise<Blob> {
   const publicKey = getNextILPKey();
   if (!publicKey) throw new Error('ILP_QUOTA_EXCEEDED');
 
   try {
-    // Langkah 1: Auth & Dapatkan Token
     const token = await getILovePDFToken(publicKey);
 
-    // Langkah 2: Start Task
     const startRes = await fetch('https://api.ilovepdf.com/v1/start', {
       method: 'GET',
       headers: { 'Authorization': `Bearer ${token}` },
@@ -87,13 +78,11 @@ async function processILovePDF(file: File, action: string, outputFormat: string)
     if (!startRes.ok) throw new Error(`ILP_START_ERROR: ${await startRes.text()}`);
     const { task, server } = await startRes.json();
 
-    // Langkah 3: Upload File
     const uploadForm = new FormData();
     uploadForm.append('file', file);
     const uploadRes = await fetch(server, { method: 'POST', body: uploadForm });
     if (!uploadRes.ok) throw new Error(`ILP_UPLOAD_ERROR: ${await uploadRes.text()}`);
 
-    // Langkah 4: Process File
     const processRes = await fetch('https://api.ilovepdf.com/v1/process', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -109,7 +98,6 @@ async function processILovePDF(file: File, action: string, outputFormat: string)
       throw new Error(`ILP_PROCESS_ERROR: ${errText}`);
     }
 
-    // Langkah 5: Download Hasil
     const downloadRes = await fetch(`https://api.ilovepdf.com/v1/download/${task}`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
@@ -119,10 +107,6 @@ async function processILovePDF(file: File, action: string, outputFormat: string)
     return new Blob([Buffer.from(rawBytes) as any]);
 
   } catch (err: any) {
-    // Reset token cache jika error auth
-    if (err.message.startsWith('ILP_AUTH_ERROR')) {
-      tokenCache = null;
-    }
     throw err;
   }
 }
@@ -166,7 +150,7 @@ export async function POST(req: NextRequest) {
     if (!resultBlob) {
       if (lastError?.message.startsWith('ILP_AUTH_ERROR')) {
         return NextResponse.json({ 
-          error: 'Public Key iLovePDF tidak valid atau domain belum diizinkan. Silakan hapus centang "Filter access" di dashboard iloveapi.com.' 
+          error: `Public Key iLovePDF tidak valid. Detail: ${lastError.message}` 
         }, { status: 403 });
       }
       if (lastError?.message === 'ILP_QUOTA_EXCEEDED') {
