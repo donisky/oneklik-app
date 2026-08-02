@@ -11,6 +11,21 @@ import {
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
+// --- KOMPONEN LOGO ASLI ONEKLIK.ID ---
+const OneklikLogo = () => (
+  <div className="flex items-center gap-2.5">
+    <img 
+      src="/icon-oneklik.svg" 
+      alt="Oneklik.id" 
+      className="w-8 h-8 flex-shrink-0 object-contain" 
+      onError={(e) => { e.currentTarget.src = 'https://ui-avatars.com/api/?name=O&background=2563EB&color=fff&rounded=true' }} 
+    />
+    <span className="text-[22px] font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+      Oneklik.id
+    </span>
+  </div>
+);
+
 // --- DATA PROFIL PALSU (DUMMY) UNTUK PREVIEW TEMPLATE ---
 const dummyProfile = {
   name: 'Ahmad Fadillah',
@@ -367,12 +382,12 @@ const TemplatePreview = ({ id }: { id: string }) => {
 const cvTemplates = [
   { id: 'classic', name: 'Klasik', description: 'Desain standar dan profesional.', isPremium: false },
   { id: 'modern', name: 'Modern', description: 'Tampilan minimalis dan kekinian.', isPremium: false },
-  { id: 'professional', name: 'Profesional', description: 'Untuk karier korporat yang tegas.', isPremium: true },
+  { id: 'professional', name: 'Profesional', description: 'Untuk karier korporat yang tegas.', isPremium: false },
   { id: 'elegant', name: 'Elegan', description: 'Sentuhan mewah dan berkelas.', isPremium: true },
   { id: 'creative', name: 'Kreatif', description: 'Cocok untuk industri desain & seni.', isPremium: true },
   { id: 'minimalist', name: 'Minimalis', description: 'Bersih, fokus pada konten.', isPremium: false },
   { id: 'circular', name: 'Melingkar', description: 'Aksen bentuk lingkaran untuk menonjolkan foto dan keahlian utama.', isPremium: true },
-  { id: 'vertical', name: 'Vertikal', description: 'Kolom samping untuk kontak & skill, kolom utama untuk pengalaman.', isPremium: false },
+  { id: 'vertical', name: 'Vertikal', description: 'Kolom samping untuk kontak & skill, kolom utama untuk pengalaman.', isPremium: true },
   { id: 'horizontal', name: 'Horizontal', description: 'Tata letak lebar dengan garis waktu horizontal yang rapi.', isPremium: true },
   { id: 'casual', name: 'Kasual', description: 'Nuansa santai dengan pilihan warna yang bisa disesuaikan gaya kamu.', isPremium: true },
   { id: 'chrono', name: 'Kronologis', description: 'Menyusun riwayat kerja & pendidikan secara berurutan waktu.', isPremium: true },
@@ -449,7 +464,7 @@ export default function CVTemplatesPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-slate-500 bg-[#F9FAFB]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -459,8 +474,8 @@ export default function CVTemplatesPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FAFB] px-4 font-sans">
         <div className="bg-white p-10 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center max-w-md border border-slate-100 w-full">
-          <div className="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-6">
-             <User className="text-violet-600 w-8 h-8" />
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+             <User className="text-blue-600 w-8 h-8" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2 tracking-tight">Login Diperlukan</h1>
           <p className="text-slate-500 mb-8 text-sm">Masuk ke akun Oneklik Anda untuk mengakses dan mulai membuat CV profesional.</p>
@@ -492,34 +507,31 @@ export default function CVTemplatesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] font-sans pb-20">
+    <div className="min-h-screen bg-[#F9FAFB] font-sans pb-24 text-slate-800">
       <Toaster position="top-center" />
       
-      {/* Navbar Mockup untuk Halaman Ini */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50">
+      {/* NAVBAR */}
+      <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-             <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center">
-               <div className="w-3 h-3 bg-white rounded-full"></div>
-             </div>
-             <span className="font-bold text-xl text-slate-900 tracking-tight">Oneklik.id</span>
-          </div>
+          <OneklikLogo />
+          
           <nav className="hidden md:flex items-center gap-8 font-medium text-slate-600 text-sm">
-             <Link href="/" className="hover:text-violet-600">Beranda</Link>
-             <Link href="#" className="hover:text-violet-600 flex items-center gap-1">Fitur <ChevronDown size={14}/></Link>
-             <Link href="#" className="hover:text-violet-600">Harga</Link>
-             <Link href="#" className="hover:text-violet-600">Panduan</Link>
-             <Link href="#" className="hover:text-violet-600">Blog</Link>
+             <Link href="/" className="hover:text-blue-600 transition-colors">Beranda</Link>
+             <Link href="#" className="hover:text-blue-600 transition-colors flex items-center gap-1">Fitur <ChevronDown size={14}/></Link>
+             <Link href="#" className="hover:text-blue-600 transition-colors">Harga</Link>
+             <Link href="#" className="hover:text-blue-600 transition-colors">Panduan</Link>
+             <Link href="#" className="hover:text-blue-600 transition-colors">Blog</Link>
           </nav>
+
           <div className="flex items-center gap-4">
-             <button className="hidden sm:flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 border border-amber-200 rounded-full text-sm font-bold hover:bg-amber-100 transition-colors">
-               <Crown size={16} /> Premium
+             <button className="hidden sm:flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200/60 rounded-full text-sm font-bold hover:bg-amber-100 transition-colors shadow-sm">
+               <Crown size={16} className="text-amber-500 fill-amber-500" /> Premium
              </button>
-             <div className="flex items-center gap-2 cursor-pointer">
-               <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-sm">
+             <div className="flex items-center gap-2.5 cursor-pointer pl-2 border-l border-slate-200">
+               <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
                  A
                </div>
-               <span className="hidden sm:block text-sm font-semibold text-slate-700">Admin <ChevronDown size={14} className="inline ml-1 text-slate-400"/></span>
+               <span className="hidden sm:block text-sm font-semibold text-slate-700">Admin <ChevronDown size={14} className="inline ml-0.5 text-slate-400"/></span>
              </div>
           </div>
         </div>
@@ -530,36 +542,36 @@ export default function CVTemplatesPage() {
         {/* HERO SECTION */}
         <div className="flex flex-col lg:flex-row items-center justify-between gap-12 mb-16">
           <div className="flex-1">
-            <Link href="/" className="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-violet-600 mb-6 transition-colors">
-              <ArrowLeft size={16} className="mr-1.5" /> Kembali ke Dashboard
+            <Link href="/" className="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-blue-600 mb-6 transition-colors group">
+              <ArrowLeft size={16} className="mr-1.5 transition-transform group-hover:-translate-x-1" /> Kembali ke Dashboard
             </Link>
-            <h1 className="text-4xl md:text-[44px] font-extrabold text-slate-900 leading-tight mb-4 tracking-tight">
-              Pilih Template <span className="text-violet-600">CV</span>
+            <h1 className="text-4xl md:text-[46px] font-extrabold text-slate-900 leading-tight mb-4 tracking-tight">
+              Pilih Template <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">CV</span>
             </h1>
             <p className="text-slate-500 text-base md:text-lg max-w-xl mb-8 leading-relaxed">
               Pilih template profesional yang paling cocok dengan gaya dan kebutuhanmu. Semua template dapat diedit dengan mudah.
             </p>
 
             <div className="flex flex-wrap gap-4">
-              <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white rounded-2xl shadow-sm border border-slate-100">
-                 <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><ShieldCheck size={18}/></div>
+              <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-2xl shadow-sm border border-slate-100/80 hover:shadow-md transition-shadow">
+                 <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600"><ShieldCheck size={20}/></div>
                  <div className="flex flex-col">
                    <span className="text-xs font-bold text-slate-800">Desain Profesional</span>
-                   <span className="text-[10px] text-slate-400">Dibuat oleh desainer ahli</span>
+                   <span className="text-[10px] text-slate-400 font-medium">Dibuat oleh desainer ahli</span>
                  </div>
               </div>
-              <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white rounded-2xl shadow-sm border border-slate-100">
-                 <div className="w-8 h-8 rounded-full bg-violet-50 flex items-center justify-center text-violet-600"><PenTool size={18}/></div>
+              <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-2xl shadow-sm border border-slate-100/80 hover:shadow-md transition-shadow">
+                 <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600"><PenTool size={20}/></div>
                  <div className="flex flex-col">
                    <span className="text-xs font-bold text-slate-800">Mudah Diedit</span>
-                   <span className="text-[10px] text-slate-400">Edit cepat & praktis</span>
+                   <span className="text-[10px] text-slate-400 font-medium">Edit cepat & praktis</span>
                  </div>
               </div>
-              <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white rounded-2xl shadow-sm border border-slate-100">
-                 <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600"><CheckCircle2 size={18}/></div>
+              <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-2xl shadow-sm border border-slate-100/80 hover:shadow-md transition-shadow">
+                 <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600"><CheckCircle2 size={20}/></div>
                  <div className="flex flex-col">
                    <span className="text-xs font-bold text-slate-800">ATS Friendly</span>
-                   <span className="text-[10px] text-slate-400">Lolos seleksi kerja</span>
+                   <span className="text-[10px] text-slate-400 font-medium">Lolos seleksi kerja</span>
                  </div>
               </div>
             </div>
@@ -567,73 +579,73 @@ export default function CVTemplatesPage() {
 
           {/* Hero Illustration Graphic */}
           <div className="hidden lg:block relative w-[450px] h-[300px]">
-             {/* Back blob */}
-             <div className="absolute inset-0 bg-violet-100/50 rounded-full blur-3xl transform translate-x-10 -translate-y-10"></div>
+             {/* Back soft glow */}
+             <div className="absolute inset-0 bg-blue-100/40 rounded-full blur-3xl transform translate-x-8 -translate-y-8"></div>
              
              {/* Main Mockup Card */}
-             <div className="absolute right-10 top-10 w-80 h-52 bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-white/50 backdrop-blur-xl p-6 flex flex-col gap-4 transform rotate-2">
+             <div className="absolute right-6 top-8 w-80 h-52 bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-slate-100 p-6 flex flex-col gap-4 transform rotate-2 hover:rotate-0 transition-transform duration-500">
                 <div className="flex gap-4 items-center border-b border-slate-50 pb-4">
-                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                     <User size={24} className="text-blue-500" />
+                   <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+                     <User size={24} className="text-blue-600" />
                    </div>
                    <div>
-                     <div className="h-4 w-24 bg-slate-800 rounded-full mb-2"></div>
-                     <div className="h-2 w-32 bg-slate-200 rounded-full"></div>
+                     <div className="h-4 w-28 bg-slate-800 rounded-full mb-2"></div>
+                     <div className="h-2 w-36 bg-slate-200 rounded-full"></div>
                    </div>
                 </div>
                 <div className="space-y-3">
-                   <div className="h-8 w-full bg-violet-50 rounded-xl flex items-center px-3 gap-2">
-                      <div className="w-4 h-4 rounded-full bg-violet-200"></div>
-                      <div className="h-2 w-40 bg-violet-200 rounded-full"></div>
+                   <div className="h-8 w-full bg-blue-50/60 rounded-xl flex items-center px-3 gap-2">
+                      <div className="w-4 h-4 rounded-full bg-blue-200"></div>
+                      <div className="h-2 w-44 bg-blue-200 rounded-full"></div>
                    </div>
                    <div className="h-8 w-full bg-slate-50 rounded-xl flex items-center px-3 gap-2">
                       <div className="w-4 h-4 rounded-full bg-slate-200"></div>
-                      <div className="h-2 w-24 bg-slate-200 rounded-full"></div>
+                      <div className="h-2 w-28 bg-slate-200 rounded-full"></div>
                    </div>
                 </div>
              </div>
 
-             {/* Floating Edit Button */}
-             <div className="absolute right-4 bottom-4 w-16 h-16 bg-violet-600 rounded-full shadow-xl shadow-violet-200 flex items-center justify-center transform -rotate-12 border-4 border-white">
+             {/* Floating Edit Button with Magic Ring */}
+             <div className="absolute right-2 bottom-2 w-16 h-16 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-full shadow-xl shadow-blue-500/30 flex items-center justify-center transform -rotate-12 border-4 border-white">
                <Pen size={24} className="text-white" />
              </div>
              
-             {/* Sparkles */}
-             <div className="absolute top-4 right-32 text-violet-300">✦</div>
-             <div className="absolute bottom-10 left-10 text-violet-300 text-2xl">✦</div>
+             {/* Sparkles decoration */}
+             <div className="absolute top-2 right-28 text-purple-400 font-bold text-lg animate-pulse">✦</div>
+             <div className="absolute bottom-6 left-6 text-blue-400 font-bold text-xl animate-pulse">✦</div>
           </div>
         </div>
 
         {/* FILTER & SEARCH BAR */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           {/* Tabs */}
-          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-full p-1.5 shadow-sm overflow-x-auto custom-scrollbar">
+          <div className="flex items-center gap-1 bg-white border border-slate-200/80 rounded-full p-1.5 shadow-sm overflow-x-auto custom-scrollbar">
             {filterOptions.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setFilter(opt.value)}
-                className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2 px-6 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${
                   filter === opt.value
-                    ? 'bg-violet-600 text-white shadow-md'
-                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
                 {opt.label}
                 {opt.value === 'premium' && (
-                  <Crown size={14} className={filter === opt.value ? 'text-amber-300' : 'text-amber-500'} />
+                  <Crown size={14} className={filter === opt.value ? 'text-amber-300 fill-amber-300' : 'text-amber-500 fill-amber-500'} />
                 )}
               </button>
             ))}
           </div>
 
           {/* Search */}
-          <div className="relative w-full md:w-72">
+          <div className="relative w-full md:w-80">
             <input 
               type="text" 
               placeholder="Cari template..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-400 transition-shadow shadow-sm placeholder:text-slate-400"
+              className="w-full pl-4 pr-11 py-3 bg-white border border-slate-200/80 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all shadow-sm placeholder:text-slate-400"
             />
             <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
           </div>
@@ -646,26 +658,26 @@ export default function CVTemplatesPage() {
               key={template.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.05 }}
+              transition={{ duration: 0.4, delay: index * 0.04 }}
               onClick={() => handleSelectTemplate(template.id)}
-              className="bg-white rounded-[24px] border border-slate-200 overflow-hidden group hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col"
+              className="bg-white rounded-[24px] border border-slate-200/80 overflow-hidden group hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col"
             >
               {/* Bagian Preview Template */}
-              <div className="relative aspect-[1/1.2] bg-slate-50 border-b border-slate-100 p-2">
-                <div className="w-full h-full rounded-xl overflow-hidden shadow-sm bg-white">
+              <div className="relative aspect-[1/1.22] bg-slate-50/80 border-b border-slate-100 p-2.5">
+                <div className="w-full h-full rounded-xl overflow-hidden shadow-sm bg-white border border-slate-100">
                   <TemplatePreview id={template.id} />
                 </div>
 
                 {template.isPremium && (
-                  <div className="absolute top-4 right-4 bg-amber-400 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-md flex items-center gap-1 shadow-sm">
-                    <Crown size={12} className="fill-amber-900" /> Premium
+                  <div className="absolute top-5 right-5 bg-amber-400 text-amber-950 text-[10px] font-extrabold px-2.5 py-1 rounded-md flex items-center gap-1 shadow-sm">
+                    <Crown size={12} className="fill-amber-950" /> Premium
                   </div>
                 )}
 
                 {/* Overlay aksi saat dihover */}
                 <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <span className="bg-white text-violet-700 px-6 py-2.5 rounded-full text-sm font-bold shadow-xl flex items-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                    <PenTool size={16} /> Gunakan Template
+                  <span className="bg-white text-slate-900 px-6 py-3 rounded-full text-sm font-bold shadow-2xl flex items-center gap-2 transform translate-y-3 group-hover:translate-y-0 transition-transform duration-300">
+                    <PenTool size={16} className="text-blue-600" /> Pilih Template
                   </span>
                 </div>
               </div>
@@ -673,7 +685,7 @@ export default function CVTemplatesPage() {
               {/* Card Info */}
               <div className="p-5 flex justify-between items-start flex-1 bg-white">
                 <div>
-                  <h3 className="font-bold text-slate-900 text-[15px]">{template.name}</h3>
+                  <h3 className="font-bold text-slate-900 text-[16px] tracking-tight">{template.name}</h3>
                   <p className="text-[12px] text-slate-500 mt-1 leading-relaxed pr-2">{template.description}</p>
                 </div>
                 {!template.isPremium && (
@@ -690,32 +702,32 @@ export default function CVTemplatesPage() {
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="col-span-1 sm:col-span-2 bg-gradient-to-br from-violet-50 to-fuchsia-50 rounded-[24px] border border-violet-100 p-8 flex flex-col justify-center items-center text-center relative overflow-hidden group"
+              transition={{ delay: 0.4 }}
+              className="col-span-1 sm:col-span-2 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 rounded-[24px] border border-blue-400/20 p-8 flex flex-col justify-center items-center text-center relative overflow-hidden group shadow-lg text-white"
             >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-violet-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-fuchsia-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
+              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+              <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-500/20 rounded-full blur-2xl"></div>
               
-              <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 relative z-10 text-amber-500">
-                <Crown size={32} className="fill-amber-400" />
+              <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 flex items-center justify-center mb-4 relative z-10 text-amber-300 shadow-inner">
+                <Crown size={32} className="fill-amber-300" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2 relative z-10">Buka Semua Template Premium <span className="text-violet-400">✦</span></h3>
-              <p className="text-sm text-slate-500 mb-6 relative z-10 max-w-sm">
-                Dapatkan akses ke semua template premium. Tanpa batas dan update template terbaru setiap bulan.
+              <h3 className="text-2xl font-extrabold mb-2 relative z-10 tracking-tight">Buka Semua Template Premium ✦</h3>
+              <p className="text-sm text-blue-100 mb-6 relative z-10 max-w-sm leading-relaxed">
+                Dapatkan akses ke semua template premium tanpa batas dan update template terbaru setiap bulan.
               </p>
               <button 
                 onClick={() => router.push('/upgrade')}
-                className="bg-violet-600 hover:bg-violet-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-violet-200 transition-all flex items-center gap-2 relative z-10"
+                className="bg-white text-slate-900 hover:bg-slate-100 px-8 py-3.5 rounded-xl font-bold shadow-xl transition-all flex items-center gap-2 relative z-10 hover:scale-105"
               >
-                <Crown size={18} className="fill-white" /> Upgrade ke Premium
+                <Crown size={18} className="text-amber-500 fill-amber-500" /> Upgrade ke Premium
               </button>
             </motion.div>
           )}
         </div>
 
         {filteredTemplates.length === 0 && (
-          <div className="text-center py-24 bg-white rounded-[24px] border border-slate-200 mt-6">
-            <Search size={48} className="mx-auto text-slate-300 mb-4" />
+          <div className="text-center py-24 bg-white rounded-[24px] border border-slate-200 mt-6 shadow-sm">
+            <Search size={48} className="mx-auto text-slate-300 mb-4 animate-bounce" />
             <h3 className="text-lg font-bold text-slate-800 mb-2">Template tidak ditemukan</h3>
             <p className="text-slate-500 text-sm">Coba sesuaikan kata kunci pencarian atau filter Anda.</p>
           </div>
@@ -723,10 +735,9 @@ export default function CVTemplatesPage() {
       </div>
 
       {/* FLOATING CHAT BUTTON */}
-      <div className="fixed bottom-6 right-6 w-14 h-14 bg-violet-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-violet-300 cursor-pointer hover:scale-105 hover:-translate-y-1 transition-all z-50">
-        <MessageCircle size={26} fill="currentColor" className="text-violet-600" />
-        {/* Fill color diatur sama dengan background agar terkesan icon solid bubble chat */}
-        <svg className="absolute w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+      <div className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-tr from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center shadow-xl shadow-blue-500/30 cursor-pointer hover:scale-110 hover:-translate-y-1 transition-all z-50">
+        <MessageCircle size={26} fill="currentColor" className="text-blue-600" />
+        <svg className="absolute w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
       </div>
     </div>
   );
