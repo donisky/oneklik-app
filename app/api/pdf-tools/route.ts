@@ -17,11 +17,11 @@ export async function POST(req: NextRequest) {
     if (!CLOUDCONVERT_API_KEY) return NextResponse.json({ error: 'API Key CloudConvert tidak ditemukan.' }, { status: 500 });
 
     // ================================================================
-    // PERBAIKAN FINAL: Kembali ke operation: 'convert' dengan engine yang benar
+    // PERBAIKAN FINAL: Format task yang 100% valid
     // ================================================================
     let convertTaskPayload: any = {
-      operation: 'convert',
-      input: ['upload-file'],
+      operation: 'convert', // Wajib pakai convert (compress sudah dihapus)
+      input: 'upload-file', // === PERBAIKAN PENTING: String, BUKAN array! ===
       output_format: action === 'compress' ? 'pdf' : outputFormat,
     };
 
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       } else if (['docx', 'xlsx', 'pptx'].includes(outputFormat)) {
         convertTaskPayload.engine = 'office';
       } else {
-        convertTaskPayload.engine = 'ghostscript'; // Fallback ke ghostscript
+        convertTaskPayload.engine = 'ghostscript'; // Fallback
       }
     }
 
@@ -48,8 +48,8 @@ export async function POST(req: NextRequest) {
       }
     };
 
-    // === CETAK PAYLOAD KE VERCEL LOGS UNTUK VERIFIKASI ===
-    console.log('📤 FINAL PAYLOAD KE CLOUDCONVERT:', JSON.stringify(jobPayload, null, 2));
+    // === CETAK PAYLOAD KE VERCEL LOGS (UNTUK DI-CEK TERAKHIR) ===
+    console.log('📤 PAYLOAD FINAL (SUDAH DIPERBAIKI):', JSON.stringify(jobPayload, null, 2));
 
     const jobRes = await fetch('https://api.cloudconvert.com/v2/jobs', {
       method: 'POST',
@@ -83,10 +83,10 @@ export async function POST(req: NextRequest) {
     const uploadRes = await fetch(uploadUrl, { method: 'POST', body: uploadForm });
     if (!uploadRes.ok) throw new Error(`CC_UPLOAD_ERROR: ${uploadRes.status} - ${await uploadRes.text()}`);
 
-    // Polling Hasil Convert/Compress
+    // Polling Hasil Convert
     let attempts = 0;
     let resultUrl: string | null = null;
-    while (!resultUrl && attempts < 30) {
+    while (!resultUrl && attempts < 40) {
       await new Promise(resolve => setTimeout(resolve, 1000));
       const statusRes = await fetch(`https://api.cloudconvert.com/v2/tasks/${convertTask.id}`, {
         headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}` },
