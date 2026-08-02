@@ -10,8 +10,8 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const action = formData.get('action') as string; // 'compress' atau 'convert'
-    const quality = formData.get('quality') as string || 'medium'; // untuk compress
-    const outputFormat = formData.get('outputFormat') as string || 'pdf'; // untuk convert
+    const quality = formData.get('quality') as string || 'medium';
+    const outputFormat = formData.get('outputFormat') as string || 'pdf';
 
     if (!file) {
       return NextResponse.json({ error: 'File tidak ditemukan' }, { status: 400 });
@@ -21,39 +21,46 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'API Key CloudConvert tidak ditemukan.' }, { status: 500 });
     }
 
-    // Buat payload tugas
-    let taskPayload: any = {
-      operation: 'convert', // Selalu gunakan 'convert'
-      input: 'upload',
-      filename: file.name,
+    // ============================================================
+    // PERBAIKAN TYPE SCRIPT: Pisahkan konfigurasi task ke variabel any
+    // ============================================================
+    let convertTask: any = {
+      operation: 'convert',
+      input: ['upload-file'],
       output_format: action === 'compress' ? 'pdf' : outputFormat,
     };
 
-    // Jika kompresi, tambahkan profile dan engine ghostscript
+    // Tentukan konfigurasi engine dan profile berdasarkan aksi
     if (action === 'compress') {
-      taskPayload.engine = 'ghostscript';
-      taskPayload.profile = quality; // 'high', 'medium', 'low'
+      convertTask.engine = 'ghostscript';
+      convertTask.profile = quality; // 'high', 'medium', 'low'
     } else {
-      // Untuk konversi, kita bisa tentukan engine yang sesuai (misal office untuk docx)
+      // Untuk konversi ke format office, gunakan engine 'office', selain itu 'ghostscript'
       if (['docx', 'xlsx', 'pptx'].includes(outputFormat)) {
-        taskPayload.engine = 'office';
+        convertTask.engine = 'office';
       } else {
-        taskPayload.engine = 'ghostscript';
+        convertTask.engine = 'ghostscript';
       }
     }
 
-    // Buat job
+    // Buat job dengan dua task
+    const jobPayload = {
+      tasks: {
+        'upload-file': {
+          operation: 'import/upload',
+          filename: file.name,
+        },
+        'convert-file': convertTask,
+      }
+    };
+
     const jobRes = await fetch('https://api.cloudconvert.com/v2/jobs', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        tasks: {
-          main: taskPayload,
-        },
-      }),
+      body: JSON.stringify(jobPayload),
     });
 
     if (jobRes.status === 429) {
@@ -65,15 +72,21 @@ export async function POST(req: NextRequest) {
     }
 
     const jobData = await jobRes.json();
-    const task = jobData.data.tasks.find((t: any) => t.name === 'main');
-    const taskId = task.id;
-    const uploadUrl = task.result?.url || task.upload_url;
+    
+    // Cari task upload dan convert
+    const uploadTask = jobData.data.tasks.find((t: any) => t.name === 'upload-file');
+    const convertTaskRes = jobData.data.tasks.find((t: any) => t.name === 'convert-file');
 
+    if (!uploadTask || !convertTaskRes) {
+      throw new Error('Task tidak ditemukan di respons CloudConvert.');
+    }
+
+    // Upload file ke URL yang diberikan oleh task upload
+    const uploadUrl = uploadTask.result?.url || uploadTask.upload_url;
     if (!uploadUrl) {
       throw new Error('CloudConvert tidak memberikan URL upload.');
     }
 
-    // Upload file
     const uploadForm = new FormData();
     uploadForm.append('file', file);
     const uploadFileRes = await fetch(uploadUrl, { method: 'POST', body: uploadForm });
@@ -82,15 +95,16 @@ export async function POST(req: NextRequest) {
       throw new Error(`CC_FILE_UPLOAD_ERROR: ${uploadFileRes.status} - ${errText}`);
     }
 
-    // Polling hasil
+    // Polling hasil dari task convert
     let resultUrl: string | null = null;
     let attempts = 0;
-    while (!resultUrl && attempts < 30) {
+    while (!resultUrl && attempts < 40) {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const statusRes = await fetch(`https://api.cloudconvert.com/v2/tasks/${taskId}`, {
+      const statusRes = await fetch(`https://api.cloudconvert.com/v2/tasks/${convertTaskRes.id}`, {
         headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}` },
       });
       const statusData = await statusRes.json();
+      
       if (statusData.data.status === 'finished') {
         resultUrl = statusData.data.result.files[0].url;
         break;
