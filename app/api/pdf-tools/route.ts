@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     if (!file) return NextResponse.json({ error: 'File tidak ditemukan' }, { status: 400 });
     if (!CLOUDCONVERT_API_KEY) return NextResponse.json({ error: 'API Key CloudConvert tidak ditemukan.' }, { status: 500 });
 
-    // 1. Buat Job (Import/Upload -> Convert)
+    // 1. Buat Job
     const jobPayload = {
       tasks: {
         'upload-file': { operation: 'import/upload', filename: file.name },
@@ -43,33 +43,26 @@ export async function POST(req: NextRequest) {
     const convertTask = jobData.data.tasks.find((t: any) => t.name === 'convert-file');
     if (!uploadTask || !convertTask) throw new Error('Task tidak ditemukan.');
 
-    // =========================================================================
-    // PERBAIKAN PENTING: Ambil S3 Upload URL & Parameter dari object "form"
-    // =========================================================================
+    // 2. Ambil Parameter Upload S3
     const uploadFormPayload = uploadTask.result?.form;
     if (!uploadFormPayload || !uploadFormPayload.url) {
-      console.error('CloudConvert gagal mengembalikan form upload.', uploadTask);
       throw new Error('URL upload tidak ditemukan.');
     }
 
     const uploadUrl = uploadFormPayload.url;
     const uploadParams = uploadFormPayload.parameters || {};
 
-    // 2. Siapkan FormData dengan parameter S3 + File
+    // 3. Upload file ke S3 dengan parameter form
     const uploadForm = new FormData();
-    Object.entries(uploadParams).forEach(([key, value]) => {
-      uploadForm.append(key, value as string);
-    });
+    Object.entries(uploadParams).forEach(([key, value]) => uploadForm.append(key, value as string));
     uploadForm.append('file', file);
 
-    // 3. Upload file ke S3
     const uploadRes = await fetch(uploadUrl, { method: 'POST', body: uploadForm });
     if (!uploadRes.ok) {
-      const errText = await uploadRes.text();
-      throw new Error(`CC_UPLOAD_ERROR: ${uploadRes.status} - ${errText}`);
+      throw new Error(`CC_UPLOAD_ERROR: ${uploadRes.status} - ${await uploadRes.text()}`);
     }
 
-    // 4. Polling hasil konversi
+    // 4. Polling Hasil Konversi (Dengan Error Detail dari CloudConvert)
     let attempts = 0;
     let resultUrl: string | null = null;
     while (!resultUrl && attempts < 30) {
@@ -78,9 +71,16 @@ export async function POST(req: NextRequest) {
         headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}` },
       });
       const statusData = await statusRes.json();
+      
       if (statusData.data.status === 'finished') {
-        resultUrl = statusData.data.result.files[0].url; break;
-      } else if (statusData.data.status === 'error') throw new Error('CC_PROCESS_ERROR');
+        resultUrl = statusData.data.result.files[0].url;
+        break;
+      } else if (statusData.data.status === 'error') {
+        // === PERBAIKAN: Ambil pesan error asli dari CloudConvert ===
+        const errorMessage = statusData.data.message || statusData.data.error || 'Unknown CloudConvert error';
+        console.error('🔥 CloudConvert Conversion Error:', errorMessage);
+        throw new Error(`CC_PROCESS_ERROR: ${errorMessage}`);
+      }
       attempts++;
     }
     if (!resultUrl) throw new Error('CC_TIMEOUT');
