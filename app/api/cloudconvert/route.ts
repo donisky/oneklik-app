@@ -21,21 +21,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'API Key CloudConvert tidak ditemukan.' }, { status: 500 });
     }
 
-    // ============================================================
-    // PERBAIKAN TYPE SCRIPT: Pisahkan konfigurasi task ke variabel any
-    // ============================================================
+    // === 1. Buat Task Upload & Convert ===
     let convertTask: any = {
       operation: 'convert',
       input: ['upload-file'],
       output_format: action === 'compress' ? 'pdf' : outputFormat,
     };
 
-    // Tentukan konfigurasi engine dan profile berdasarkan aksi
     if (action === 'compress') {
       convertTask.engine = 'ghostscript';
-      convertTask.profile = quality; // 'high', 'medium', 'low'
+      convertTask.profile = quality;
     } else {
-      // Untuk konversi ke format office, gunakan engine 'office', selain itu 'ghostscript'
       if (['docx', 'xlsx', 'pptx'].includes(outputFormat)) {
         convertTask.engine = 'office';
       } else {
@@ -43,7 +39,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Buat job dengan dua task
     const jobPayload = {
       tasks: {
         'upload-file': {
@@ -72,8 +67,6 @@ export async function POST(req: NextRequest) {
     }
 
     const jobData = await jobRes.json();
-    
-    // Cari task upload dan convert
     const uploadTask = jobData.data.tasks.find((t: any) => t.name === 'upload-file');
     const convertTaskRes = jobData.data.tasks.find((t: any) => t.name === 'convert-file');
 
@@ -81,12 +74,36 @@ export async function POST(req: NextRequest) {
       throw new Error('Task tidak ditemukan di respons CloudConvert.');
     }
 
-    // Upload file ke URL yang diberikan oleh task upload
-    const uploadUrl = uploadTask.result?.url || uploadTask.upload_url;
-    if (!uploadUrl) {
-      throw new Error('CloudConvert tidak memberikan URL upload.');
+    // === 2. Polling Task Upload untuk Mendapatkan URL Upload ===
+    let uploadUrl: string | null = null;
+    let uploadAttempts = 0;
+    while (!uploadUrl && uploadAttempts < 30) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const statusRes = await fetch(`https://api.cloudconvert.com/v2/tasks/${uploadTask.id}`, {
+        headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}` },
+      });
+      const statusData = await statusRes.json();
+      
+      // Cek apakah task upload sudah selesai dan memiliki result.url
+      if (statusData.data.status === 'finished' || statusData.data.status === 'processing') {
+        if (statusData.data.result && statusData.data.result.url) {
+          uploadUrl = statusData.data.result.url;
+          break;
+        }
+      } else if (statusData.data.status === 'error') {
+        throw new Error('CC_UPLOAD_TASK_ERROR');
+      }
+      uploadAttempts++;
     }
 
+    if (!uploadUrl) {
+      // Jika gagal, log detail respons untuk debugging
+      console.error('Gagal mendapatkan upload URL. Respons task upload:', JSON.stringify(uploadTask));
+      throw new Error('CloudConvert tidak memberikan URL upload setelah timeout.');
+    }
+
+    // === 3. Upload File ke URL yang Didapat ===
     const uploadForm = new FormData();
     uploadForm.append('file', file);
     const uploadFileRes = await fetch(uploadUrl, { method: 'POST', body: uploadForm });
@@ -95,10 +112,10 @@ export async function POST(req: NextRequest) {
       throw new Error(`CC_FILE_UPLOAD_ERROR: ${uploadFileRes.status} - ${errText}`);
     }
 
-    // Polling hasil dari task convert
+    // === 4. Polling Hasil Task Convert ===
     let resultUrl: string | null = null;
-    let attempts = 0;
-    while (!resultUrl && attempts < 40) {
+    let convertAttempts = 0;
+    while (!resultUrl && convertAttempts < 40) {
       await new Promise(resolve => setTimeout(resolve, 1000));
       const statusRes = await fetch(`https://api.cloudconvert.com/v2/tasks/${convertTaskRes.id}`, {
         headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}` },
@@ -111,12 +128,12 @@ export async function POST(req: NextRequest) {
       } else if (statusData.data.status === 'error') {
         throw new Error('CC_PROCESS_ERROR');
       }
-      attempts++;
+      convertAttempts++;
     }
 
     if (!resultUrl) throw new Error('CC_TIMEOUT');
 
-    // Download hasil
+    // === 5. Download Hasil ===
     const resultRes = await fetch(resultUrl);
     if (!resultRes.ok) throw new Error('CC_DOWNLOAD_ERROR');
 
