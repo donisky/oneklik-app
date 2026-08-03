@@ -491,7 +491,7 @@ export default function RegisterPage() {
                       className="w-4 h-4 mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" 
                     />
                     <span className="text-[12px] text-slate-500 font-medium leading-tight">
-                      Saya setuju dengan <Link href="#" className="text-blue-600 font-bold hover:underline">Syarat & Ketentuan</Link> dan <Link href="#" className="text-blue-600 font-bold hover:underline">Kebijakan Privasi</Link>
+                      Saya setuju dengan <Link href="terms" className="text-blue-600 font-bold hover:underline">Syarat & Ketentuan</Link> dan <Link href="privacy" className="text-blue-600 font-bold hover:underline">Kebijakan Privasi</Link>
                     </span>
                  </label>
               </div>
