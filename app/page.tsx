@@ -261,10 +261,7 @@ export default function Home() {
   }, [supabase]);
 
   const handleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/dashboard` }
-    });
+    router.push('/login');
   };
 
   const handleLogout = async () => {
@@ -344,18 +341,12 @@ export default function Home() {
                 </div>
               ) : (
                 <>
-                  <button 
-                    onClick={handleLogin}
-                    className="bg-white hover:bg-slate-50 text-slate-700 px-6 py-2.5 rounded-full font-bold text-xs border border-slate-200/80 transition-all shadow-sm hover:shadow"
-                  >
+                  <Link href="/login" className="bg-white hover:bg-slate-50 text-slate-700 px-6 py-2.5 rounded-full font-bold text-xs border border-slate-200/80 transition-all shadow-sm hover:shadow">
                     Masuk
-                  </button>
-                  <button 
-                    onClick={handleLogin}
-                    className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-2.5 rounded-full font-bold text-xs shadow-lg shadow-blue-500/30 transition-all hover:scale-105 will-change-transform"
-                  >
+                  </Link>
+                  <Link href="/login" className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-2.5 rounded-full font-bold text-xs shadow-lg shadow-blue-500/30 transition-all hover:scale-105 will-change-transform">
                     Daftar Gratis
-                  </button>
+                  </Link>
                 </>
               )
             )}
@@ -391,8 +382,8 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    <button onClick={handleLogin} className="block w-full text-center bg-slate-100 text-slate-800 py-3 rounded-full font-bold text-sm">Masuk</button>
-                    <button onClick={handleLogin} className="block w-full text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-full font-bold text-sm shadow-lg shadow-blue-500/20">Daftar Gratis</button>
+                    <Link href="/login" className="block w-full text-center bg-slate-100 text-slate-800 py-3 rounded-full font-bold text-sm">Masuk</Link>
+                    <Link href="/login" className="block w-full text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-full font-bold text-sm shadow-lg shadow-blue-500/20">Daftar Gratis</Link>
                   </>
                 )}
               </div>
@@ -438,9 +429,9 @@ export default function Home() {
                   Buka Dashboard <Zap size={18} className="fill-white" />
                 </Link>
               ) : (
-                <button onClick={handleLogin} className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white px-8 py-4 rounded-full font-bold text-sm shadow-[0_10px_25px_rgba(37,99,235,0.35)] hover:shadow-[0_15px_35px_rgba(37,99,235,0.45)] hover:scale-105 transition-all flex items-center gap-2 will-change-transform">
+                <Link href="/login" className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white px-8 py-4 rounded-full font-bold text-sm shadow-[0_10px_25px_rgba(37,99,235,0.35)] hover:shadow-[0_15px_35px_rgba(37,99,235,0.45)] hover:scale-105 transition-all flex items-center gap-2 will-change-transform">
                   Mulai Sekarang Gratis <Zap size={18} className="fill-white" />
-                </button>
+                </Link>
               )}
               <Link href="#features" className="bg-white hover:bg-slate-50/80 text-slate-800 px-8 py-4 rounded-full font-bold text-sm border border-slate-200/80 transition-all shadow-sm hover:shadow flex items-center gap-2 will-change-transform">
                 Lihat Fitur <ChevronRight size={18} />
@@ -887,7 +878,7 @@ export default function Home() {
                   </ul>
                 </div>
                 {plan.name === 'Premium' ? ( userProfile?.is_premium ? (<div className="block w-full text-center py-4 rounded-2xl font-bold text-sm bg-emerald-100 text-emerald-700 cursor-default">✔ Sudah Premium</div>) : (<Link href="/upgrade" className="block w-full text-center py-4 rounded-2xl font-bold text-sm transition-all bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg shadow-purple-500/25 hover:scale-[1.02]">{plan.cta}</Link>) ) : (
-                  <Link href={session ? "/dashboard" : "#"} onClick={session ? undefined : handleLogin} className="block w-full text-center py-4 rounded-2xl font-bold text-sm transition-all bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold">{plan.cta}</Link>
+                  <Link href={session ? "/dashboard" : "/login"} className="block w-full text-center py-4 rounded-2xl font-bold text-sm transition-all bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold">{plan.cta}</Link>
                 )}
               </motion.div>
             ))}
@@ -1072,7 +1063,7 @@ export default function Home() {
               {session ? (
                 <Link href="/dashboard" className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-700 hover:to-indigo-700 text-white px-10 sm:px-12 py-4 sm:py-5 rounded-full text-base sm:text-lg font-black shadow-[0_15px_35px_rgba(37,99,235,0.8)] hover:shadow-[0_20px_45px_rgba(37,99,235,0.9)] hover:scale-105 transition-all duration-300 flex items-center gap-2.5 whitespace-nowrap border-2 border-blue-400/40 will-change-transform">Lanjut ke Dashboard <Zap size={20} className="fill-white" /></Link>
               ) : (
-                <button onClick={handleLogin} className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-700 hover:to-indigo-700 text-white px-10 sm:px-12 py-4 sm:py-5 rounded-full text-base sm:text-lg font-black shadow-[0_15px_35px_rgba(37,99,235,0.8)] hover:shadow-[0_20px_45px_rgba(37,99,235,0.9)] hover:scale-105 transition-all duration-300 flex items-center gap-2.5 whitespace-nowrap border-2 border-blue-400/40 cursor-pointer will-change-transform">Buat Akun Gratis Sekarang <Zap size={20} className="fill-white" /></button>
+                <Link href="/login" className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-700 hover:to-indigo-700 text-white px-10 sm:px-12 py-4 sm:py-5 rounded-full text-base sm:text-lg font-black shadow-[0_15px_35px_rgba(37,99,235,0.8)] hover:shadow-[0_20px_45px_rgba(37,99,235,0.9)] hover:scale-105 transition-all duration-300 flex items-center gap-2.5 whitespace-nowrap border-2 border-blue-400/40 will-change-transform">Buat Akun Gratis Sekarang <Zap size={20} className="fill-white" /></Link>
               )}
             </div>
           </motion.div>
@@ -1288,7 +1279,7 @@ function ShopeeIcon() {
       </defs>
       <rect x="5" y="5" width="90" height="90" rx="22" fill="url(#shopee-bg)" />
       <g fill="white" filter="url(#shopee-shadow)" transform="scale(3.2) translate(3.5, 3)">
-        <path d="M21 7h-2.5L17.5 3.5C17.28 2.88 16.7 2.5 16 2.5h-8C7.3 2.5 6.72 2.88 6.5 3.5L5.5 7H3C2.45 7 2 7.45 2 8v13c0 .55.45 1 1 1h18c.55 0 1-.45 1-1V8c0-.55-.45-1-1-1zm-12.35-3.4l.22-.65c.05-.13.16-.2.3-.2h5.66c.14 0 .25.07.3.2l.22.65c.06.18-.11.35-.3.35H8.95c-.19 0-.36-.17-.3-.35zM12 18c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" />
+        <path d="M21 7h-2.5L17.5 3.5C17.28 2.88 16.7 2.5 16 2.5h-8C7.3 2.5 6.72 2.88 6.5 3.5L5.5 7H3C2.45 7 2 7.45 2 8v13c0 .55.45 1 1 1h18c.55 0 1-.45 1-1V8c0-.55-.45-1-1-1zm-12.35-3.4l.22-.65c.05-.13.16-.2.3-.2h5.66c.14 0 .25.07.3.2l.22.65c.06.18-.11.35-.3.35H8.95c-.19 0-.36-.17-.3-.35zM12 18c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5-5 5-2.24 5-5 5z" />
       </g>
     </svg>
   );

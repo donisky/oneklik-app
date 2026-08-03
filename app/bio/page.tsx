@@ -1157,6 +1157,14 @@ export default function BioPage() {
     getData();
   }, [supabase]);
 
+  // --- REDIRECT KE HALAMAN LOGIN JIKA BELUM LOGIN ---
+  useEffect(() => {
+    if (!loading && !session) {
+      const currentPath = window.location.pathname;
+      router.push(`/login?next=${encodeURIComponent(currentPath)}`);
+    }
+  }, [loading, session, router]);
+
   const fetchNotifications = async () => {
     if (!session?.user?.id) return;
     setNotifLoading(true);
@@ -1512,7 +1520,6 @@ export default function BioPage() {
   };
 
   const handleLogout = async () => { await supabase.auth.signOut(); toast('Logout berhasil!'); setTimeout(() => router.push('/'), 1000); };
-  const handleLogin = async () => { await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/upgrade?next=${encodeURIComponent('/bio')}` } }); };
 
   const updateDesign = (key: string, value: any) => {
     setUser((prev: any) => ({ ...prev, design_settings: { ...(prev?.design_settings || {}), [key]: value } }));
@@ -1714,13 +1721,7 @@ export default function BioPage() {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat dashboard...</div>;
-  if (!session) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6">
-      <div className="mb-6"><OneklikLogo className="w-12 h-12" textClassName="text-3xl font-extrabold" /></div>
-      <h2 className="text-2xl font-bold mb-6 text-slate-800">Silakan Login</h2>
-      <button onClick={handleLogin} className="px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-lg transition-all">Login dengan Google</button>
-    </div>
-  );
+  if (!session) return null; // Redirect sudah berjalan
 
   const initials = (user?.full_name ? user.full_name.charAt(0) : (session?.user?.email || '?').charAt(0)).toUpperCase();
   const bioUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/${user?.username || ''}`;

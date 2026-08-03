@@ -61,15 +61,13 @@ export default function ToolsUrlShortenerPage() {
     checkAuth();
   }, [supabase]);
 
-  // --- 2. FUNGSI LOGIN (SAMA SEPERTI DI ALAT PDF) ---
-  const handleLogin = () => {
-    // Redirect ke halaman upgrade setelah login, lalu otomatis kembali ke halaman ini
-    const redirectTo = `${window.location.origin}/upgrade?next=${encodeURIComponent(window.location.pathname)}`;
-    supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo }
-    });
-  };
+  // --- 2. REDIRECT KE HALAMAN LOGIN JIKA BELUM LOGIN ---
+  useEffect(() => {
+    if (!authLoading && !session) {
+      const currentPath = window.location.pathname;
+      router.push(`/login?next=${encodeURIComponent(currentPath)}`);
+    }
+  }, [authLoading, session, router]);
 
   // --- 3. LOGIKA SAAT MEN CENTANG FITUR PREMIUM ---
   const handlePremiumToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -181,32 +179,9 @@ export default function ToolsUrlShortenerPage() {
     );
   }
 
-  // --- 4. GUARD PAGE (JIKA BELUM LOGIN) ---
+  // Jika belum login, redirect sudah berjalan, jadi tidak render apa pun
   if (!session) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col items-center justify-center p-6">
-        <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors font-medium text-sm">
-          <ArrowLeft size={18} /> Kembali ke Beranda
-        </Link>
-        
-        <div className="bg-white/80 backdrop-blur-md p-10 rounded-3xl shadow-2xl shadow-blue-100/50 text-center max-w-md border border-slate-100 w-full">
-          <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm">
-            <Lock size={28} />
-          </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 mb-2">Akses Terkunci</h1>
-          <p className="text-slate-500 mb-6 text-sm leading-relaxed">
-            Login untuk membuka kunci alat Short Link & QR Code. <br /> Setelah login, Anda akan dialihkan ke halaman pemilihan paket untuk memulai.
-          </p>
-          <button 
-            onClick={handleLogin}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-200"
-          >
-            Login dengan Google
-          </button>
-          <p className="mt-4 text-[10px] text-slate-400">Data Anda aman & dilindungi enkripsi.</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // --- 5. KONTEN UTAMA (SUDAH LOGIN) ---

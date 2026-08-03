@@ -166,6 +166,14 @@ export default function Dashboard() {
     getData();
   }, [supabase]);
 
+  // --- REDIRECT KE HALAMAN LOGIN JIKA BELUM LOGIN ---
+  useEffect(() => {
+    if (!loading && !session) {
+      const currentPath = window.location.pathname;
+      router.push(`/login?next=${encodeURIComponent(currentPath)}`);
+    }
+  }, [loading, session, router]);
+
   // --- FETCH NOTIFICATIONS (User Only) ---
   const fetchNotifications = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -261,27 +269,20 @@ export default function Dashboard() {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat dashboard...</div>;
-  
-  if (!session) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6">
-        {/* --- LOGO DENGAN IKON + GRADASI BIRU-UNGU --- */}
-        <div className="flex items-center gap-3 mb-4">
-          <img src="/icon-oneklik.svg" alt="Oneklik" className="w-12 h-12" />
-          <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Oneklik<span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">.id</span>
-          </h1>
+      <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-medium text-slate-500">Memuat dashboard...</p>
         </div>
-        <h2 className="text-2xl font-bold mb-6 text-slate-800">Silakan Login</h2>
-        <button 
-          onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })} 
-          className="px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-lg transition-all"
-        >
-          Login dengan Google
-        </button>
       </div>
     );
+  }
+
+  // Jika belum login, redirect sudah berjalan, jadi tidak render apa pun
+  if (!session) {
+    return null;
   }
 
   return (
