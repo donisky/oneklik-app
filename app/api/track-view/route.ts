@@ -4,7 +4,14 @@ import { cookies } from 'next/headers';
 
 export async function POST(req: Request) {
   try {
-    const { userId, pagePath } = await req.json();
+    // Parse body dengan aman
+    const body = await req.json().catch(() => null);
+    if (!body) {
+      console.warn('[track-view] Invalid JSON body');
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
+
+    const { userId, pagePath } = body;
     console.log('[track-view] Received:', { userId, pagePath });
 
     if (!pagePath) {
@@ -14,8 +21,7 @@ export async function POST(req: Request) {
 
     const supabase = createRouteHandlerClient({ cookies });
 
-    // === 1. Pastikan tabel page_views ada dan RLS mengizinkan insert ===
-    // Jika belum, Anda harus menjalankan SQL di Supabase (lihat di bawah)
+    // === 1. Pastikan tabel page_views ada (SQL di bawah) ===
 
     // === 2. Insert/Update page_views ===
     const today = new Date().toISOString().split('T')[0];
@@ -28,7 +34,7 @@ export async function POST(req: Request) {
 
     if (fetchError) {
       console.error('[track-view] Fetch error:', fetchError);
-      return NextResponse.json({ error: 'Database fetch error' }, { status: 500 });
+      return NextResponse.json({ error: 'Database fetch error: ' + fetchError.message }, { status: 500 });
     }
 
     if (existing) {
@@ -39,7 +45,7 @@ export async function POST(req: Request) {
         .eq('id', existing.id);
       if (updateError) {
         console.error('[track-view] Update error:', updateError);
-        return NextResponse.json({ error: 'Update failed' }, { status: 500 });
+        return NextResponse.json({ error: 'Update failed: ' + updateError.message }, { status: 500 });
       }
       console.log('[track-view] Incremented view for', pagePath, 'on', today);
     } else {
@@ -49,17 +55,24 @@ export async function POST(req: Request) {
         .insert({ page_path: pagePath, view_count: 1, date: today });
       if (insertError) {
         console.error('[track-view] Insert error:', insertError);
-        return NextResponse.json({ error: 'Insert failed' }, { status: 500 });
+        return NextResponse.json({ error: 'Insert failed: ' + insertError.message }, { status: 500 });
       }
       console.log('[track-view] Inserted new view for', pagePath, 'on', today);
     }
 
-    // === 3. (Opsional) Juga simpan ke analytics_events jika masih dipakai ===
+    // === 3. (Opsional) Juga simpan ke analytics_events jika userId ada ===
     if (userId) {
-      await supabase.from('analytics_events').insert({
-        user_id: userId,
-        event_type: 'profile_view',
-      });
+      const { error: analyticsError } = await supabase
+        .from('analytics_events')
+        .insert({
+          user_id: userId,
+          event_type: 'profile_view',
+          created_at: new Date().toISOString(),
+        });
+      if (analyticsError) {
+        // Jangan gagalkan response utama, cukup log
+        console.error('[track-view] Analytics insert error (non-critical):', analyticsError);
+      }
     }
 
     return NextResponse.json({ success: true });
