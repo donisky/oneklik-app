@@ -1132,27 +1132,76 @@ export default function BioPage() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
+        
         if (session) {
-          let { data: userData, error } = await supabase.from('users').select('*').eq('id', session.user.id).maybeSingle();
-          if (error) { console.error('Error fetch user:', error); toast.error('Gagal memuat data user'); setLoading(false); return; }
+          // Fetch user data
+          let { data: userData, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+          if (error) {
+            console.error('Error fetch user:', error);
+            toast.error('Gagal memuat data user');
+            setLoading(false);
+            return;
+          }
+
+          // Jika userData null, coba create profil baru
           if (!userData) {
             const fallbackUsername = `user-${session.user.id.slice(0, 8)}`;
-            const { data: newUser, error: insertError } = await supabase.from('users').insert({ id: session.user.id, full_name: '', username: fallbackUsername, selected_template: '1' }).select().maybeSingle();
+            const { data: newUser, error: insertError } = await supabase
+              .from('users')
+              .insert({
+                id: session.user.id,
+                full_name: session.user.user_metadata?.full_name || '',
+                username: fallbackUsername,
+                selected_template: '1',
+              })
+              .select()
+              .maybeSingle();
+
             if (insertError) {
-              const { data: retryUser } = await supabase.from('users').select('*').eq('id', session.user.id).maybeSingle();
-              if (retryUser) userData = retryUser;
-              else { toast.error('Gagal membuat profil baru'); setLoading(false); return; }
-            } else userData = newUser;
+              // Jika gagal insert, coba fetch lagi (mungkin sudah ada oleh trigger)
+              const { data: retryUser } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
+              if (retryUser) {
+                userData = retryUser;
+              } else {
+                toast.error('Gagal membuat profil baru');
+                setLoading(false);
+                return;
+              }
+            } else {
+              userData = newUser;
+            }
           }
+
           if (userData) {
+            // Pastikan field yang diperlukan tidak null
             if (!userData.selected_template) userData.selected_template = '1';
             if (!userData.design_settings) userData.design_settings = {};
             setUser(userData);
           }
-          const { data: linksData } = await supabase.from('links').select('*').eq('user_id', session.user.id).order('position');
+
+          // Fetch links
+          const { data: linksData } = await supabase
+            .from('links')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .order('position');
           setLinks(linksData || []);
         }
-      } catch (err) { console.error(err); toast.error('Terjadi kesalahan tak terduga'); } finally { setLoading(false); }
+      } catch (err) {
+        console.error('Unexpected error:', err);
+        toast.error('Terjadi kesalahan tak terduga');
+      } finally {
+        setLoading(false);
+      }
     };
     getData();
   }, [supabase]);
