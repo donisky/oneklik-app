@@ -20,56 +20,51 @@ import * as fabric from 'fabric';
 import toast, { Toaster } from 'react-hot-toast';
 
 /* =========================================================================
-   🔥 FIX KRUSIAL — WORKER PDF.js DI-BUNDLE LOKAL OLEH NEXT.JS (BUKAN DARI CDN)
+   🔥 FIX FINAL — WORKER PDF.js DI-HOST SENDIRI DARI FOLDER /public
 
-   ROOT CAUSE error "Setting up fake worker failed: Cannot load script at
-   https://cdnjs.cloudflare.com/...": worker PDF.js gagal dimuat dari CDN
-   eksternal — bisa karena diblokir jaringan/firewall/ad-blocker, CORS, atau
-   versi file di CDN tidak sinkron dengan package pdfjs-dist yang ter-install.
-   Selama masih bergantung ke CDN pihak ketiga, error ini bisa muncul kapan
-   saja tanpa bisa kita kontrol.
+   Percobaan sebelumnya (CDN unpkg → cdnjs → jsDelivr, lalu auto-bundle via
+   `import.meta.url`) TETAP gagal. Itu artinya bukan soal CDN mana yang
+   dipakai — jaringan/browser di sisi ini memblokir permintaan ke domain CDN
+   publik secara umum (bisa ekstensi ad-blocker, DNS filtering, atau firewall
+   jaringan kantor/ISP), dan resolusi aset otomatis lewat bundler juga tidak
+   bisa diandalkan 100% di semua konfigurasi Next.js (khususnya Turbopack).
 
-   SOLUSI TINGKAT PRODUKSI: worker di-bundle LANGSUNG oleh Webpack/Next.js
-   dari node_modules/pdfjs-dist (persis seperti library-nya sendiri), jadi:
-   ✅ Versi worker DIJAMIN selalu identik dengan versi library (no mismatch)
-   ✅ Same-origin, tanpa perlu koneksi ke CDN luar sama sekali (no CORS)
-   ✅ Tetap jalan walau CDN publik diblokir jaringan/firewall/ad-blocker
-   ✅ Identik perilakunya di development maupun production build
+   SOLUSI DEFINITIF: file worker PDF.js di-copy FISIK ke folder /public
+   project ini, lalu dimuat dari domain sendiri (same-origin) — persis
+   seperti memuat gambar atau favicon. Ini TIDAK BISA gagal karena isu
+   CDN/bundler apa pun, karena sama sekali tidak keluar dari server sendiri.
 
-   Fallback CDN (jsDelivr) tetap disediakan sebagai jaring pengaman terakhir,
-   otomatis aktif HANYA jika worker lokal gagal dimuat karena sebab apapun —
-   sehingga fitur Edit PDF tetap 100% berfungsi dalam skenario terburuk sekalipun.
+   ⚠️ WAJIB DILAKUKAN SATU KALI (lihat instruksi lengkap yang menyertai kode
+   ini): jalankan script scripts/copy-pdf-worker.js agar file worker benar-
+   benar ada di public/pdfjs/. Tanpa langkah ini, worker lokal tidak akan
+   ditemukan dan sistem otomatis jatuh ke fallback CDN (yang mungkin masih
+   diblokir seperti sebelumnya).
    ========================================================================= */
 
-// Di-resolve & di-bundle otomatis oleh Webpack/Next.js sebagai aset statis
-// (sinkron 1:1 dengan versi pdfjs-dist yang benar-benar ter-install di project ini).
-const LOCAL_PDF_WORKER_SRC = (() => {
-  try {
-    return new URL('pdfjs-dist/build/pdf.worker.min.js', import.meta.url).toString();
-  } catch {
-    return null;
-  }
-})();
+// Path lokal same-origin — di-serve statis langsung oleh Next.js dari /public.
+const getLocalWorkerSrc = () => {
+  const v = String(pdfjsLib.version || '3.11.174');
+  const isV4 = v.startsWith('4');
+  const filename = isV4 ? 'pdf.worker.min.mjs' : 'pdf.worker.min.js';
+  return `/pdfjs/${filename}`;
+};
 
-// Fallback CDN (jsDelivr — jauh lebih jarang diblokir dibanding cdnjs/unpkg),
-// versi diambil LANGSUNG dari runtime pdfjsLib.version, tidak pernah hardcoded/basi.
+// Fallback CDN (jsDelivr) — hanya jaring pengaman TERAKHIR jika file lokal
+// entah kenapa belum ada di /public (mis. lupa jalankan script copy-nya).
 const getCdnWorkerSrc = () => {
   const v = (pdfjsLib.version && String(pdfjsLib.version)) || '3.11.174';
-  return `https://cdn.jsdelivr.net/npm/pdfjs-dist@${v}/build/pdf.worker.min.js`;
+  const isV4 = v.startsWith('4');
+  const filename = isV4 ? 'pdf.worker.min.mjs' : 'pdf.worker.min.js';
+  return `https://cdn.jsdelivr.net/npm/pdfjs-dist@${v}/build/${filename}`;
 };
 
 if (typeof window !== 'undefined') {
-  try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = LOCAL_PDF_WORKER_SRC || getCdnWorkerSrc();
-  } catch (err) {
-    console.error("Gagal inisialisasi Worker PDF.js lokal, menggunakan fallback CDN:", err);
-    pdfjsLib.GlobalWorkerOptions.workerSrc = getCdnWorkerSrc();
-  }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = getLocalWorkerSrc();
 }
 
-// Loader PDF dengan auto-fallback: jika worker lokal bermasalah saat runtime
-// (mis. edge-case bundler tertentu), sistem otomatis mencoba ulang dengan
-// worker dari CDN SEBELUM benar-benar menampilkan error ke pengguna.
+// Loader PDF dengan auto-fallback: jika worker lokal (/pdfjs/...) tidak
+// ditemukan — biasanya karena script copy belum pernah dijalankan — sistem
+// otomatis mencoba CDN SEBELUM benar-benar menampilkan error ke pengguna.
 const loadPdfDocumentSafely = async (fileUrl: string) => {
   try {
     return await pdfjsLib.getDocument(fileUrl).promise;
@@ -77,7 +72,11 @@ const loadPdfDocumentSafely = async (fileUrl: string) => {
     const msg = String(err?.message || err?.name || '');
     const isWorkerIssue = /worker/i.test(msg) || /Cannot load script/i.test(msg);
     if (isWorkerIssue) {
-      console.warn("Worker PDF.js lokal gagal, mencoba fallback CDN jsDelivr...", err);
+      console.warn(
+        "Worker lokal (/pdfjs/...) tidak ditemukan — pastikan sudah menjalankan " +
+        "scripts/copy-pdf-worker.js. Mencoba fallback CDN sementara...",
+        err
+      );
       pdfjsLib.GlobalWorkerOptions.workerSrc = getCdnWorkerSrc();
       return await pdfjsLib.getDocument(fileUrl).promise;
     }
