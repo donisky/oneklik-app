@@ -20,6 +20,24 @@ import * as fabric from 'fabric';
 import toast, { Toaster } from 'react-hot-toast';
 
 /* =========================================================================
+   🔥 FIX KRUSIAL: SETUP WORKER SINKRON & PENDETEKSI VERSI (.mjs / .js)
+   Deklarasi ini WAJIB di luar komponen agar dieksekusi sebelum React me-render
+   ========================================================================= */
+if (typeof window !== 'undefined') {
+  try {
+    const pdfjsVersion = String(pdfjsLib.version || '3.11.174');
+    // PDF.js v4+ menggunakan ekstensi .mjs, versi sebelumnya .js
+    const isV4 = pdfjsVersion.startsWith('4'); 
+    const workerFilename = isV4 ? 'pdf.worker.min.mjs' : 'pdf.worker.min.js';
+    
+    // Paksa setting CDN agar seragam dan sinkron dengan library NPM lokal
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/${workerFilename}`;
+  } catch (err) {
+    console.error("Gagal inisialisasi Worker PDF.js:", err);
+  }
+}
+
+/* =========================================================================
    COMPONENTS UI KUSTOM
    ========================================================================= */
 
@@ -97,29 +115,23 @@ export default function EditPDF() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
   const renderTaskRef = useRef<any>(null);
-  const fileUrlRef = useRef<string | null>(null); // Menyimpan URL Blob untuk mencegah memory leak
+  const fileUrlRef = useRef<string | null>(null); 
 
   const supabase = createClientComponentClient();
 
-  // --- SINKRONISASI WORKER AMAN DI CLIENT SIDE ---
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // Menggunakan CDN unpkg dengan versi dinamis yang dijamin sinkron dengan package.json Anda
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
-    }
-    
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
 
-    // Cleanup Blob URL saat komponen dilepas (unmount)
+    // Membersihkan Blob URL saat user keluar dari halaman (Mencegah Memory Leak)
     return () => {
       if (fileUrlRef.current) URL.revokeObjectURL(fileUrlRef.current);
     };
   }, [supabase]);
 
-  // --- LOGIKA LOAD & RENDER PDF TINGKAT TINGGI (SUPER MAXIMAL & ANTI-KORUP) ---
+  // --- LOGIKA LOAD & RENDER PDF TINGKAT TINGGI (ANTI-KORUP) ---
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       loadPDF(e.target.files[0]);
@@ -142,19 +154,19 @@ export default function EditPDF() {
     setZoom(100);
     
     try {
-      // 1. Bersihkan file/blob sebelumnya dari memori untuk mencegah bocor (Memory Leak)
+      // 1. Bersihkan sisa memori file lama
       if (fileUrlRef.current) {
         URL.revokeObjectURL(fileUrlRef.current);
       }
 
-      // 2. TEKNIK RAHASIA: Buat Blob URL. Ini 100x lebih stabil daripada ArrayBuffer/Uint8Array
+      // 2. Teknik Blob URL: Mengakali browser agar membaca file seolah dari origin yang sama
       const objectUrl = URL.createObjectURL(selectedFile);
-      fileUrlRef.current = objectUrl; // Simpan ke ref
+      fileUrlRef.current = objectUrl; 
       
-      // 3. Load Dokumen menggunakan URL tersebut
+      // 3. Load Dokumen PDF.js dengan aman
       const loadingTask = pdfjsLib.getDocument(objectUrl);
-
       const pdf = await loadingTask.promise;
+      
       setPdfDoc(pdf);
       setTotalPages(pdf.numPages);
       setCurrentPage(1);
@@ -162,11 +174,11 @@ export default function EditPDF() {
       toast.success("PDF berhasil dimuat dengan sempurna!");
       
     } catch (error: any) {
-      console.error("Error loading PDF System:", error);
+      console.error("Error Sistem Pemrosesan PDF:", error);
       if (error.name === 'PasswordException') {
         toast.error("File PDF ini dikunci dengan password. Harap gunakan fitur 'Unlock PDF'.", { duration: 5000 });
       } else {
-        toast.error(`Gagal memuat PDF: ${error.message || "File mungkin rusak atau korup."}`, { duration: 5000 });
+        toast.error(`Gagal memuat PDF. Terjadi masalah kompatibilitas struktur file.`, { duration: 5000 });
       }
       setFile(null);
     } finally {
@@ -192,7 +204,7 @@ export default function EditPDF() {
         canvas.width = viewport.width;
         setCanvasSize({ width: viewport.width, height: viewport.height });
         
-        // Membatalkan (Cancel) proses render sebelumnya untuk mencegah Race Condition & Crash
+        // Membatalkan (Cancel) proses render halaman sebelumnya jika user ganti halaman dengan sangat cepat
         if (renderTaskRef.current) {
            await renderTaskRef.current.cancel();
         }
@@ -219,6 +231,7 @@ export default function EditPDF() {
         }
       }
     } catch (error: any) {
+      // Abaikan error RenderingCancelled karena itu sengaja kita batalkan (bukan bug)
       if (error.name !== 'RenderingCancelledException') {
          console.error("Error rendering page:", error);
       }
