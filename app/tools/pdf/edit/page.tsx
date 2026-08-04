@@ -17,9 +17,15 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import * as pdfjsLib from 'pdfjs-dist';
 import * as fabric from 'fabric';
+import toast, { Toaster } from 'react-hot-toast';
 
-// Konfigurasi Worker PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = '//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+/* =========================================================================
+   SINKRONISASI WORKER PDF.JS (ANTI-CRASH)
+   Otomatis menyamakan versi Worker CDN dengan versi pdfjs-dist lokal Anda
+   ========================================================================= */
+if (typeof window !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+}
 
 /* =========================================================================
    COMPONENTS UI KUSTOM
@@ -69,6 +75,7 @@ export default function EditPDF() {
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [isPdfLoading, setIsPdfLoading] = useState(false); // State khusus saat parsing PDF
   
   // State Editor & UI
   const [zoom, setZoom] = useState(100);
@@ -98,6 +105,9 @@ export default function EditPDF() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
   
+  // Render Task Ref untuk membatalkan render yang bertumpuk (Mencegah Crash)
+  const renderTaskRef = useRef<any>(null);
+
   const supabase = createClientComponentClient();
 
   useEffect(() => {
@@ -107,7 +117,7 @@ export default function EditPDF() {
     });
   }, [supabase]);
 
-  // --- LOGIKA LOAD & RENDER PDF ---
+  // --- LOGIKA LOAD & RENDER PDF TINGKAT TINGGI (SUPER MAXIMAL) ---
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       loadPDF(e.target.files[0]);
@@ -120,24 +130,48 @@ export default function EditPDF() {
       if (e.dataTransfer.files[0].type === 'application/pdf') {
         loadPDF(e.dataTransfer.files[0]);
       } else {
-        alert("Hanya file PDF yang didukung.");
+        toast.error("Format tidak didukung. Harap upload file berektensi .pdf");
       }
     }
   };
 
   const loadPDF = async (selectedFile: File) => {
-    setFile(selectedFile);
+    setIsPdfLoading(true);
     setZoom(100);
+    
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      // Menggunakan Uint8Array agar PDF.js bisa membacanya dengan 100% akurat tanpa korup
+      const typedArray = new Uint8Array(arrayBuffer); 
+      
+      // Load task dengan pengaturan khusus (CMap) untuk memuat font-font khusus PDF
+      const loadingTask = pdfjsLib.getDocument({ 
+        data: typedArray,
+        cMapUrl: `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+        useSystemFonts: true
+      });
+
+      const pdf = await loadingTask.promise;
       setPdfDoc(pdf);
       setTotalPages(pdf.numPages);
       setCurrentPage(1);
-    } catch (error) {
+      setFile(selectedFile); // Set file HANYA jika berhasil dimuat
+      toast.success("PDF berhasil dimuat!");
+      
+    } catch (error: any) {
       console.error("Error loading PDF:", error);
-      alert("Gagal memuat file PDF. File mungkin rusak atau dilindungi password.");
+      // Tangani spesifik error password vs file rusak
+      if (error.name === 'PasswordException') {
+        toast.error("File PDF ini dikunci dengan password. Harap gunakan fitur 'Unlock PDF' terlebih dahulu.", { duration: 5000 });
+      } else {
+        toast.error("Gagal membaca struktur PDF. File mungkin rusak atau korup.", { duration: 5000 });
+      }
       setFile(null);
+    } finally {
+      setIsPdfLoading(false);
+      // Reset input agar bisa memilih file yang sama lagi jika sebelumnya gagal
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -158,7 +192,20 @@ export default function EditPDF() {
         canvas.width = viewport.width;
         setCanvasSize({ width: viewport.width, height: viewport.height });
         
-        await page.render({ canvasContext: context, viewport: viewport }).promise;
+        // Membatalkan (Cancel) proses render sebelumnya jika user melakukan click cepat / berganti halaman
+        if (renderTaskRef.current) {
+           await renderTaskRef.current.cancel();
+        }
+
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport,
+        };
+        
+        const renderTask = page.render(renderContext);
+        renderTaskRef.current = renderTask; // Simpan task yang sedang berjalan
+
+        await renderTask.promise;
 
         if (!fabricRef.current) {
           initFabric(viewport.width, viewport.height);
@@ -171,8 +218,11 @@ export default function EditPDF() {
           setTimeout(() => saveHistory(), 100);
         }
       }
-    } catch (error) {
-      console.error("Error rendering page", error);
+    } catch (error: any) {
+      // Abaikan error RenderingCancelledException karena itu hasil dari pencegahan race condition
+      if (error.name !== 'RenderingCancelledException') {
+         console.error("Error rendering page", error);
+      }
     }
   };
 
@@ -321,7 +371,7 @@ export default function EditPDF() {
   const applyTextDecoration = (type: 'underline' | 'linethrough') => {
     const obj = fabricRef.current?.getActiveObject();
     if (!obj || !['i-text', 'text', 'textbox'].includes(obj.type || '')) {
-      alert('Pilih teks (Text/Note) terlebih dahulu untuk memberikan garis!');
+      toast('Pilih teks (Text/Note) terlebih dahulu untuk memberikan garis!', { icon: '⚠️' });
       return;
     }
     
@@ -446,8 +496,8 @@ export default function EditPDF() {
     canvas.addEventListener('mouseup', stop);
     canvas.addEventListener('mouseout', stop);
     
-    canvas.addEventListener('touchstart', start);
-    canvas.addEventListener('touchmove', draw);
+    canvas.addEventListener('touchstart', start, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
     canvas.addEventListener('touchend', stop);
   };
 
@@ -569,10 +619,11 @@ export default function EditPDF() {
       const pdfBytes = await pdfToEdit.save();
       const originalName = file.name.replace(/\.[^/.]+$/, "");
       saveAs(new Blob([pdfBytes as any], { type: 'application/pdf' }), `${originalName}_edited.pdf`);
+      toast.success("PDF berhasil disimpan dan diunduh!");
       
     } catch (error) {
       console.error(error);
-      alert("Gagal menyimpan dokumen. File mungkin dilindungi kata sandi.");
+      toast.error("Gagal menyimpan dokumen. File mungkin memiliki proteksi enkripsi.");
     } finally {
       setIsSaving(false);
     }
@@ -615,7 +666,7 @@ export default function EditPDF() {
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] font-sans overflow-hidden text-slate-800">
-      
+      <Toaster position="top-center" />
       {/* SIDEBAR KIRI */}
       <aside className="w-[260px] bg-white border-r border-slate-200 hidden lg:flex flex-col flex-shrink-0 h-full overflow-y-auto custom-scrollbar relative z-20">
         <div className="h-16 flex items-center border-b border-slate-100 px-4 flex-shrink-0 sticky top-0 bg-white z-10">
@@ -711,26 +762,35 @@ export default function EditPDF() {
                   <h1 className="text-3xl font-extrabold text-slate-900 mb-3 tracking-tight">Edit PDF</h1>
                   <p className="text-sm text-slate-500">Edit, tambahkan teks, gambar, coret, highlight, dan lainnya dengan mudah.</p>
                 </div>
-                <div
-                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`
-                    relative w-full rounded-[24px] border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center py-20 px-6 text-center cursor-pointer bg-white
-                    ${isDragging ? 'border-blue-500 bg-blue-50/70 scale-[1.02]' : 'border-[#E2E8F0] hover:border-blue-400 hover:bg-slate-50/30'}
-                  `}
-                >
-                  <input type="file" accept=".pdf" className="hidden" onChange={handleFileChange} ref={fileInputRef} />
-                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-5 shadow-lg shadow-blue-200">
-                    <Edit3 size={28} className="text-white" />
+                
+                {isPdfLoading ? (
+                  <div className="w-full rounded-[24px] border border-slate-200 bg-white flex flex-col items-center justify-center py-20 px-6 shadow-sm">
+                    <Loader2 size={48} className="text-blue-600 animate-spin mb-4" />
+                    <h3 className="text-lg font-bold text-slate-800">Sedang memproses PDF...</h3>
+                    <p className="text-sm text-slate-500 mt-2">Mohon tunggu sebentar, alat sedang disiapkan.</p>
                   </div>
-                  <h3 className="text-[17px] font-bold text-slate-800 mb-2">Upload file PDF di sini</h3>
-                  <p className="text-sm text-slate-500 mb-6">atau drag & drop file ke area ini</p>
-                  <span className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md transition-colors pointer-events-auto">
-                    Pilih File PDF
-                  </span>
-                </div>
+                ) : (
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`
+                      relative w-full rounded-[24px] border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center py-20 px-6 text-center cursor-pointer bg-white
+                      ${isDragging ? 'border-blue-500 bg-blue-50/70 scale-[1.02]' : 'border-[#E2E8F0] hover:border-blue-400 hover:bg-slate-50/30'}
+                    `}
+                  >
+                    <input type="file" accept=".pdf" className="hidden" onChange={handleFileChange} ref={fileInputRef} />
+                    <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-5 shadow-lg shadow-blue-200">
+                      <Edit3 size={28} className="text-white" />
+                    </div>
+                    <h3 className="text-[17px] font-bold text-slate-800 mb-2">Upload file PDF di sini</h3>
+                    <p className="text-sm text-slate-500 mb-6">atau drag & drop file ke area ini</p>
+                    <span className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md transition-colors pointer-events-auto">
+                      Pilih File PDF
+                    </span>
+                  </div>
+                )}
              </div>
           </main>
         ) : (
