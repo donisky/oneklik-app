@@ -1,7 +1,13 @@
+# robots.txt for Oneklik.id
 User-agent: *
 Allow: /
-Disallow: /api/
-Disallow: /login
-Disallow: /dashboard
 
+# Mencegah Google mengindeks halaman internal & auth
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /login
+Disallow: /register
+
+# Petunjuk lokasi sitemap untuk Google Search Console
 Sitemap: https://oneklik.my.id/sitemap.xml

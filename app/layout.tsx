@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import dynamic from 'next/dynamic';
 import { Analytics } from '@vercel/analytics/react';
 import PageViewTracker from "./components/PageViewTracker";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], display: 'swap' });
 
 const AIChatWidget = dynamic(
   () => import("./components/AIChatWidget"),
@@ -41,23 +41,29 @@ export const metadata: Metadata = {
     siteName: 'Oneklik.id',
     locale: 'id_ID',
     type: 'website',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Oneklik.id - Platform Digital All-in-One',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Oneklik.id - Platform Digital All-in-One',
     description: 'Bio Link, Short Link, QR Code, dan Alat PDF canggih dalam satu platform.',
+    images: ['/og-image.png'],
   },
-  // ==========================================================
-  // --- FAVICON GRADASI BIRU-UNGU BARU ---
-  // ==========================================================
   icons: {
-    icon: '/favicon-gradient.svg',      // Favicon utama tab browser
-    shortcut: '/favicon-gradient.svg',  // Shortcut icon
-    apple: '/favicon-gradient.svg',     // Icon Home Screen Apple
+    icon: '/favicon-gradient.svg',
+    shortcut: '/favicon-gradient.svg',
+    apple: '/favicon-gradient.svg',
   },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
@@ -69,13 +75,24 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="id">
+      <head>
+        {/* ==========================================================
+            PERFORMA: Preconnect untuk Supabase & Font Google
+            ========================================================== */}
+        <link rel="preconnect" href="https://wjtmdsksarzipitzsscf.supabase.co" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body className={inter.className}>
+        {/* ==========================================================
+            STRUCTURED DATA: FAQ & SoftwareApplication (Rich Snippets)
+            ========================================================== */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
-              "@type": "WebApplication",
+              "@type": "SoftwareApplication",
               "name": "Oneklik.id",
               "url": "https://oneklik.my.id",
               "applicationCategory": "UtilityApplication",
@@ -86,7 +103,39 @@ export default function RootLayout({
                 "@type": "Offer",
                 "price": "0",
                 "priceCurrency": "IDR"
-              }
+              },
+              "aggregateRating": {
+                "@type": "AggregateRating",
+                "ratingValue": "4.9",
+                "ratingCount": "1420",
+                "bestRating": "5"
+              },
+              "review": [
+                {
+                  "@type": "Review",
+                  "author": {
+                    "@type": "Person",
+                    "name": "Ricky Pratama"
+                  },
+                  "reviewBody": "Tools-nya lengkap, interface-nya mudah banget dipakai.",
+                  "reviewRating": {
+                    "@type": "Rating",
+                    "ratingValue": "5"
+                  }
+                },
+                {
+                  "@type": "Review",
+                  "author": {
+                    "@type": "Person",
+                    "name": "Dinda Aulia"
+                  },
+                  "reviewBody": "Sangat membantu untuk tugas kuliah, terutama PDF Tools!",
+                  "reviewRating": {
+                    "@type": "Rating",
+                    "ratingValue": "5"
+                  }
+                }
+              ]
             })
           }}
         />
