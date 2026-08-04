@@ -20,13 +20,12 @@ import * as fabric from 'fabric';
 import toast, { Toaster } from 'react-hot-toast';
 
 /* =========================================================================
-   🔥 FIX KRUSIAL: SETUP WORKER SINKRON & PENDETEKSI VERSI (.mjs / .js)
+   🔥 FIX KRUSIAL (DARI ITERASI SEBELUMNYA): SETUP WORKER SINKRON & PENDETEKSI VERSI (.mjs / .js)
    Deklarasi ini WAJIB di luar komponen agar dieksekusi sebelum React me-render
    ========================================================================= */
 if (typeof window !== 'undefined') {
   try {
     const pdfjsVersion = String(pdfjsLib.version || '3.11.174');
-    // PDF.js v4+ menggunakan ekstensi .mjs, versi sebelumnya .js
     const isV4 = pdfjsVersion.startsWith('4'); 
     const workerFilename = isV4 ? 'pdf.worker.min.mjs' : 'pdf.worker.min.js';
     
@@ -175,11 +174,23 @@ export default function EditPDF() {
       
     } catch (error: any) {
       console.error("Error Sistem Pemrosesan PDF:", error);
+      
+      /* =========================================================================
+         🌟 FIXED: PENANGANAN KESALAHAN YANG JAUH LEBIH AKURAT
+         Tampilkan pesan error asli dari PDF.js alih-alih pesan generik
+         agar pengguna tahu persis masalahnya.
+         ========================================================================= */
       if (error.name === 'PasswordException') {
-        toast.error("File PDF ini dikunci dengan password. Harap gunakan fitur 'Unlock PDF'.", { duration: 5000 });
+        toast.error("File PDF ini dikunci dengan password. Harap gunakan fitur 'Unlock PDF' terlebih dahulu.", { duration: 7000 });
+      } else if (error.message && error.message.includes('PDF format compatibility error')) {
+        toast.error("PDF format compatibility error: File ini menggunakan fitur PDF yang sangat baru dan tidak didukung oleh versi PDF.js saat ini.", { duration: 7000 });
+      } else if (error.message && error.message.includes('Invalid XRef')) {
+        toast.error("PDF format compatibility error: File ini memiliki tabel XRef yang tidak valid atau korup.", { duration: 7000 });
       } else {
-        toast.error(`Gagal memuat PDF. Terjadi masalah kompatibilitas struktur file.`, { duration: 5000 });
+        // Tampilkan pesan error asli jika tidak ada yang cocok
+        toast.error(`Gagal memuat PDF: ${error.message || error.toString() || "Terjadi masalah kompatibilitas struktur file."}`, { duration: 7000 });
       }
+      
       setFile(null);
     } finally {
       setIsPdfLoading(false);
@@ -305,7 +316,7 @@ export default function EditPDF() {
 
     if (activeTool === 'draw') {
       canvas.isDrawingMode = true;
-      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+      canvas.freeDrawingBrush = new fabric. PencilBrush(canvas);
       canvas.freeDrawingBrush.color = strokeColor;
       canvas.freeDrawingBrush.width = strokeWidth;
     } 
