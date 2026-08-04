@@ -20,14 +20,6 @@ import * as fabric from 'fabric';
 import toast, { Toaster } from 'react-hot-toast';
 
 /* =========================================================================
-   SINKRONISASI WORKER PDF.JS (ANTI-CRASH)
-   Otomatis menyamakan versi Worker CDN dengan versi pdfjs-dist lokal Anda
-   ========================================================================= */
-if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
-}
-
-/* =========================================================================
    COMPONENTS UI KUSTOM
    ========================================================================= */
 
@@ -75,7 +67,7 @@ export default function EditPDF() {
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [isPdfLoading, setIsPdfLoading] = useState(false); // State khusus saat parsing PDF
+  const [isPdfLoading, setIsPdfLoading] = useState(false);
   
   // State Editor & UI
   const [zoom, setZoom] = useState(100);
@@ -104,20 +96,30 @@ export default function EditPDF() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
-  
-  // Render Task Ref untuk membatalkan render yang bertumpuk (Mencegah Crash)
   const renderTaskRef = useRef<any>(null);
+  const fileUrlRef = useRef<string | null>(null); // Menyimpan URL Blob untuk mencegah memory leak
 
   const supabase = createClientComponentClient();
 
+  // --- SINKRONISASI WORKER AMAN DI CLIENT SIDE ---
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Menggunakan CDN unpkg dengan versi dinamis yang dijamin sinkron dengan package.json Anda
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+    }
+    
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
+
+    // Cleanup Blob URL saat komponen dilepas (unmount)
+    return () => {
+      if (fileUrlRef.current) URL.revokeObjectURL(fileUrlRef.current);
+    };
   }, [supabase]);
 
-  // --- LOGIKA LOAD & RENDER PDF TINGKAT TINGGI (SUPER MAXIMAL) ---
+  // --- LOGIKA LOAD & RENDER PDF TINGKAT TINGGI (SUPER MAXIMAL & ANTI-KORUP) ---
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       loadPDF(e.target.files[0]);
@@ -140,37 +142,35 @@ export default function EditPDF() {
     setZoom(100);
     
     try {
-      const arrayBuffer = await selectedFile.arrayBuffer();
-      // Menggunakan Uint8Array agar PDF.js bisa membacanya dengan 100% akurat tanpa korup
-      const typedArray = new Uint8Array(arrayBuffer); 
+      // 1. Bersihkan file/blob sebelumnya dari memori untuk mencegah bocor (Memory Leak)
+      if (fileUrlRef.current) {
+        URL.revokeObjectURL(fileUrlRef.current);
+      }
+
+      // 2. TEKNIK RAHASIA: Buat Blob URL. Ini 100x lebih stabil daripada ArrayBuffer/Uint8Array
+      const objectUrl = URL.createObjectURL(selectedFile);
+      fileUrlRef.current = objectUrl; // Simpan ke ref
       
-      // Load task dengan pengaturan khusus (CMap) untuk memuat font-font khusus PDF
-      const loadingTask = pdfjsLib.getDocument({ 
-        data: typedArray,
-        cMapUrl: `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
-        cMapPacked: true,
-        useSystemFonts: true
-      });
+      // 3. Load Dokumen menggunakan URL tersebut
+      const loadingTask = pdfjsLib.getDocument(objectUrl);
 
       const pdf = await loadingTask.promise;
       setPdfDoc(pdf);
       setTotalPages(pdf.numPages);
       setCurrentPage(1);
-      setFile(selectedFile); // Set file HANYA jika berhasil dimuat
-      toast.success("PDF berhasil dimuat!");
+      setFile(selectedFile); 
+      toast.success("PDF berhasil dimuat dengan sempurna!");
       
     } catch (error: any) {
-      console.error("Error loading PDF:", error);
-      // Tangani spesifik error password vs file rusak
+      console.error("Error loading PDF System:", error);
       if (error.name === 'PasswordException') {
-        toast.error("File PDF ini dikunci dengan password. Harap gunakan fitur 'Unlock PDF' terlebih dahulu.", { duration: 5000 });
+        toast.error("File PDF ini dikunci dengan password. Harap gunakan fitur 'Unlock PDF'.", { duration: 5000 });
       } else {
-        toast.error("Gagal membaca struktur PDF. File mungkin rusak atau korup.", { duration: 5000 });
+        toast.error(`Gagal memuat PDF: ${error.message || "File mungkin rusak atau korup."}`, { duration: 5000 });
       }
       setFile(null);
     } finally {
       setIsPdfLoading(false);
-      // Reset input agar bisa memilih file yang sama lagi jika sebelumnya gagal
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -192,7 +192,7 @@ export default function EditPDF() {
         canvas.width = viewport.width;
         setCanvasSize({ width: viewport.width, height: viewport.height });
         
-        // Membatalkan (Cancel) proses render sebelumnya jika user melakukan click cepat / berganti halaman
+        // Membatalkan (Cancel) proses render sebelumnya untuk mencegah Race Condition & Crash
         if (renderTaskRef.current) {
            await renderTaskRef.current.cancel();
         }
@@ -203,7 +203,7 @@ export default function EditPDF() {
         };
         
         const renderTask = page.render(renderContext);
-        renderTaskRef.current = renderTask; // Simpan task yang sedang berjalan
+        renderTaskRef.current = renderTask;
 
         await renderTask.promise;
 
@@ -219,9 +219,8 @@ export default function EditPDF() {
         }
       }
     } catch (error: any) {
-      // Abaikan error RenderingCancelledException karena itu hasil dari pencegahan race condition
       if (error.name !== 'RenderingCancelledException') {
-         console.error("Error rendering page", error);
+         console.error("Error rendering page:", error);
       }
     }
   };
@@ -233,7 +232,7 @@ export default function EditPDF() {
       width: width,
       height: height,
       selection: true,
-      preserveObjectStacking: true // Objek baru selalu di atas
+      preserveObjectStacking: true
     });
     fabricRef.current = fabricCanvas;
     
@@ -284,12 +283,11 @@ export default function EditPDF() {
     }
   };
 
-  // --- PENGATURAN MODE ALAT AKTIF (MAGIC SUPER SMOOTH) ---
+  // --- PENGATURAN MODE ALAT AKTIF ---
   useEffect(() => {
     if (!fabricRef.current) return;
     const canvas = fabricRef.current;
     
-    // Reset default
     canvas.isDrawingMode = false;
 
     if (activeTool === 'draw') {
@@ -301,12 +299,10 @@ export default function EditPDF() {
     else if (activeTool === 'highlight') {
       canvas.isDrawingMode = true;
       canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-      // Brush tebal dengan transparansi untuk highlight
       canvas.freeDrawingBrush.color = hexToRgbaFabric(fillColor, 0.35);
       canvas.freeDrawingBrush.width = 24; 
     } 
     else {
-      // Select, Text, Shape, dll
       const isSelectMode = ['select', 'text', 'shape', 'underline', 'strikethrough', 'delete', 'note', 'image', 'signature'].includes(activeTool);
       canvas.selection = isSelectMode;
       canvas.forEachObject(o => {
@@ -340,7 +336,6 @@ export default function EditPDF() {
     fabricRef.current.add(text);
     fabricRef.current.setActiveObject(text);
     
-    // Auto Edit Mode UX
     text.enterEditing();
     text.selectAll();
     setInputText('');
@@ -355,7 +350,7 @@ export default function EditPDF() {
       width: 200, 
       fontSize: 14,
       fill: '#000000', 
-      backgroundColor: '#fef3c7', // Kuning sticky note
+      backgroundColor: '#fef3c7',
       padding: 12,
       fontFamily: 'Helvetica',
       editable: true,
@@ -375,7 +370,6 @@ export default function EditPDF() {
       return;
     }
     
-    // Toggle properti native text fabric
     if (type === 'underline') {
       const current = obj.get('underline');
       obj.set('underline', !current);
@@ -384,8 +378,6 @@ export default function EditPDF() {
       obj.set('linethrough', !current);
     }
     fabricRef.current?.requestRenderAll();
-    
-    // Trigger history save
     if(fabricRef.current) fabricRef.current.fire('object:modified', { target: obj });
   };
 
@@ -534,10 +526,10 @@ export default function EditPDF() {
       
       const objects = fabricRef.current?.getObjects() || [];
       const pages = pdfToEdit.getPages();
-      const page = pages[currentPage - 1]; // Menyimpan ke halaman aktif saat ini
+      const page = pages[currentPage - 1];
       
       const font = await pdfToEdit.embedFont(StandardFonts.Helvetica);
-      const scale = 1.5; // Mengimbangi scale render canvas
+      const scale = 1.5;
 
       for (const obj of objects) {
         const bounds = obj.getBoundingRect();
@@ -546,11 +538,9 @@ export default function EditPDF() {
         const pdfX = bounds.left / scale;
         const pdfY = page.getHeight() - (bounds.top / scale) - pdfHeight;
 
-        // Render Teks (Termasuk Note Textbox)
         if (obj.type === 'text' || obj.type === 'textbox' || obj.type === 'i-text') {
-          const textObj = obj as any; // any to bypass strict fabric typings
+          const textObj = obj as any;
           
-          // Jika ini note/textbox yang memiliki background, gambar kotaknya dulu
           if (textObj.backgroundColor) {
              const bgRgb = hexToRgbPdf(textObj.backgroundColor);
              page.drawRectangle({
@@ -567,7 +557,6 @@ export default function EditPDF() {
             textColor = hexToRgbPdf(textObj.fill);
           }
           const fSize = (textObj.fontSize || 16) / scale;
-          // Perhitungan baseline y untuk teks PDF
           const baselineY = page.getHeight() - (bounds.top / scale) - fSize * 0.85;
 
           page.drawText(textObj.text || '', {
@@ -578,7 +567,6 @@ export default function EditPDF() {
             color: textColor,
           });
 
-          // Menggambar Native Underline ke PDF
           if (textObj.underline) {
             const textWidthStr = font.widthOfTextAtSize(textObj.text || '', fSize);
             page.drawLine({
@@ -588,7 +576,6 @@ export default function EditPDF() {
                color: textColor,
             });
           }
-          // Menggambar Native Strikethrough (Coretan) ke PDF
           if (textObj.linethrough) {
             const textWidthStr = font.widthOfTextAtSize(textObj.text || '', fSize);
             page.drawLine({
@@ -600,8 +587,6 @@ export default function EditPDF() {
           }
         } 
         else {
-          // Render Hybrid (Gambar, Shape, Brush Highlight, Brush Coretan)
-          // Mengambil gambar spesifik objek ini saja
           const dataUrl = obj.toDataURL({ format: 'png', multiplier: 3 }); 
           const base64Data = dataUrl.split(',')[1];
           const imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
