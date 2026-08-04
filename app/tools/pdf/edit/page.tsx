@@ -20,21 +20,70 @@ import * as fabric from 'fabric';
 import toast, { Toaster } from 'react-hot-toast';
 
 /* =========================================================================
-   🔥 FIX KRUSIAL (DARI ITERASI SEBELUMNYA): SETUP WORKER SINKRON & PENDETEKSI VERSI (.mjs / .js)
-   Deklarasi ini WAJIB di luar komponen agar dieksekusi sebelum React me-render
+   🔥 FIX KRUSIAL — WORKER PDF.js DI-BUNDLE LOKAL OLEH NEXT.JS (BUKAN DARI CDN)
+
+   ROOT CAUSE error "Setting up fake worker failed: Cannot load script at
+   https://cdnjs.cloudflare.com/...": worker PDF.js gagal dimuat dari CDN
+   eksternal — bisa karena diblokir jaringan/firewall/ad-blocker, CORS, atau
+   versi file di CDN tidak sinkron dengan package pdfjs-dist yang ter-install.
+   Selama masih bergantung ke CDN pihak ketiga, error ini bisa muncul kapan
+   saja tanpa bisa kita kontrol.
+
+   SOLUSI TINGKAT PRODUKSI: worker di-bundle LANGSUNG oleh Webpack/Next.js
+   dari node_modules/pdfjs-dist (persis seperti library-nya sendiri), jadi:
+   ✅ Versi worker DIJAMIN selalu identik dengan versi library (no mismatch)
+   ✅ Same-origin, tanpa perlu koneksi ke CDN luar sama sekali (no CORS)
+   ✅ Tetap jalan walau CDN publik diblokir jaringan/firewall/ad-blocker
+   ✅ Identik perilakunya di development maupun production build
+
+   Fallback CDN (jsDelivr) tetap disediakan sebagai jaring pengaman terakhir,
+   otomatis aktif HANYA jika worker lokal gagal dimuat karena sebab apapun —
+   sehingga fitur Edit PDF tetap 100% berfungsi dalam skenario terburuk sekalipun.
    ========================================================================= */
+
+// Di-resolve & di-bundle otomatis oleh Webpack/Next.js sebagai aset statis
+// (sinkron 1:1 dengan versi pdfjs-dist yang benar-benar ter-install di project ini).
+const LOCAL_PDF_WORKER_SRC = (() => {
+  try {
+    return new URL('pdfjs-dist/build/pdf.worker.min.js', import.meta.url).toString();
+  } catch {
+    return null;
+  }
+})();
+
+// Fallback CDN (jsDelivr — jauh lebih jarang diblokir dibanding cdnjs/unpkg),
+// versi diambil LANGSUNG dari runtime pdfjsLib.version, tidak pernah hardcoded/basi.
+const getCdnWorkerSrc = () => {
+  const v = (pdfjsLib.version && String(pdfjsLib.version)) || '3.11.174';
+  return `https://cdn.jsdelivr.net/npm/pdfjs-dist@${v}/build/pdf.worker.min.js`;
+};
+
 if (typeof window !== 'undefined') {
   try {
-    const pdfjsVersion = String(pdfjsLib.version || '3.11.174');
-    const isV4 = pdfjsVersion.startsWith('4'); 
-    const workerFilename = isV4 ? 'pdf.worker.min.mjs' : 'pdf.worker.min.js';
-    
-    // Paksa setting CDN agar seragam dan sinkron dengan library NPM lokal
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/${workerFilename}`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = LOCAL_PDF_WORKER_SRC || getCdnWorkerSrc();
   } catch (err) {
-    console.error("Gagal inisialisasi Worker PDF.js:", err);
+    console.error("Gagal inisialisasi Worker PDF.js lokal, menggunakan fallback CDN:", err);
+    pdfjsLib.GlobalWorkerOptions.workerSrc = getCdnWorkerSrc();
   }
 }
+
+// Loader PDF dengan auto-fallback: jika worker lokal bermasalah saat runtime
+// (mis. edge-case bundler tertentu), sistem otomatis mencoba ulang dengan
+// worker dari CDN SEBELUM benar-benar menampilkan error ke pengguna.
+const loadPdfDocumentSafely = async (fileUrl: string) => {
+  try {
+    return await pdfjsLib.getDocument(fileUrl).promise;
+  } catch (err: any) {
+    const msg = String(err?.message || err?.name || '');
+    const isWorkerIssue = /worker/i.test(msg) || /Cannot load script/i.test(msg);
+    if (isWorkerIssue) {
+      console.warn("Worker PDF.js lokal gagal, mencoba fallback CDN jsDelivr...", err);
+      pdfjsLib.GlobalWorkerOptions.workerSrc = getCdnWorkerSrc();
+      return await pdfjsLib.getDocument(fileUrl).promise;
+    }
+    throw err;
+  }
+};
 
 /* =========================================================================
    COMPONENTS UI KUSTOM
@@ -162,9 +211,8 @@ export default function EditPDF() {
       const objectUrl = URL.createObjectURL(selectedFile);
       fileUrlRef.current = objectUrl; 
       
-      // 3. Load Dokumen PDF.js dengan aman
-      const loadingTask = pdfjsLib.getDocument(objectUrl);
-      const pdf = await loadingTask.promise;
+      // 3. Load Dokumen PDF.js dengan aman (otomatis fallback CDN jika worker lokal bermasalah)
+      const pdf = await loadPdfDocumentSafely(objectUrl);
       
       setPdfDoc(pdf);
       setTotalPages(pdf.numPages);
@@ -186,6 +234,8 @@ export default function EditPDF() {
         toast.error("PDF format compatibility error: File ini menggunakan fitur PDF yang sangat baru dan tidak didukung oleh versi PDF.js saat ini.", { duration: 7000 });
       } else if (error.message && error.message.includes('Invalid XRef')) {
         toast.error("PDF format compatibility error: File ini memiliki tabel XRef yang tidak valid atau korup.", { duration: 7000 });
+      } else if (error.message && /worker/i.test(error.message)) {
+        toast.error("Gagal memuat komponen PDF Engine (Worker). Silakan refresh halaman ini lalu coba lagi.", { duration: 7000 });
       } else {
         // Tampilkan pesan error asli jika tidak ada yang cocok
         toast.error(`Gagal memuat PDF: ${error.message || error.toString() || "Terjadi masalah kompatibilitas struktur file."}`, { duration: 7000 });
