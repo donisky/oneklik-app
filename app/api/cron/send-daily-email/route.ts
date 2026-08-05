@@ -40,19 +40,19 @@ export async function GET() {
 
     console.log(`3. Found ${users.length} users. Sending emails...`);
 
-    // Kirim email dengan BCC (batch)
+    // Kirim email dengan BCC sebagai STRING (dipisahkan koma)
     const batchSize = 50;
     let totalSent = 0;
     for (let i = 0; i < users.length; i += batchSize) {
       const batch = users.slice(i, i + batchSize);
-      const bccEmails = batch.map((u) => u.email);
+      const bccString = batch.map((u) => u.email).join(','); // Array -> String
 
-      console.log(`4. Sending batch to ${bccEmails.length} recipients via BCC`);
+      console.log(`4. Sending batch to ${batch.length} recipients via BCC`);
 
       const { data, error } = await resend.emails.send({
         from: 'Oneklik.id <noreply@oneklik.my.id>',
-        to: 'noreply@oneklik.my.id', // Wajib diisi string (bisa dummy)
-        bcc: bccEmails, // Array string
+        to: 'noreply@oneklik.my.id', // Dummy string
+        bcc: bccString, // ✅ Sekarang ini string, valid!
         subject: subject,
         html: `<div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">${body}</div>`,
       });
