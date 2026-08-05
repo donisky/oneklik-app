@@ -12,9 +12,9 @@ export default function Hero3D() {
         <div className="absolute bottom-0 right-1/4 w-[250px] h-[250px] md:w-[600px] md:h-[600px] bg-gradient-to-br from-cyan-300/30 via-blue-400/30 to-indigo-400/30 rounded-full blur-[60px] md:blur-[120px]" />
       </div>
 
-      {/* --- CONTAINER HP & PODIUM (UKURAN MOBILE DIPERBESAR) --- */}
+      {/* --- CONTAINER HP & PODIUM --- */}
       <div 
-        className="relative z-10 w-[140%] sm:w-full max-w-[600px] md:max-w-[900px] lg:max-w-[1200px] aspect-[4/3] mx-auto scale-[1.45] sm:scale-125 md:scale-150 origin-center will-change-transform mt-6 sm:mt-0"
+        className="relative z-10 w-full max-w-[500px] md:max-w-[650px] lg:max-w-[750px] aspect-[4/3] mx-auto scale-110 sm:scale-105 md:scale-100 origin-center will-change-transform mt-2 sm:mt-0"
         style={{ transformStyle: 'preserve-3d' }}
       >
         {/* ORBIT RINGS (Lingkaran cahaya) */}
@@ -23,7 +23,7 @@ export default function Hero3D() {
           <div className="absolute w-[160%] h-[160%] rounded-full border-[1px] border-purple-400/10 -rotate-12 animate-[spin_40s_linear_infinite_reverse] will-change-transform" />
         </div>
 
-        {/* GAMBAR UTAMA (HP & PODIUM) - SVG */}
+        {/* GAMBAR UTAMA (HP & PODIUM) */}
         <div className="absolute inset-0 z-10">
           <Image
             src="/hero-phone-podium.svg"

@@ -878,7 +878,7 @@ export default function LandingClient() {
                   </ul>
                 </div>
                 {plan.name === 'Premium' ? ( userProfile?.is_premium ? (<div className="block w-full text-center py-4 rounded-2xl font-bold text-sm bg-emerald-100 text-emerald-700 cursor-default">✔ Sudah Premium</div>) : (<Link href="/upgrade" className="block w-full text-center py-4 rounded-2xl font-bold text-sm transition-all bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg shadow-purple-500/25 hover:scale-[1.02]">{plan.cta}</Link>) ) : (
-                  <Link href={session ? "/dashboard" : "/login"} className="block w-full text-center py-4 rounded-2xl font-bold text-sm transition-all bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold">{plan.cta}</Link>
+                  <Link href={session ? "/dashboard" : "/login"} className="block w-full text-center py-4 rounded-2xl font-bold text-sm transition-all bg-slate-100 hover:bg-slate-200 text-slate-800">{plan.cta}</Link>
                 )}
               </motion.div>
             ))}
