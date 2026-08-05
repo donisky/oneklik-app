@@ -16,14 +16,35 @@ export async function GET(req: Request) {
   }
 
   try {
-    // 1. Generate konten baru
+    // 1. Generate konten baru dengan memanggil API generate-content
+    console.log('[Cron] Generating new content...');
     const genRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/email/generate-content`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}) // bisa kosong, karena default pilar akan dipilih otomatis
     });
+
+    if (!genRes.ok) {
+      // Baca error response dari generate-content
+      let errorText = await genRes.text();
+      let errorJson;
+      try {
+        errorJson = JSON.parse(errorText);
+      } catch {
+        // Jika gagal parse, gunakan teks mentah
+      }
+      const errorMessage = errorJson?.error || errorJson?.details || errorText || 'Gagal generate konten';
+      console.error('[Cron] Generate content API error:', errorMessage);
+      throw new Error(errorMessage);
+    }
+
     const { pilar, subject, body } = await genRes.json();
 
-    if (!subject || !body) throw new Error('Gagal generate konten');
+    if (!subject || !body) {
+      throw new Error('Gagal generate konten: subject atau body kosong');
+    }
+
+    console.log(`[Cron] Content generated: ${subject}`);
 
     // 2. Ambil semua user aktif (yang subscribe)
     const { data: users } = await supabase
@@ -32,8 +53,11 @@ export async function GET(req: Request) {
       .eq('is_subscribed', true); // asumsi ada kolom is_subscribed
 
     if (!users || users.length === 0) {
+      console.log('[Cron] Tidak ada user aktif');
       return NextResponse.json({ message: 'Tidak ada user aktif' });
     }
+
+    console.log(`[Cron] Sending to ${users.length} users...`);
 
     // 3. Kirim email (batch)
     const batchSize = 50;
@@ -76,9 +100,10 @@ export async function GET(req: Request) {
       segment: 'all',
     });
 
+    console.log('[Cron] Email sent successfully');
     return NextResponse.json({ success: true, subject });
   } catch (error) {
-    console.error('Cron error:', error);
+    console.error('[Cron] Cron error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
