@@ -9,6 +9,18 @@ const supabase = createClient(
 
 const PILARS = ['produktivitas', 'cv', 'pdf', 'marketing', 'premium'];
 
+// Helper: Membersihkan teks dari markdown ```json dan karakter tak terlihat
+function sanitizeJsonResponse(raw: string): string {
+  // Hapus penanda blok kode markdown seperti ```json atau ``` 
+  let cleaned = raw.trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/```json\n?/gi, '').replace(/```\n?/gi, '');
+  }
+  // Hapus karakter non-printable di awal/akhir
+  cleaned = cleaned.trim();
+  return cleaned;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => null);
@@ -17,7 +29,6 @@ export async function POST(req: Request) {
     const pilar = body.pilar || PILARS[new Date().getDay() % PILARS.length];
     console.log(`[AI] Generating content for pillar: ${pilar}`);
 
-    // 1. Ambil riwayat dari Supabase (dengan error handling yang kuat)
     let historyTopics = 'Belum ada riwayat';
     try {
       const { data: history, error } = await supabase
@@ -34,10 +45,8 @@ export async function POST(req: Request) {
       }
     } catch (dbErr) {
       console.warn('[AI] Database connection issue, proceeding without history:', dbErr);
-      // Jangan gagal; biarkan AI berjalan tanpa history
     }
 
-    // 2. Prompt Groq
     const prompt = `
 Anda adalah senior copywriter untuk platform digital "Oneklik.id".
 Tugas Anda: buat 1 email promosi (CTA) hari ini dalam Bahasa Indonesia yang natural, hangat, dan humanis.
@@ -61,25 +70,34 @@ ${historyTopics}
 Buat topik yang benar-benar baru dan segar, lalu tulis emailnya.
 `;
 
-    // 3. Panggil Groq dengan model yang lebih stabil (temperature diturunkan ke 0.7 agar lebih disiplin JSON)
+    console.log('[AI] Sending request to Groq...');
+
     const chatCompletion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
       model: 'llama-3.3-70b-versatile',
-      temperature: 0.7, 
+      temperature: 0.7,
       response_format: { type: 'json_object' },
-      max_tokens: 500, // batasi agar tidak terlalu panjang
+      max_tokens: 500,
     });
 
     const rawContent = chatCompletion.choices[0]?.message?.content || '{}';
-    console.log('[AI] Raw Groq response:', rawContent.substring(0, 200) + '...');
+    console.log('[AI] Raw Groq response received. Length:', rawContent.length);
 
-    // 4. Parse JSON dengan aman
+    // 1. Bersihkan respon
+    const cleanContent = sanitizeJsonResponse(rawContent);
+
+    // 2. Parse JSON dengan aman
     let parsed;
     try {
-      parsed = JSON.parse(rawContent);
-    } catch (jsonError) {
-      console.error('[AI] Failed to parse Groq JSON:', rawContent);
-      return NextResponse.json({ error: 'AI returned invalid JSON' }, { status: 502 });
+      parsed = JSON.parse(cleanContent);
+    } catch (jsonError: any) {
+      console.error('[AI] JSON Parse Error. Cleaned content was:', cleanContent);
+      console.error('[AI] Original raw response was:', rawContent);
+      return NextResponse.json({ 
+        error: 'AI returned invalid JSON', 
+        details: jsonError.message,
+        received: rawContent.substring(0, 200) // log 200 karakter pertama saja
+      }, { status: 502 });
     }
 
     if (!parsed.subject || !parsed.body) {
@@ -89,6 +107,16 @@ Buat topik yang benar-benar baru dan segar, lalu tulis emailnya.
     return NextResponse.json({ pilar, ...parsed });
   } catch (error: any) {
     console.error('[AI] CRITICAL GENERATION ERROR:', error.message);
-    return NextResponse.json({ error: error.message || 'Gagal generate konten' }, { status: 500 });
+    
+    // Jika error dari Groq SDK, kita coba tampilkan detailnya
+    let details = 'Internal AI Error';
+    if (error.status) details = `Groq API Error ${error.status}`;
+    if (error.response) details = `Groq HTTP Error: ${error.response.status}`;
+    
+    return NextResponse.json({ 
+      error: 'Gagal generate konten',
+      details: details,
+      message: error.message 
+    }, { status: 500 });
   }
 }
