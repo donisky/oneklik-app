@@ -20,7 +20,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import toast, { Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { templates } from '@/app/lib/templateData';
+import { templates } from '@/lib/templateData';
 import {
   Plus, Trash2, Eye, EyeOff, ArrowLeft, Crown, LogOut,
   Bell, CheckCircle2, Share2, Copy, Paintbrush,

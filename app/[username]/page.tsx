@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { templates } from '@/app/lib/templateData';
+import { templates } from '@/lib/templateData';
 import { notFound } from 'next/navigation';
 import {
   Instagram, Youtube, Music2, Facebook, Twitter, Linkedin,
