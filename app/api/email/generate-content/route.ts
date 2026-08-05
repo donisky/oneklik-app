@@ -11,22 +11,32 @@ const PILARS = ['produktivitas', 'cv', 'pdf', 'marketing', 'premium'];
 
 // Helper: Membersihkan teks dari markdown ```json dan karakter tak terlihat
 function sanitizeJsonResponse(raw: string): string {
-  // Hapus penanda blok kode markdown seperti ```json atau ``` 
   let cleaned = raw.trim();
   if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/```json\n?/gi, '').replace(/```\n?/gi, '');
   }
-  // Hapus karakter non-printable di awal/akhir
   cleaned = cleaned.trim();
   return cleaned;
 }
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => null);
-    if (!body) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    // --- PERBAIKAN: Baca body dengan aman, jika kosong jangan error, beri default pilar ---
+    let body = null;
+    try {
+      body = await req.json();
+    } catch {
+      // Biarkan body tetap null, tidak error
+    }
 
-    const pilar = body.pilar || PILARS[new Date().getDay() % PILARS.length];
+    // Jika tidak ada body, tetap pilih pilar default berdasarkan hari
+    let pilar = body?.pilar || PILARS[new Date().getDay() % PILARS.length];
+    
+    // Jika body ada tapi tidak punya pilar, tetap gunakan default
+    if (!pilar) {
+      pilar = PILARS[new Date().getDay() % PILARS.length];
+    }
+
     console.log(`[AI] Generating content for pillar: ${pilar}`);
 
     let historyTopics = 'Belum ada riwayat';
@@ -83,10 +93,8 @@ Buat topik yang benar-benar baru dan segar, lalu tulis emailnya.
     const rawContent = chatCompletion.choices[0]?.message?.content || '{}';
     console.log('[AI] Raw Groq response received. Length:', rawContent.length);
 
-    // 1. Bersihkan respon
     const cleanContent = sanitizeJsonResponse(rawContent);
 
-    // 2. Parse JSON dengan aman
     let parsed;
     try {
       parsed = JSON.parse(cleanContent);
@@ -96,7 +104,7 @@ Buat topik yang benar-benar baru dan segar, lalu tulis emailnya.
       return NextResponse.json({ 
         error: 'AI returned invalid JSON', 
         details: jsonError.message,
-        received: rawContent.substring(0, 200) // log 200 karakter pertama saja
+        received: rawContent.substring(0, 200)
       }, { status: 502 });
     }
 
@@ -108,7 +116,6 @@ Buat topik yang benar-benar baru dan segar, lalu tulis emailnya.
   } catch (error: any) {
     console.error('[AI] CRITICAL GENERATION ERROR:', error.message);
     
-    // Jika error dari Groq SDK, kita coba tampilkan detailnya
     let details = 'Internal AI Error';
     if (error.status) details = `Groq API Error ${error.status}`;
     if (error.response) details = `Groq HTTP Error: ${error.response.status}`;
