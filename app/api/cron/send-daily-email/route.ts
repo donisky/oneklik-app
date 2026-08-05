@@ -40,19 +40,31 @@ export async function GET() {
 
     console.log(`3. Found ${users.length} users. Sending emails...`);
 
-    // Kirim email dengan BCC sebagai STRING (dipisahkan koma)
+    // Kirim email dengan BCC sebagai STRING (dipisahkan koma, dengan sanitasi)
     const batchSize = 50;
     let totalSent = 0;
     for (let i = 0; i < users.length; i += batchSize) {
       const batch = users.slice(i, i + batchSize);
-      const bccString = batch.map((u) => u.email).join(','); // Array -> String
+      
+      // Sanitasi: ambil email, hilangkan spasi, filter yang kosong
+      const validEmails = batch
+        .map((u) => u.email?.trim())
+        .filter((email) => email && email.length > 0 && email.includes('@'));
+      
+      if (validEmails.length === 0) {
+        console.log(`⚠️ Batch ${i+1} has no valid emails, skipping.`);
+        continue;
+      }
 
-      console.log(`4. Sending batch to ${batch.length} recipients via BCC`);
+      const bccString = validEmails.join(','); // String dipisahkan koma tanpa spasi
+
+      console.log(`4. Sending batch to ${validEmails.length} recipients via BCC`);
+      console.log(`   BCC string preview: ${bccString.substring(0, 100)}...`);
 
       const { data, error } = await resend.emails.send({
         from: 'Oneklik.id <noreply@oneklik.my.id>',
-        to: 'noreply@oneklik.my.id', // Dummy string
-        bcc: bccString, // ✅ Sekarang ini string, valid!
+        to: 'noreply@oneklik.my.id',
+        bcc: bccString,
         subject: subject,
         html: `<div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">${body}</div>`,
       });
@@ -61,7 +73,7 @@ export async function GET() {
         console.error('❌ Resend error for this batch:', error);
       } else {
         console.log('✅ Resend success response for this batch:', data);
-        totalSent += batch.length;
+        totalSent += validEmails.length;
       }
     }
 
