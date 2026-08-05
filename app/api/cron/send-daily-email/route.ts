@@ -16,26 +16,16 @@ export async function GET(req: Request) {
   }
 
   try {
-    // 1. Generate konten baru dengan memanggil API generate-content
     console.log('[Cron] Generating new content...');
     const genRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/email/generate-content`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}) // bisa kosong, karena default pilar akan dipilih otomatis
+      body: JSON.stringify({}),
     });
 
     if (!genRes.ok) {
-      // Baca error response dari generate-content
-      let errorText = await genRes.text();
-      let errorJson;
-      try {
-        errorJson = JSON.parse(errorText);
-      } catch {
-        // Jika gagal parse, gunakan teks mentah
-      }
-      const errorMessage = errorJson?.error || errorJson?.details || errorText || 'Gagal generate konten';
-      console.error('[Cron] Generate content API error:', errorMessage);
-      throw new Error(errorMessage);
+      const errorText = await genRes.text();
+      throw new Error(`Generate content API error: ${errorText}`);
     }
 
     const { pilar, subject, body } = await genRes.json();
@@ -47,10 +37,15 @@ export async function GET(req: Request) {
     console.log(`[Cron] Content generated: ${subject}`);
 
     // 2. Ambil semua user aktif (yang subscribe)
-    const { data: users } = await supabase
+    const { data: users, error } = await supabase
       .from('users')
       .select('email, full_name')
-      .eq('is_subscribed', true); // asumsi ada kolom is_subscribed
+      .eq('is_subscribed', true); // <--- FILTER AKTIF (kolom is_subscribed sudah ada)
+
+    if (error) {
+      console.error('[Cron] Supabase fetch error:', error);
+      throw new Error('Gagal mengambil data user');
+    }
 
     if (!users || users.length === 0) {
       console.log('[Cron] Tidak ada user aktif');
