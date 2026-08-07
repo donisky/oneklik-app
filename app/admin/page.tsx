@@ -135,10 +135,18 @@ export default function AdminDashboard() {
       const { count: userCount } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true });
-      const { count: premiumCount } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_premium', true);
+
+      // --- PERBAIKAN: Hitung premium users dengan query yang lebih stabil ---
+      let premiumCount = 0;
+      try {
+        const { count, error } = await supabase
+          .from('users')
+          .select('is_premium', { count: 'exact', head: true })
+          .eq('is_premium', true);
+        if (!error) premiumCount = count || 0;
+      } catch (e) {
+        console.warn('Gagal menghitung premium users:', e);
+      }
 
       // --- DATA VIEWS ---
       const today = new Date();
@@ -246,7 +254,7 @@ export default function AdminDashboard() {
         totalPosts: postCount || 0,
         growth,
         totalUsers: userCount || 0,
-        premiumUsers: premiumCount || 0,
+        premiumUsers: premiumCount, // Gunakan premiumCount yang sudah dihitung
       });
       setChartData(finalChart);
       setPieData(pieDataFinal);

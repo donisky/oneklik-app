@@ -1001,6 +1001,7 @@ export default function BioClient() {
   const supabase = createClientComponentClient();
   const router = useRouter();
 
+  // --- PERBAIKAN FETCH USER & DATA ---
   useEffect(() => {
     const getData = async () => {
       try {
@@ -1008,21 +1009,28 @@ export default function BioClient() {
         setSession(session);
         
         if (session) {
-          // Fetch user data
-          let { data: userData, error } = await supabase
+          // 1. Pastikan user.id valid
+          if (!session.user?.id) {
+            toast.error('ID user tidak ditemukan.');
+            setLoading(false);
+            return;
+          }
+
+          // 2. Fetch user data dengan error handling lebih baik
+          const { data: userData, error: userError } = await supabase
             .from('users')
             .select('*')
             .eq('id', session.user.id)
             .maybeSingle();
 
-          if (error) {
-            console.error('Error fetch user:', error);
-            toast.error('Gagal memuat data user');
+          if (userError) {
+            console.error('Supabase error saat fetch user:', userError);
+            toast.error('Gagal memuat data user: ' + userError.message);
             setLoading(false);
             return;
           }
 
-          // Jika userData null, coba create profil baru
+          // 3. Jika userData null, coba buat profil baru (fallback)
           if (!userData) {
             const fallbackUsername = `user-${session.user.id.slice(0, 8)}`;
             const { data: newUser, error: insertError } = await supabase
@@ -1037,32 +1045,30 @@ export default function BioClient() {
               .maybeSingle();
 
             if (insertError) {
-              // Jika gagal insert, coba fetch lagi (mungkin sudah ada oleh trigger)
+              // Coba fetch lagi (mungkin sudah ada oleh trigger atau cache)
               const { data: retryUser } = await supabase
                 .from('users')
                 .select('*')
                 .eq('id', session.user.id)
                 .maybeSingle();
               if (retryUser) {
-                userData = retryUser;
+                setUser(retryUser);
               } else {
-                toast.error('Gagal membuat profil baru');
+                toast.error('Gagal membuat profil baru.');
                 setLoading(false);
                 return;
               }
             } else {
-              userData = newUser;
+              setUser(newUser);
             }
-          }
-
-          if (userData) {
-            // Pastikan field yang diperlukan tidak null
+          } else {
+            // Pastikan field penting tidak null
             if (!userData.selected_template) userData.selected_template = '1';
             if (!userData.design_settings) userData.design_settings = {};
             setUser(userData);
           }
 
-          // Fetch links
+          // 4. Fetch links (tidak berubah)
           const { data: linksData } = await supabase
             .from('links')
             .select('*')
