@@ -103,21 +103,19 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- FUNGSI FETCH DATA DASHBOARD (DENGAN CEK LOGIN) ---
+  // --- FUNGSI FETCH DATA DASHBOARD ---
   const fetchData = useCallback(async () => {
     try {
       setRefreshing(true);
       
-      // ⚠️ PERBAIKAN UTAMA: CEK SESSION LOGIN
+      // CEK SESSION LOGIN
       const { data: { session } } = await supabase.auth.getSession();
-      
-      // Jika belum login, langsung lempar ke halaman login admin
       if (!session) {
         router.push('/login/admin');
         return;
       }
 
-      // Ambil nama admin jika sudah login
+      // Ambil nama admin
       if (session) {
         const { data: userData } = await supabase
           .from('users')
@@ -127,28 +125,24 @@ export default function AdminDashboard() {
         if (userData?.full_name) setAdminName(userData.full_name);
       }
 
-      // 1. Query data statistik
+      // --- AMBIL TOTAL USER & PREMIUM DARI API (Bypass RLS) ---
+      let totalUsers = 0, premiumUsers = 0;
+      try {
+        const res = await fetch('/api/admin/stats');
+        if (res.ok) {
+          const data = await res.json();
+          totalUsers = data.totalUsers || 0;
+          premiumUsers = data.premiumUsers || 0;
+        }
+      } catch (e) {
+        console.warn('Gagal memuat stats user:', e);
+      }
+
+      // --- DATA VIEWS & POSTS ---
       const { count: postCount } = await supabase
         .from('blog_posts')
         .select('*', { count: 'exact', head: true });
 
-      const { count: userCount } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true });
-
-      // --- PERBAIKAN: Hitung premium users dengan query yang lebih stabil ---
-      let premiumCount = 0;
-      try {
-        const { count, error } = await supabase
-          .from('users')
-          .select('is_premium', { count: 'exact', head: true })
-          .eq('is_premium', true);
-        if (!error) premiumCount = count || 0;
-      } catch (e) {
-        console.warn('Gagal menghitung premium users:', e);
-      }
-
-      // --- DATA VIEWS ---
       const today = new Date();
       const todayStr = today.toISOString().split('T')[0];
       const startOfWeek = new Date(today);
@@ -167,8 +161,6 @@ export default function AdminDashboard() {
         .select('view_count')
         .eq('date', todayStr);
       const todayVisitors = todayViews?.reduce((acc, curr) => acc + (curr.view_count || 0), 0) || 0;
-
-      const growth = 15.2;
 
       // --- DATA CHART ---
       const sevenDaysAgo = new Date(today);
@@ -247,14 +239,14 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false })
         .limit(5);
 
-      // Update semua state
+      // UPDATE STATE
       setStats({
         visitors: totalViews,
         todayVisitors: todayVisitors,
         totalPosts: postCount || 0,
-        growth,
-        totalUsers: userCount || 0,
-        premiumUsers: premiumCount, // Gunakan premiumCount yang sudah dihitung
+        growth: 15.2,
+        totalUsers,
+        premiumUsers,
       });
       setChartData(finalChart);
       setPieData(pieDataFinal);
