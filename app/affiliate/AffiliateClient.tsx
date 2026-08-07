@@ -1,15 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import {
-  ArrowLeft, Users, Gift, BarChart3,
-  Share2, CheckCircle2, Mail, Lock, Link as LinkIcon,
-  MousePointerClick, TrendingUp, Wallet, Zap
+  LayoutDashboard, Share2, Users, Wallet, FileText, BarChart3, 
+  Settings, Gift, Bell, CheckCircle2, Link as LinkIcon, 
+  MousePointerClick, TrendingUp, Zap, ChevronDown, Download, ArrowUpRight,
+  Plus, History, CreditCard, ArrowRightLeft, Ticket, ChevronRight
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+
+type ReferredUser = {
+  id: string;
+  name: string;
+  email: string;
+  joinedDate: string;
+  status: 'Upgrade' | 'Belum Upgrade';
+  upgradePackage?: string;
+  commission: number;
+};
 
 type Stats = {
   referralCode: string;
@@ -18,34 +31,43 @@ type Stats = {
   totalConversions: number;
   conversionRate: number;
   totalCommission: number;
+  pendingCommission: number;
+  paidCommission: number;
+  referredUsers: ReferredUser[];
 };
 
-const STORAGE_KEY = 'oneklik_affiliate_email';
+type AggregateData = {
+  totalAffiliates: number;
+  totalCommissionThisMonth: number;
+};
 
 function formatRupiah(value: number) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
 }
 
-function useCountUp(target: number, durationMs = 1200) {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    let raf: number;
-    const start = performance.now();
-    const from = 0;
-    const step = (now: number) => {
-      const progress = Math.min((now - start) / durationMs, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(from + (target - from) * eased));
-      if (progress < 1) raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [target, durationMs]);
-  return value;
-}
+// ============================================================
+// LOGO RESMI ONEKLIK.ID (Menggunakan icon-oneklik.svg + Gradasi)
+// ============================================================
+const OneklikLogo = () => (
+  <div className="flex items-center gap-2.5 cursor-pointer">
+    <Image 
+      src="/icon-oneklik.svg" 
+      width={32} 
+      height={32} 
+      alt="Oneklik Logo" 
+      className="w-8 h-8 shrink-0" 
+    />
+    <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent">
+      Oneklik.id
+    </span>
+  </div>
+);
 
-// Helper untuk share ke media sosial
 const shareToSocial = (platform: string, url: string, text: string) => {
+  if (!url) {
+    toast.error('Link afiliasi belum tersedia, silakan refresh halaman.');
+    return;
+  }
   const encodedUrl = encodeURIComponent(url);
   const encodedText = encodeURIComponent(text);
   let shareUrl = '';
@@ -53,276 +75,734 @@ const shareToSocial = (platform: string, url: string, text: string) => {
   if (platform === 'whatsapp') shareUrl = `https://wa.me/?text=${encodedText}%20${encodedUrl}`;
   else if (platform === 'facebook') shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
   else if (platform === 'twitter') shareUrl = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
-  else if (platform === 'linkedin') shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
+  else if (platform === 'telegram') shareUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`;
+  else if (platform === 'instagram') {
+    navigator.clipboard.writeText(url);
+    toast.success('Link disalin! Silakan tempel di Bio/Story Instagram Anda.');
+    return;
+  }
   
   if (shareUrl) window.open(shareUrl, '_blank');
 };
 
 export default function AffiliateClient() {
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [aggregate, setAggregate] = useState({ totalAffiliates: 0, totalCommissionThisMonth: 0 });
+  // --- STATE DATA REAL (SEMUA MOCKUP DIHAPUS) ---
+  const [stats, setStats] = useState<Stats>({
+    referralCode: '',
+    referralLink: '',
+    totalClicks: 0,
+    totalConversions: 0,
+    conversionRate: 0,
+    totalCommission: 0,
+    pendingCommission: 0,
+    paidCommission: 0,
+    referredUsers: []
+  });
+
+  const [aggregate, setAggregate] = useState<AggregateData>({ totalAffiliates: 0, totalCommissionThisMonth: 0 });
+  const [loading, setLoading] = useState(true);
+  
+  // --- STATE UNTUK DATA PENGGUNA YANG LOGIN & WALLET ---
+  const [userData, setUserData] = useState({ fullName: '', avatarUrl: '' });
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [isWalletOpen, setIsWalletOpen] = useState(false);
+
   const router = useRouter();
+  const supabase = createClientComponentClient();
 
-  const commissionTicker = useCountUp(aggregate.totalCommissionThisMonth);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const mousePos = useRef<{ x: number | undefined; y: number | undefined }>({ x: undefined, y: undefined });
+  const walletPopupRef = useRef<HTMLDivElement>(null);
 
+  // Handle klik di luar popup wallet untuk menutupnya
   useEffect(() => {
-    fetch('/api/affiliate/aggregate')
-      .then((res) => res.json())
-      .then(setAggregate)
-      .catch(() => {});
-
-    const savedEmail = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-    if (savedEmail) {
-      setEmail(savedEmail);
-      fetchStats(savedEmail);
-    }
+    const handleClickOutside = (event: MouseEvent) => {
+      if (walletPopupRef.current && !walletPopupRef.current.contains(event.target as Node)) {
+        setIsWalletOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  async function fetchStats(forEmail: string) {
-    try {
-      const res = await fetch(`/api/affiliate/stats?email=${encodeURIComponent(forEmail)}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setStats(data);
-    } catch {}
-  }
+  // Ambil data asli dari Supabase (User Profile + Affiliate Stats + Wallet)
+  useEffect(() => {
+    const fetchData = async () => {
+      // 1. Ambil session user yang sedang login
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) { toast.error('Masukkan email Anda!'); return; }
-    setLoading(true);
-    try {
-      const res = await fetch('/api/affiliate/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
+      // 2. Ambil data profil user (Nama & Avatar)
+      if (user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('full_name, avatar_url')
+          .eq('id', user.id)
+          .single();
 
-      if (!res.ok) { toast.error(data.error ?? 'Pendaftaran gagal.'); return; }
-
-      localStorage.setItem(STORAGE_KEY, email);
-      
-      if (data.referralLink || data.referral_code) {
-        const link = data.referralLink || `https://oneklik.my.id/r/${data.referral_code}`;
-        setStats({
-          referralCode: data.referral_code,
-          referralLink: link,
-          totalClicks: 0,
-          totalConversions: 0,
-          conversionRate: 0,
-          totalCommission: 0
+        setUserData({
+          fullName: profile?.full_name || user.email?.split('@')[0] || 'User',
+          avatarUrl: profile?.avatar_url || user.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
         });
-        toast.success('Pendaftaran berhasil! Link afiliasi ada di dashboard bawah.');
+
+        // 3. Ambil data saldo dari tabel wallets
+        const { data: walletData } = await supabase
+          .from('wallets')
+          .select('affiliate_balance, shop_balance')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (walletData) {
+          // Anda bisa menyesuaikan saldo mana yang mau ditampilkan di header (disini menggabungkan keduanya atau ambil salah satu)
+          setWalletBalance((walletData.affiliate_balance || 0) + (walletData.shop_balance || 0));
+        }
+
+        // 4. Ambil data agregat global
+        fetch('/api/affiliate/aggregate')
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && typeof data.totalAffiliates === 'number') {
+              setAggregate(data);
+            }
+          })
+          .catch(() => {});
+
+        // 5. Ambil data statistik pribadi (LEWATI JIKA EMAIL TIDAK ADA)
+        if (user.email) {
+          try {
+            setLoading(true);
+            const resStats = await fetch(`/api/affiliate/stats?email=${encodeURIComponent(user.email)}`);
+            if (resStats.ok) {
+              const dataStats = await resStats.json();
+              if (dataStats) {
+                setStats(prev => ({
+                  ...prev,
+                  referralCode: dataStats.referralCode || prev.referralCode,
+                  referralLink: dataStats.referralLink || prev.referralLink,
+                  totalClicks: typeof dataStats.totalClicks === 'number' ? dataStats.totalClicks : prev.totalClicks,
+                  totalConversions: typeof dataStats.totalConversions === 'number' ? dataStats.totalConversions : prev.totalConversions,
+                  conversionRate: typeof dataStats.conversionRate === 'number' ? dataStats.conversionRate : prev.conversionRate,
+                  totalCommission: typeof dataStats.totalCommission === 'number' ? dataStats.totalCommission : prev.totalCommission,
+                  pendingCommission: typeof dataStats.pendingCommission === 'number' ? dataStats.pendingCommission : prev.pendingCommission,
+                  paidCommission: typeof dataStats.paidCommission === 'number' ? dataStats.paidCommission : prev.paidCommission,
+                  referredUsers: Array.isArray(dataStats.referredUsers) ? dataStats.referredUsers : []
+                }));
+              }
+            }
+          } catch (err) {
+            console.warn('Backend offline / database belum tersambung.');
+          } finally {
+            setLoading(false);
+          }
+        } else {
+          setLoading(false);
+        }
       } else {
-        toast.success(data.isNew ? 'Pendaftaran berhasil! Cek email Anda.' : 'Selamat datang kembali!');
+        setLoading(false);
       }
-      
-      await fetchStats(email);
-    } catch {
-      toast.error('Tidak bisa terhubung ke server.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchData();
+  }, [supabase]);
+
+  // [Canvas Dot Matrix Interaktif]
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    const points: { x: number; y: number; originX: number; originY: number; z: number }[] = [];
+    const gridSize = 40;
+
+    const init = () => {
+      points.length = 0;
+      if (!canvas) return;
+      const cols = Math.ceil(canvas.width / gridSize);
+      const rows = Math.ceil(canvas.height / gridSize);
+      for (let i = 0; i <= cols; i++) {
+        for (let j = 0; j <= rows; j++) {
+          points.push({
+            x: i * gridSize,
+            y: j * gridSize,
+            originX: i * gridSize,
+            originY: j * gridSize,
+            z: 0
+          });
+        }
+      }
+    };
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      points.forEach(p => {
+        if (mousePos.current.x !== undefined && mousePos.current.y !== undefined) {
+          const rect = canvas.getBoundingClientRect();
+          const mouseX = mousePos.current.x - rect.left;
+          const mouseY = mousePos.current.y - rect.top;
+
+          const dx = p.x - mouseX;
+          const dy = p.y - mouseY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const maxDist = 150;
+
+          if (dist < maxDist) {
+            const angle = Math.atan2(dy, dx);
+            const force = (maxDist - dist) / maxDist;
+            p.x += Math.cos(angle) * force * 3;
+            p.y += Math.sin(angle) * force * 3;
+            p.z = force * 10;
+          }
+        }
+
+        p.x += (p.originX - p.x) * 0.1;
+        p.y += (p.originY - p.y) * 0.1;
+        p.z += (0 - p.z) * 0.1;
+
+        ctx.beginPath();
+        const radius = 1.5 + (p.z / 3);
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(79, 70, 229, ${0.25 + (p.z / 15)})`;
+        ctx.fill();
+      });
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    const resizeCanvas = () => {
+      const parent = canvas.parentElement;
+      if (parent) {
+        canvas.width = parent.clientWidth;
+        canvas.height = parent.clientHeight;
+        init();
+      }
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      mousePos.current = { x: e.clientX, y: e.clientY };
+    };
+
+    const handleMouseOut = () => {
+      mousePos.current = { x: undefined, y: undefined };
+    };
+
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseout', handleMouseOut);
+
+    resizeCanvas();
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseout', handleMouseOut);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
 
   const copyToClipboard = (text: string) => {
+    if (!text) {
+      toast.error('Link afiliasi belum tersedia.');
+      return;
+    }
     navigator.clipboard.writeText(text);
-    toast.success('Link disalin ke clipboard!');
+    toast.success('Link afiliasi berhasil disalin ke clipboard!');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-800 relative overflow-x-hidden selection:bg-blue-600 selection:text-white">
       <Toaster position="top-center" />
       
-      {/* HEADER */}
-      <header className="relative z-10 max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
-        <Link href="/" className="text-2xl font-bold tracking-tight text-blue-600">
-          Oneklik<span className="text-blue-400">.id</span>
-        </Link>
-        <button
-          onClick={() => router.push('/')}
-          className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors text-sm font-medium"
-        >
-          <ArrowLeft size={16} /> Kembali
-        </button>
-      </header>
+      <canvas id="dot-matrix-canvas" ref={canvasRef} className="absolute inset-0 z-0 opacity-80 pointer-events-none" />
 
-      {/* HERO SECTION */}
-      <section className="relative z-10 max-w-6xl mx-auto px-6 pt-12 pb-8 md:pt-20 md:pb-12 text-center flex flex-col items-center">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-blue-50 text-blue-600 text-sm font-semibold mb-8 border border-blue-100"
-        >
-          <Gift size={16} /> Komisi 20% per konversi premium
-        </motion.div>
-
-        <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-slate-900 leading-[1.1] mb-6"
-        >
-          Ubah Rekomendasi Menjadi <br className="hidden md:block" />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Pendapatan Nyata</span>
-        </motion.h1>
-
-        <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-          className="text-base md:text-lg text-slate-600 max-w-2xl mx-auto mb-10"
-        >
-          Bagikan Oneklik.id ke audiens Anda. Setiap pengguna baru yang upgrade Premium melalui link unik Anda, <span className="text-blue-600 font-medium">komisi 20% langsung masuk ke akun Anda</span> — tercatat otomatis dan dipantau real-time.
-        </motion.p>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-          className="flex flex-col sm:flex-row items-center gap-4 bg-white rounded-2xl p-2 pl-6 shadow-xl border border-slate-200 w-full max-w-xl"
-        >
-          <Mail className="text-blue-600 ml-2 shrink-0" size={20} />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Masukkan email Anda"
-            className="flex-1 bg-transparent text-slate-900 placeholder-slate-400 py-3 outline-none text-sm w-full"
-          />
-          <button
-            onClick={handleRegister}
-            disabled={loading}
-            className="w-full sm:w-auto px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-200/30 flex items-center justify-center gap-2"
-          >
-            {loading ? 'Memproses...' : 'Mulai Dapatkan Komisi 🚀'}
-          </button>
-        </motion.div>
-
-        <div className="flex flex-wrap items-center justify-center gap-6 mt-6 text-xs text-slate-400">
-          <span className="flex items-center gap-1"><Lock size={12} /> Data aman</span>
-          <span className="flex items-center gap-1"><CheckCircle2 size={12} /> Tanpa biaya</span>
-          <span className="flex items-center gap-1"><Users size={12} /> {aggregate.totalAffiliates} afiliasi aktif</span>
-        </div>
-      </section>
-
-      {/* STATS CARD */}
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}
-        className="relative z-10 max-w-3xl mx-auto px-6 -mt-4 mb-12"
-      >
-        <div className="bg-white shadow-xl border border-slate-200 rounded-2xl p-8 md:p-10 flex flex-col md:flex-row justify-between items-center text-center gap-6">
-          <div className="flex-1">
-            <p className="text-xs font-medium uppercase tracking-widest text-slate-500">Komisi Dibayarkan Bulan Ini</p>
-            <div className="flex items-end justify-center gap-1">
-              <span className="font-extrabold text-4xl md:text-5xl text-blue-600 tabular-nums">
-                {formatRupiah(commissionTicker)}
-              </span>
-            </div>
+      {/* Sidebar */}
+      <aside className="w-64 bg-white/90 backdrop-blur-xl border-r border-slate-200/80 hidden lg:flex flex-col justify-between sticky top-0 h-screen z-20 shadow-sm">
+        <div>
+          <div className="p-6 flex items-center gap-2.5">
+            <OneklikLogo />
           </div>
-          <div className="w-px h-12 bg-slate-200 hidden md:block" />
-          <div className="flex-1 space-y-1">
-            <div className="flex items-center justify-center gap-2">
-              <Users className="text-blue-600" size={18} />
-              <span className="text-xl font-bold text-slate-900">{aggregate.totalAffiliates}</span>
-            </div>
-            <p className="text-xs text-slate-500">Afiliasi Aktif</p>
-          </div>
-        </div>
-      </motion.div>
 
-      <main className="relative z-10 max-w-6xl mx-auto px-6 pb-20 w-full">
-        
-        {/* LINK AFILIASI PERMANEN */}
-        {stats && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-6 md:p-8 shadow-xl mb-16 border border-slate-200">
-            <div className="flex items-center gap-2 mb-6 text-slate-900">
-              <LinkIcon size={22} /> 
-              <h2 className="font-bold text-xl">Link Afiliasi Anda</h2>
-              <span className="ml-auto text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Aktif</span>
-            </div>
-            
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 mb-6 flex flex-col md:flex-row items-center gap-4">
-              <span className="flex-1 text-blue-600 font-medium text-sm md:text-base break-all">{stats.referralLink}</span>
-              <div className="flex gap-2 w-full md:w-auto">
-                <button onClick={() => copyToClipboard(stats.referralLink)} className="flex-1 md:flex-none px-6 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
-                  Salin Link 📋
-                </button>
-              </div>
-            </div>
-
-            {/* TOMBOL SHARE KE MEDSOS */}
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Bagikan ke Media Sosial:</p>
-              <div className="flex flex-wrap gap-3">
-                <button onClick={() => shareToSocial('whatsapp', stats.referralLink, 'Dapatkan komisi 20% dari Oneklik.id! Yuk upgrade premium sekarang!')} className="flex items-center gap-2 px-5 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors shadow-md shadow-green-500/20">
-                  <Share2 size={16} /> WhatsApp
-                </button>
-                <button onClick={() => shareToSocial('facebook', stats.referralLink, 'Dapatkan komisi 20% dari Oneklik.id! Yuk upgrade premium sekarang!')} className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shadow-md shadow-blue-600/20">
-                  <Share2 size={16} /> Facebook
-                </button>
-                <button onClick={() => shareToSocial('twitter', stats.referralLink, 'Dapatkan komisi 20% dari Oneklik.id!')} className="flex items-center gap-2 px-5 py-2 bg-black text-white rounded-xl text-sm font-medium hover:bg-gray-900 transition-colors shadow-md">
-                  <Share2 size={16} /> X (Twitter)
-                </button>
-                <button onClick={() => shareToSocial('linkedin', stats.referralLink, 'Dapatkan komisi 20% dari Oneklik.id! Yuk upgrade premium sekarang!')} className="flex items-center gap-2 px-5 py-2 bg-blue-700 text-white rounded-xl text-sm font-medium hover:bg-blue-800 transition-colors shadow-md shadow-blue-700/20">
-                  <Share2 size={16} /> LinkedIn
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* KEUNTUNGAN / FITUR UNGGULAN */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-          {[
-            { icon: Zap, title: 'Komisi 20%', desc: 'Dapatkan 20% dari setiap transaksi premium yang berhasil melalui link Anda.', color: 'text-blue-600 bg-blue-100' },
-            { icon: BarChart3, title: 'Real-time Analytics', desc: 'Pantau jumlah klik, konversi, dan komisi Anda secara langsung di dashboard.', color: 'text-emerald-600 bg-emerald-100' },
-            { icon: Wallet, title: 'Pencairan Mudah', desc: 'Komisi otomatis tercatat dan siap dicairkan kapan saja tanpa ribet.', color: 'text-purple-600 bg-purple-100' }
-          ].map((item, idx) => (
-            <motion.div key={idx} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.1 }}
-              className="bg-white rounded-2xl border border-slate-200 p-6 text-center hover:shadow-lg transition-shadow"
-            >
-              <div className={`w-14 h-14 ${item.color} rounded-2xl flex items-center justify-center mx-auto mb-4`}>
-                <item.icon size={24} />
-              </div>
-              <h3 className="font-bold text-slate-900 text-lg">{item.title}</h3>
-              <p className="text-sm text-slate-600 mt-1">{item.desc}</p>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* CARA KERJA */}
-        <div className="mb-16">
-          <h2 className="font-extrabold text-3xl text-center text-slate-900 mb-12">
-            Mulai dalam <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">3 Langkah Mudah</span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="px-4 py-2 space-y-1">
             {[
-              { step: '01', title: 'Daftar', desc: 'Masukkan email Anda di atas untuk membuat link afiliasi unik.', icon: Mail },
-              { step: '02', title: 'Bagikan Link', desc: 'Promosikan Oneklik.id menggunakan link afiliasi Anda di media sosial.', icon: Share2 },
-              { step: '03', title: 'Dapatkan Komisi', desc: 'Setiap user upgrade Premium, komisi 20% masuk ke rekening Anda.', icon: Wallet },
+              { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+              { label: 'Affiliate', icon: Share2, href: '/affiliate', active: true },
+              { label: 'Pengguna Saya', icon: Users, href: '/affiliate/users' },
+              // Menu Komisi & Pembayaran Dihapus Sesuai Permintaan
+              { label: 'Materi Promosi', icon: FileText, href: '/dashboard/promo' },
+              { label: 'Statistik', icon: BarChart3, href: '/dashboard/stats' },
+              { label: 'Pengaturan', icon: Settings, href: '/dashboard/settings' },
             ].map((item, idx) => (
-              <motion.div key={idx} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.1 }}
-                className="bg-white p-8 rounded-3xl border border-slate-200 text-left shadow-sm hover:shadow-md transition-shadow"
+              <Link
+                key={idx}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+                  item.active
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 font-semibold'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600'
+                }`}
               >
-                <p className="font-extrabold text-5xl text-blue-600/30 mb-4">{item.step}</p>
-                <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4">
-                  <item.icon size={22} />
-                </div>
-                <h3 className="font-bold text-slate-900 text-lg mb-1">{item.title}</h3>
-                <p className="text-sm text-slate-600">{item.desc}</p>
-              </motion.div>
+                <item.icon size={18} />
+                {item.label}
+              </Link>
             ))}
           </div>
         </div>
 
-        {/* TESTIMONIAL */}
-        <div className="bg-white rounded-3xl shadow-lg border border-slate-200 p-8 md:p-12 mb-16 text-center relative overflow-hidden">
-          <div className="absolute -top-10 -right-10 w-48 h-48 bg-blue-50 rounded-full blur-2xl pointer-events-none" />
-          <h3 className="font-extrabold text-2xl mb-6 text-slate-900">Apa Kata Afiliasi Kami?</h3>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-2 italic">
-            "Program afiliasi Oneklik.id sangat mudah dijalankan. Cukup bagikan link di Instagram, komisi pertama saya sudah masuk dalam seminggu. Dashboardnya sangat akurat dan transparan!"
-          </p>
-          <div className="flex items-center justify-center gap-3 mt-6">
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">R</div>
-            <span className="font-semibold text-slate-900">Rizki Dev</span>
-            <span className="text-xs text-slate-500">— Freelancer & Content Creator</span>
+        <div className="p-4 m-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center mb-3 shadow-md shadow-blue-500/20">
+            <Gift size={20} />
           </div>
+          <h4 className="font-bold text-slate-900 text-sm mb-1">Ajak Teman, Dapatkan Komisi</h4>
+          <p className="text-xs text-slate-500 mb-3">Setiap upgrade Premium melalui link Anda</p>
+          <button 
+            onClick={() => copyToClipboard(stats.referralLink)} 
+            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/20"
+            disabled={loading || !stats.referralLink}
+          >
+            {loading ? 'Memuat...' : 'Lihat Detail →'}
+          </button>
         </div>
 
-      </main>
+        <div className="p-4 border-t border-slate-100 text-xs text-slate-400">
+          <p>© 2026 Oneklik.id</p>
+          <p>All rights reserved.</p>
+        </div>
+      </aside>
+
+      {/* Konten Utama */}
+      <div className="flex-1 flex flex-col min-w-0 relative z-10">
+        
+        <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/80 h-20 px-6 md:px-10 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.push('/')} className="text-sm font-medium text-slate-500 hover:text-blue-600 flex items-center gap-1 transition-colors">
+              ← Kembali ke Beranda
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3 sm:gap-4">
+            
+            {/* POPUP WALLET HEADER */}
+            <div className="relative" ref={walletPopupRef}>
+              <button 
+                onClick={() => setIsWalletOpen(!isWalletOpen)}
+                className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-xl text-sm font-bold transition-all shadow-sm"
+              >
+                <Wallet size={16} className="text-blue-600" />
+                <span className="hidden sm:inline-block">{loading ? '...' : formatRupiah(walletBalance)}</span>
+                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isWalletOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {isWalletOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50"
+                  >
+                    <div className="p-5 border-b border-slate-100">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Wallet size={18} className="text-blue-600" />
+                        <span className="font-bold text-slate-900 text-sm">Dompet Digital</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mb-1">Saldo Anda</p>
+                      <h3 className="text-2xl font-black text-slate-900 mb-4">{formatRupiah(walletBalance)}</h3>
+                      <button onClick={() => router.push('/wallet')} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
+                        <Plus size={16} /> Top Up Saldo
+                      </button>
+                    </div>
+                    
+                    <div className="py-2">
+                      {[
+                        { icon: History, label: 'Riwayat Transaksi' },
+                        { icon: CreditCard, label: 'Tarik Saldo' },
+                        { icon: ArrowRightLeft, label: 'Transfer Saldo' },
+                        { icon: Ticket, label: 'Voucher & Promo' }
+                      ].map((item, idx) => (
+                        <button key={idx} onClick={() => router.push('/wallet')} className="w-full px-5 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-slate-700 group">
+                          <div className="flex items-center gap-3">
+                            <item.icon size={16} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+                            <span className="text-sm font-semibold">{item.label}</span>
+                          </div>
+                          <ChevronRight size={16} className="text-slate-300 group-hover:text-blue-600 transition-colors" />
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+                      <button onClick={() => router.push('/wallet')} className="w-full text-center text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center justify-center gap-1">
+                        Lihat Semua di Wallet <ArrowUpRight size={16} />
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Tombol Notifikasi */}
+            <button className="relative p-2 text-slate-500 hover:text-slate-700 bg-slate-50 border border-slate-200 rounded-full transition-colors hidden sm:block">
+              <Bell size={18} />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+            </button>
+
+            {/* BAGIAN HEADER USER */}
+            <div className="flex items-center gap-3 sm:pl-4 sm:border-l border-slate-200">
+              <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden relative border border-slate-300 shadow-sm">
+                <Image 
+                  src={userData.avatarUrl} 
+                  alt="Avatar" 
+                  width={40} 
+                  height={40} 
+                  className="object-cover" 
+                />
+              </div>
+              <div className="hidden sm:block text-left">
+                <p className="font-bold text-sm text-slate-900 leading-tight">
+                  {loading ? 'Memuat...' : userData.fullName || 'User'}
+                </p>
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full mt-0.5 border border-blue-100">
+                  Affiliator
+                </span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="p-6 md:p-10 space-y-8 max-w-[1400px] w-full mx-auto">
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">Affiliate Dashboard</h1>
+                <span className="bg-emerald-50 text-emerald-600 border border-emerald-200 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Affiliator Aktif
+                </span>
+              </div>
+              <p className="text-slate-500 text-sm mt-1">Anda sudah terdaftar sebagai afiliator secara otomatis.</p>
+            </div>
+          </div>
+
+          {/* GRID ATAS */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Banner Kiri */}
+            <div className="lg:col-span-2 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl flex flex-col justify-between border border-blue-500/20">
+              <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+              
+              <div>
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h2 className="text-xl md:text-2xl font-bold mb-1">Bagikan Link Unik Anda</h2>
+                    <p className="text-blue-100 text-sm">Setiap klik dan pendaftaran dari link Anda akan tercatat secara otomatis.</p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-2xl text-center shadow-inner">
+                    <span className="block text-[10px] text-blue-200 uppercase font-bold">Komisi</span>
+                    <span className="text-xl font-extrabold">20%</span>
+                  </div>
+                </div>
+
+                <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-3 my-6 flex flex-col sm:flex-row items-center gap-3 shadow-lg">
+                  <span className="flex-1 text-white font-medium text-sm md:text-base break-all px-2">
+                    {loading ? 'Memuat link...' : (stats.referralLink || 'Belum ada link afiliasi')}
+                  </span>
+                  <button 
+                    onClick={() => copyToClipboard(stats.referralLink)} 
+                    disabled={!stats.referralLink || loading}
+                    className="w-full sm:w-auto px-6 py-3 bg-white text-blue-600 hover:bg-blue-50 font-bold rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
+                  >
+                    <LinkIcon size={16} /> Salin Link
+                  </button>
+                </div>
+              </div>
+
+              {/* ========================================================================= */}
+              {/* BAGIAN SHARE SOSIAL MEDIA DENGAN IKON ASLI (SVG)                          */}
+              {/* ========================================================================= */}
+              <div>
+                <p className="text-xs text-blue-200 mb-3 font-medium">Bagikan ke media sosial:</p>
+                <div className="flex flex-wrap gap-2.5">
+                  {[
+                    {
+                      name: 'whatsapp',
+                      bg: 'bg-[#25D366] hover:bg-[#1ebe5a]',
+                      icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>,
+                    },
+                    {
+                      name: 'telegram',
+                      bg: 'bg-[#26A5E4] hover:bg-[#1f8fc7]',
+                      icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>,
+                    },
+                    {
+                      name: 'instagram',
+                      bg: 'bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] hover:opacity-90',
+                      icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>,
+                    },
+                    {
+                      name: 'facebook',
+                      bg: 'bg-[#1877F2] hover:bg-[#166fe5]',
+                      icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>,
+                    },
+                    {
+                      name: 'twitter',
+                      bg: 'bg-black hover:bg-gray-900',
+                      icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-4.5 h-4.5"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>,
+                    },
+                  ].map((soc, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => shareToSocial(soc.name, stats.referralLink, 'Dapatkan kemudahan tools digital all-in-one di Oneklik.id!')}
+                      disabled={!stats.referralLink || loading}
+                      className={`flex items-center justify-center w-11 h-11 rounded-2xl text-white transition-all shadow-sm ${soc.bg} disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {soc.icon}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Ringkasan Komisi (Kanan) */}
+            <div className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-8 shadow-2xl flex flex-col justify-between border border-slate-800">
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="font-bold text-lg">Ringkasan Komisi</h3>
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shadow-inner">
+                    <Wallet size={16} className="text-blue-400" />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs text-slate-400 uppercase tracking-wider">Total Komisi</p>
+                    <p className="text-2xl md:text-3xl font-extrabold text-white mt-1">
+                      {loading ? 'Rp 0' : formatRupiah(stats.totalCommission || 0)}
+                    </p>
+                    <span className="text-xs text-emerald-400 font-medium inline-flex items-center gap-1 mt-1">
+                      <TrendingUp size={12} /> {loading ? '0%' : '+0% dari bulan lalu'}
+                    </span>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-800 flex justify-between items-center">
+                    <div>
+                      <p className="text-xs text-slate-400">Komisi Tertunda</p>
+                      <p className="font-bold text-slate-200 text-sm mt-0.5">
+                        {loading ? 'Rp 0' : formatRupiah(stats.pendingCommission || 0)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-800 flex justify-between items-center">
+                    <div>
+                      <p className="text-xs text-slate-400">Total Dibayarkan</p>
+                      <p className="font-bold text-emerald-400 text-sm mt-0.5">
+                        {loading ? 'Rp 0' : formatRupiah(stats.paidCommission || 0)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => router.push('/wallet')}
+                className="w-full mt-6 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-sm transition-colors border border-white/10 shadow-sm"
+              >
+                Lihat Semua Riwayat &rarr;
+              </button>
+            </div>
+          </div>
+
+          {/* STATS CARDS 4 KOLOM */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { title: 'Total Klik', value: stats.totalClicks.toLocaleString(), note: '+0% dari bulan lalu', icon: MousePointerClick, color: 'text-blue-600 bg-blue-50' },
+              { title: 'Pendaftaran', value: stats.totalConversions.toLocaleString(), note: '+0% dari bulan lalu', icon: Users, color: 'text-indigo-600 bg-indigo-50' },
+              { title: 'Upgrade Premium', value: stats.referredUsers.filter(u => u.status === 'Upgrade').length.toLocaleString(), note: '+0% dari bulan lalu', icon: Zap, color: 'text-purple-600 bg-purple-50' },
+              { title: 'Komisi Diperoleh', value: formatRupiah(stats.totalCommission || 0), note: '+0% dari bulan lalu', icon: Wallet, color: 'text-emerald-600 bg-emerald-50' },
+            ].map((card, idx) => (
+              <div key={idx} className="bg-white/90 backdrop-blur-xl rounded-3xl p-6 border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col justify-between hover:shadow-lg transition-all">
+                <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">{card.title}</span>
+                    <div className={`w-10 h-10 rounded-2xl ${card.color} flex items-center justify-center shadow-inner`}>
+                      <card.icon size={20} />
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-extrabold text-slate-900">
+                    {loading ? 'Memuat...' : card.value}
+                  </h3>
+                </div>
+                <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-1 text-xs text-emerald-600 font-semibold">
+                  <TrendingUp size={14} /> {loading ? '0%' : card.note}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* TABEL PENGGUNA YANG MENDAFTAR */}
+          <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-slate-200/80 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden">
+            <div className="p-6 md:p-8 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-extrabold text-xl text-slate-950">Pengguna yang Mendaftar Melalui Link Anda</h3>
+                <p className="text-sm text-slate-500 mt-0.5">Daftar lengkap pengguna yang bergabung melalui link affiliate Anda.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <select className="bg-slate-50 border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 outline-none shadow-sm">
+                  <option>Semua Status</option>
+                  <option>Upgrade</option>
+                  <option>Belum Upgrade</option>
+                </select>
+                <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all shadow-md shadow-blue-500/20">
+                  <Download size={16} /> Export Data
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-slate-200">
+                    <th className="py-4 px-6">#</th>
+                    <th className="py-4 px-6">Pengguna</th>
+                    <th className="py-4 px-6">Tanggal Daftar</th>
+                    <th className="py-4 px-6">Status</th>
+                    <th className="py-4 px-6">Upgrade</th>
+                    <th className="py-4 px-6 text-right">Komisi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-sm font-medium text-slate-700">
+                  {loading ? (
+                    <tr><td colSpan={6} className="text-center py-10 text-slate-400">Memuat data...</td></tr>
+                  ) : stats.referredUsers.length === 0 ? (
+                    <tr><td colSpan={6} className="text-center py-10 text-slate-400">Belum ada pengguna yang mendaftar melalui link Anda.</td></tr>
+                  ) : (
+                    stats.referredUsers.map((user, idx) => (
+                      <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-4 px-6 text-slate-400">{idx + 1}</td>
+                        <td className="py-4 px-6 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-blue-600 shrink-0 shadow-sm">
+                            {user.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900">{user.name}</p>
+                            <p className="text-xs text-slate-400 font-normal">{user.email}</p>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6 text-slate-500">{user.joinedDate}</td>
+                        <td className="py-4 px-6">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
+                            user.status === 'Upgrade' 
+                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
+                              : 'bg-amber-50 text-amber-600 border border-amber-200'
+                          }`}>
+                            {user.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-slate-600">
+                          {user.upgradePackage ? (
+                            <span className="inline-block bg-slate-100 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 border border-slate-200">
+                              {user.upgradePackage}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-6 text-right font-bold text-slate-900">
+                          {user.commission > 0 ? formatRupiah(user.commission) : <span className="text-slate-400 font-normal">Rp 0</span>}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-6 border-t border-slate-100 text-center">
+              <button className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">
+                Lihat Semua Pengguna &rarr;
+              </button>
+            </div>
+          </div>
+
+          {/* CARA KERJA & KOMISI SEUMUR HIDUP */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-8 border border-slate-200/80 shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+              <div>
+                <h3 className="font-extrabold text-xl text-slate-900 mb-2">Cara Kerja Affiliate</h3>
+                <p className="text-sm text-slate-500 mb-8">Pahami alur kerja program afiliasi Oneklik.id dengan mudah.</p>
+                
+                <div className="space-y-6">
+                  {[
+                    { step: '1', title: 'Bagikan Link', desc: 'Bagikan link unik Anda ke teman, media sosial, atau komunitas.' },
+                    { step: '2', title: 'Mereka Daftar & Upgrade', desc: 'Mereka mendaftar dan upgrade ke Premium melalui link Anda.' },
+                    { step: '3', title: 'Dapatkan Komisi', desc: 'Anda mendapatkan komisi 20% secara otomatis.' },
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-4">
+                      <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 font-bold flex items-center justify-center shrink-0 mt-0.5 border border-blue-100 shadow-sm">
+                        {item.step}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">{item.title}</h4>
+                        <p className="text-xs text-slate-500 mt-0.5">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-indigo-900 via-blue-900 to-slate-900 rounded-3xl p-8 text-white shadow-2xl flex flex-col justify-between relative overflow-hidden border border-slate-800">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+              
+              <div>
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h3 className="font-extrabold text-xl text-white">Komisi 20% Seumur Hidup 🚀</h3>
+                    <p className="text-sm text-blue-200 mt-1">Dapatkan komisi 20% dari setiap upgrade Premium yang dilakukan oleh pengguna yang mendaftar melalui link Anda.</p>
+                  </div>
+                </div>
+
+                <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 mb-6 shadow-inner">
+                  <span className="text-xs text-blue-300 font-bold uppercase tracking-wider block mb-2">Contoh Perhitungan</span>
+                  <div className="flex items-center justify-between text-sm">
+                    <div>
+                      <p className="text-slate-300 text-xs">Upgrade Premium</p>
+                      <p className="font-extrabold text-lg text-white">Rp 100.000</p>
+                    </div>
+                    <span className="text-blue-400 font-bold">&rarr;</span>
+                    <div className="text-right">
+                      <p className="text-slate-300 text-xs">Komisi Anda (20%)</p>
+                      <p className="font-extrabold text-lg text-emerald-400">Rp 20.000</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* FOOTER BANNER: Sistem Tracking Akurat */}
+          <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100 shadow-sm">
+                <CheckCircle2 size={24} />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-900 text-sm">Sistem Tracking Akurat</h4>
+                <p className="text-xs text-slate-500">Kami mencatat setiap klik dan pendaftaran dengan teknologi tracking canggih untuk memastikan komisi Anda terhitung dengan benar.</p>
+              </div>
+            </div>
+            <button className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 border border-blue-100 px-5 py-3 rounded-xl transition-colors shrink-0 shadow-sm">
+              Pelajari Sistem Tracking &rarr;
+            </button>
+          </div>
+
+        </main>
+      </div>
     </div>
   );
 }

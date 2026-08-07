@@ -11,7 +11,7 @@ import {
 import {
   Sparkles, TrendingUp, FileText, Users, Plus, Edit, Trash2, ExternalLink,
   LayoutDashboard, Eye, Crown, Zap, Bell, Search, LogOut, Home, RefreshCw,
-  X // <-- Tambahkan ini untuk tombol close modal
+  X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -66,17 +66,14 @@ export default function AdminDashboard() {
 
   // --- SUPABASE REALTIME SUBSCRIPTION ---
   useEffect(() => {
-    // Ambil data awal
     fetchNotifications();
 
-    // Subscribe ke channel Realtime
     const channel = supabase
       .channel('admin-notifications')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications' },
         (payload) => {
-          // Saat notifikasi baru masuk, update state secara langsung!
           setNotifications((prev) => [payload.new, ...prev]);
           setUnreadCount((prev) => prev + 1);
           toast.success(`🔔 ${payload.new.title}`, { duration: 4000 });
@@ -106,12 +103,21 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- FUNGSI FETCH DATA DASHBOARD (Tidak berubah) ---
+  // --- FUNGSI FETCH DATA DASHBOARD (DENGAN CEK LOGIN) ---
   const fetchData = useCallback(async () => {
     try {
       setRefreshing(true);
-      // 1. Ambil session & nama admin
+      
+      // ⚠️ PERBAIKAN UTAMA: CEK SESSION LOGIN
       const { data: { session } } = await supabase.auth.getSession();
+      
+      // Jika belum login, langsung lempar ke halaman login admin
+      if (!session) {
+        router.push('/login/admin');
+        return;
+      }
+
+      // Ambil nama admin jika sudah login
       if (session) {
         const { data: userData } = await supabase
           .from('users')
@@ -121,13 +127,11 @@ export default function AdminDashboard() {
         if (userData?.full_name) setAdminName(userData.full_name);
       }
 
-      // 2. Query data statistik
-      // Total Artikel
+      // 1. Query data statistik
       const { count: postCount } = await supabase
         .from('blog_posts')
         .select('*', { count: 'exact', head: true });
 
-      // Total Users & Premium Users
       const { count: userCount } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true });
@@ -143,7 +147,6 @@ export default function AdminDashboard() {
       startOfWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
       const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
 
-      // Total views minggu ini
       const { data: viewsData } = await supabase
         .from('page_views')
         .select('view_count, date')
@@ -151,17 +154,15 @@ export default function AdminDashboard() {
 
       const totalViews = viewsData?.reduce((acc, curr) => acc + (curr.view_count || 0), 0) || 0;
 
-      // Views hari ini
       const { data: todayViews } = await supabase
         .from('page_views')
         .select('view_count')
         .eq('date', todayStr);
       const todayVisitors = todayViews?.reduce((acc, curr) => acc + (curr.view_count || 0), 0) || 0;
 
-      // Growth dummy
       const growth = 15.2;
 
-      // Data chart (7 hari terakhir)
+      // --- DATA CHART ---
       const sevenDaysAgo = new Date(today);
       sevenDaysAgo.setDate(today.getDate() - 6);
       const { data: chartRaw } = await supabase
@@ -178,7 +179,7 @@ export default function AdminDashboard() {
       const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
       const finalChart = dayNames.map((day) => ({ name: day, views: grouped[day] || 0 }));
 
-      // --- PIE CHART: DATA REAL DARI PAGE_VIEWS ---
+      // --- DATA PIE CHART ---
       const thirtyDaysAgo = new Date(today);
       thirtyDaysAgo.setDate(today.getDate() - 30);
       const { data: allViews } = await supabase
@@ -217,7 +218,7 @@ export default function AdminDashboard() {
         { name: 'Lainnya', value: 0 },
       ];
 
-      // Top Pages
+      // --- DATA LAINNYA ---
       const { data: topPagesData } = await supabase
         .from('page_views')
         .select('page_path, view_count')
@@ -226,7 +227,6 @@ export default function AdminDashboard() {
 
       const topPages = topPagesData?.map((p) => ({ page: p.page_path, visits: p.view_count })) || [];
 
-      // Artikel & User terbaru
       const { data: posts } = await supabase
         .from('blog_posts')
         .select('id, title, slug, published_at, category')
@@ -260,14 +260,14 @@ export default function AdminDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [supabase]);
+  }, [supabase, router]);
 
   // --- LOAD AWAL ---
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // --- 2. GENERATE INSIGHT AI ---
+  // --- GENERATE INSIGHT AI ---
   const generateInsight = async () => {
     setLoadingInsight(true);
     try {
@@ -290,7 +290,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- 3. HAPUS ARTIKEL ---
+  // --- HAPUS ARTIKEL ---
   const handleDeletePost = async (id: string, title: string) => {
     if (!confirm(`Apakah Anda yakin ingin menghapus artikel "${title}"?`)) return;
     const { error } = await supabase.from('blog_posts').delete().eq('id', id);
@@ -302,7 +302,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- 4. LOGOUT ADMIN ---
+  // --- LOGOUT ADMIN ---
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
@@ -343,7 +343,6 @@ export default function AdminDashboard() {
             />
           </div>
           
-          {/* --- NOTIFICATION BELL DENGAN BADGE --- */}
           <button 
             onClick={() => { setIsNotifOpen(true); markAllAsRead(); }}
             className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors"
@@ -642,7 +641,7 @@ export default function AdminDashboard() {
         </main>
       </div>
 
-      {/* --- NOTIFICATION MODAL (Dengan List Real Data) --- */}
+      {/* --- NOTIFICATION MODAL --- */}
       {isNotifOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative max-h-[80vh] flex flex-col">

@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { 
   Lock, Mail, ShieldCheck, Eye, EyeOff, ArrowRight, 
   ChevronDown, Globe, Activity, Users, Rocket 
@@ -30,17 +32,40 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const supabase = createClientComponentClient();
+  const router = useRouter();
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    
+    // (Contoh implementasi login email/password dengan Supabase)
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    
+    if (error) {
+      toast.error('Login gagal: ' + error.message);
+    } else {
       toast.success('Berhasil masuk ke Admin Portal');
-    }, 1500);
+      router.push('/admin');
+    }
   };
 
-  const handleGoogleLogin = () => {
-    toast.loading('Mengarahkan ke Google Workspace...', { duration: 1500 });
+  // --- PERBAIKAN LOGIN GOOGLE (BUKAN WORKSPACE) ---
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        // Setelah login berhasil, redirect ke dashboard admin
+        redirectTo: `${window.location.origin}/admin`,
+      },
+    });
+
+    if (error) {
+      toast.error('Gagal login dengan Google: ' + error.message);
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,34 +76,20 @@ export default function AdminLoginPage() {
       {/* ===================================================================
           LEFT PANEL (HYPER-REALISTIC SVG & SUPER LAYOUT)
           =================================================================== */}
-      {/* Mengurangi padding bottom (pb-6 lg:pb-8) agar grid fitur turun drastis ke bawah */}
       <div className="lg:w-[55%] relative flex flex-col justify-between px-8 lg:px-12 pt-10 lg:pt-12 pb-6 lg:pb-8 min-h-screen border-r border-slate-800/50 overflow-hidden">
         
-        {/* 
-            BACKGROUND SVG TINGKAT TINGGI 
-            1. object-[50%_0%] -> Memaksa gambar ditarik ke atas maksimal agar ruang bawah luas.
-            2. filter -> Mempertajam kontras dan saturasi agar teks di dalam laptop sangat jelas.
-        */}
+        {/* BACKGROUND SVG */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           <img 
             src="/bg-login-admin.svg" 
             alt="Admin Background" 
             className="w-full h-full object-cover absolute inset-0 object-top sm:object-[50%_5%] transform scale-[1.02] filter contrast-[1.25] saturate-[1.15] brightness-[1.1]"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
           />
-          
-          {/* Ambient space glow */}
           <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/15 rounded-full blur-[150px]"></div>
-          
-          {/* Gradient hitam di bawah untuk memastikan grid fitur selalu terbaca jelas walau di layar kecil */}
           <div className="absolute bottom-0 inset-x-0 h-[45%] bg-gradient-to-t from-[#030614] via-[#030614]/70 to-transparent"></div>
         </div>
 
-        {/* ==========================================================
-            TOP CONTENT: LOGO & HEADING
-            ========================================================== */}
         <header className="relative z-20 flex flex-col items-start gap-6">
           <AdminLogo />
           
@@ -98,16 +109,11 @@ export default function AdminLoginPage() {
           </div>
         </header>
 
-        {/* Spacer diperbesar untuk memastikan ruang kosong memaksa grid terdorong mentok ke bawah */}
         <div className="flex-1 min-h-[220px]"></div>
 
-        {/* ==========================================================
-            FEATURES GRID (BOTTOM PANEL)
-            Terjamin berada di paling bawah (mt-auto) dan mepet ke dasar
-            ========================================================== */}
+        {/* FEATURES GRID */}
         <div className="relative z-30 w-full mt-auto">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#0A0F1D]/80 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 mb-3 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
-            
             <div className="flex flex-col gap-1.5">
               <div className="w-8 h-8 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center border border-blue-400/20 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
                 <ShieldCheck size={16} />
@@ -115,7 +121,6 @@ export default function AdminLoginPage() {
               <h4 className="text-[11px] font-bold text-white leading-tight">Keamanan Tinggi</h4>
               <p className="text-[9.5px] text-slate-400 leading-relaxed pr-2">Sistem keamanan enterprise-grade.</p>
             </div>
-
             <div className="flex flex-col gap-1.5">
               <div className="w-8 h-8 rounded-lg bg-indigo-500/15 text-indigo-400 flex items-center justify-center border border-indigo-400/20 shadow-[0_0_10px_rgba(99,102,241,0.2)]">
                 <Users size={16} />
@@ -123,7 +128,6 @@ export default function AdminLoginPage() {
               <h4 className="text-[11px] font-bold text-white leading-tight">Kontrol Penuh</h4>
               <p className="text-[9.5px] text-slate-400 leading-relaxed pr-2">Kelola semua aspek platform.</p>
             </div>
-
             <div className="flex flex-col gap-1.5">
               <div className="w-8 h-8 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center border border-purple-400/20 shadow-[0_0_10px_rgba(168,85,247,0.2)]">
                 <Activity size={16} />
@@ -131,7 +135,6 @@ export default function AdminLoginPage() {
               <h4 className="text-[11px] font-bold text-white leading-tight">Insight Real-time</h4>
               <p className="text-[9.5px] text-slate-400 leading-relaxed pr-2">Pantau performa secara langsung.</p>
             </div>
-
             <div className="flex flex-col gap-1.5">
               <div className="w-8 h-8 rounded-lg bg-pink-500/15 text-pink-400 flex items-center justify-center border border-pink-400/20 shadow-[0_0_10px_rgba(236,72,153,0.2)]">
                 <Rocket size={16} />
@@ -139,14 +142,11 @@ export default function AdminLoginPage() {
               <h4 className="text-[11px] font-bold text-white leading-tight">Skalabilitas</h4>
               <p className="text-[9.5px] text-slate-400 leading-relaxed pr-2">Siap berkembang bersama Anda.</p>
             </div>
-
           </div>
-          
           <div className="flex items-center gap-2 text-slate-400/70 text-[11px] font-medium ml-1">
              <Lock size={12} className="text-slate-500" /> Akses khusus untuk administrator resmi Oneklik.id
           </div>
         </div>
-
       </div>
 
       {/* ===================================================================
@@ -178,7 +178,6 @@ export default function AdminLoginPage() {
            </div>
 
            <form onSubmit={handleLogin} className="space-y-4">
-              
               {/* Email Admin */}
               <div>
                  <label className="block text-[13px] font-bold text-slate-800 mb-1.5">Email Admin</label>
@@ -263,12 +262,14 @@ export default function AdminLoginPage() {
 
            {/* Alternative Login Options */}
            <div className="grid grid-cols-1 gap-3 mb-6">
+              {/* PERBAIKAN: HAPUS WORKSPACE, GUNAKAN LOGIN GOOGLE ASLI */}
               <button 
                 onClick={handleGoogleLogin} 
-                className="w-full flex items-center justify-center gap-2.5 py-3.5 bg-white border border-slate-200/80 rounded-xl text-[13px] font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2.5 py-3.5 bg-white border border-slate-200/80 rounded-xl text-[13px] font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)] disabled:opacity-50"
               >
                  <svg viewBox="0 0 24 24" className="w-5 h-5"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                 Login dengan Google Workspace
+                 Login dengan Google
               </button>
            </div>
 

@@ -156,13 +156,6 @@ function computeCtrTrend(events: any[]) {
   return { pct: Math.round(((curCtr - prevCtr) / prevCtr) * 100), isNew: false };
 }
 
-function formatMonthRangeLabel() {
-  const now = new Date();
-  const first = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthLabel = now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-  return `${first.getDate()} - ${now.getDate()} ${monthLabel}`;
-}
-
 /* =========================================================================
    MINI CHARTS
    ========================================================================= */
@@ -543,123 +536,6 @@ const WalletDropdownPanel = ({
     </div>
   </div>
 );
-
-const WalletPanel = ({
-  isOpen, onClose, wallet, walletLoading, showBalance, setShowBalance,
-  monthSummary, monthRangeLabel, transactions,
-  onTopUp, onWithdraw, onHistory, onTransfer, onVoucher, onInvoice,
-}: any) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-[65] flex items-stretch justify-end bg-black/30 backdrop-blur-[2px]">
-      <div className="bg-[#F8FAFC] w-full max-w-sm h-full shadow-2xl overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-slate-100 p-5 flex items-start justify-between z-10">
-          <div>
-            <p className="text-base font-bold text-slate-800 flex items-center gap-2"><Wallet size={17} className="text-blue-600" /> Wallet</p>
-            <p className="text-xs text-slate-400 mt-0.5">Kelola saldo dan semua transaksi Anda.</p>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors flex-shrink-0"><X size={22} /></button>
-        </div>
-
-        <div className="p-5 space-y-4">
-          <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 shadow-lg shadow-blue-200">
-            <div className="absolute -top-8 -right-8 w-28 h-28 bg-white/10 rounded-full pointer-events-none" />
-            <div className="absolute -bottom-10 -left-6 w-24 h-24 bg-white/10 rounded-full pointer-events-none" />
-            <div className="relative flex items-center justify-between mb-1">
-              <p className="text-xs font-medium text-white/80">Saldo Tersedia</p>
-              <button onClick={() => setShowBalance((v: boolean) => !v)} className="text-white/70 hover:text-white transition-colors">
-                {showBalance ? <Eye size={15} /> : <EyeOff size={15} />}
-              </button>
-            </div>
-            <p className="relative text-3xl font-bold text-white mb-4 tabular-nums">
-              {walletLoading ? '...' : showBalance ? fmtRupiah(wallet?.balance || 0) : 'Rp ••••••'}
-            </p>
-            <div className="relative flex gap-2">
-              <button onClick={onTopUp} className="flex-1 py-2 bg-white text-blue-700 text-xs font-bold rounded-xl hover:bg-blue-50 transition-colors flex items-center justify-center gap-1">
-                <Plus size={13} /> Top Up
-              </button>
-              <button onClick={onWithdraw} className="flex-1 py-2 bg-white/15 text-white text-xs font-semibold rounded-xl hover:bg-white/25 transition-colors backdrop-blur-sm">
-                Tarik Saldo
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { icon: <Clock size={17} />, label: 'Riwayat', onClick: onHistory },
-              { icon: <ArrowRightLeft size={17} />, label: 'Transfer', onClick: onTransfer },
-              { icon: <Ticket size={17} />, label: 'Voucher', onClick: onVoucher },
-              { icon: <Receipt size={17} />, label: 'Invoice', onClick: onInvoice },
-            ].map((a) => (
-              <button key={a.label} onClick={a.onClick} className="bg-white border border-slate-200 rounded-xl py-3 flex flex-col items-center gap-1.5 hover:bg-slate-50 hover:border-blue-200 transition-colors">
-                <span className="text-blue-600">{a.icon}</span>
-                <span className="text-[10px] font-semibold text-slate-600">{a.label}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <div className="mb-3">
-              <p className="text-xs font-bold text-slate-800">Ringkasan Bulan Ini</p>
-              <p className="text-[10px] text-slate-400">{monthRangeLabel}</p>
-            </div>
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-slate-500"><ArrowDownRight size={13} className="text-green-500" /> Top Up</span>
-                <span className="font-semibold text-green-600">+{fmtRupiah(monthSummary?.totalTopup || 0)}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-slate-500"><ArrowUpRight size={13} className="text-red-400" /> Pengeluaran</span>
-                <span className="font-semibold text-red-500">-{fmtRupiah(monthSummary?.totalOut || 0)}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-slate-500"><ClipboardList size={13} className="text-slate-400" /> Transaksi</span>
-                <span className="font-semibold text-slate-700">{monthSummary?.count || 0} Transaksi</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-bold text-slate-800">Transaksi Terakhir</p>
-              <button onClick={onHistory} className="text-[11px] font-semibold text-blue-600 hover:text-blue-700">Lihat Semua</button>
-            </div>
-            {transactions.length > 0 ? (
-              <div className="space-y-3">
-                {transactions.slice(0, 5).map((t: any) => (
-                  <div key={t.id} className="flex items-center gap-2.5">
-                    <div className={cx('w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0', t.type === 'topup' ? 'bg-green-50' : 'bg-red-50')}>
-                      {t.type === 'topup' ? <ArrowDownRight size={14} className="text-green-600" /> : <ArrowUpRight size={14} className="text-red-500" />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-semibold text-slate-700 truncate">{t.description || (t.type === 'topup' ? 'Top Up Saldo' : 'Penarikan Saldo')}</p>
-                      <p className="text-[9px] text-slate-400">
-                        {t.created_at ? new Date(t.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
-                        {t.created_at ? `, ${new Date(t.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : ''}
-                      </p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className={cx('text-[11px] font-bold', t.type === 'topup' ? 'text-green-600' : 'text-red-500')}>
-                        {t.type === 'topup' ? '+' : '-'}{fmtRupiah(t.amount || 0)}
-                      </p>
-                      <p className="text-[9px] text-green-500 font-medium capitalize">{t.status || 'berhasil'}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[11px] text-slate-400 text-center py-4">Belum ada transaksi.</p>
-            )}
-          </div>
-
-          <button onClick={onHistory} className="w-full py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5">
-            Lihat Semua Transaksi <ArrowUpRight size={13} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const TOPUP_NOMINALS = [10000, 25000, 50000, 100000, 250000, 500000];
 
@@ -1079,7 +955,6 @@ export default function BioClient() {
 
   const [wallet, setWallet] = useState<any>(null);
   const [walletLoading, setWalletLoading] = useState(false);
-  const [showWalletBalance, setShowWalletBalance] = useState(true);
 
   const [showTopUpModal, setShowTopUpModal] = useState(false);
   const [topUpStep, setTopUpStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -1105,7 +980,6 @@ export default function BioClient() {
 
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
-  const [showWalletPanel, setShowWalletPanel] = useState(false);
   const [walletDropdownOpen, setWalletDropdownOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [headerSearch, setHeaderSearch] = useState('');
@@ -1460,20 +1334,6 @@ export default function BioClient() {
     if (walletHistoryTab === 'topup') return walletTransactions.filter((t) => t.type === 'topup');
     return walletTransactions.filter((t) => t.type !== 'topup');
   }, [walletTransactions, walletHistoryTab]);
-
-  const walletMonthSummary = useMemo(() => {
-    const now = new Date();
-    const inMonth = walletTransactions.filter((t) => {
-      if (!t.created_at) return false;
-      const d = new Date(t.created_at);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    });
-    const totalTopup = inMonth.filter((t) => t.type === 'topup').reduce((s, t) => s + (t.amount || 0), 0);
-    const totalOut = inMonth.filter((t) => t.type !== 'topup').reduce((s, t) => s + (t.amount || 0), 0);
-    return { totalTopup, totalOut, count: inMonth.length };
-  }, [walletTransactions]);
-
-  const walletMonthRangeLabel = useMemo(() => formatMonthRangeLabel(), []);
 
   const storageLimitGb = user?.is_premium ? 50 : 10;
   const storageUsedGb = 2.4;
@@ -1855,7 +1715,7 @@ export default function BioClient() {
                 onWithdraw={() => { setWalletDropdownOpen(false); setShowWithdrawModal(true); }}
                 onTransfer={() => { setWalletDropdownOpen(false); setShowTransferModal(true); }}
                 onVoucher={() => { setWalletDropdownOpen(false); setShowVoucherModal(true); }}
-                onViewAll={() => { setWalletDropdownOpen(false); setShowWalletPanel(true); }}
+                onViewAll={() => { setWalletDropdownOpen(false); router.push('/wallet'); }}
               />
             )}
           </div>
@@ -2732,24 +2592,6 @@ export default function BioClient() {
           )}
         </aside>
       </div>
-
-      <WalletPanel
-        isOpen={showWalletPanel}
-        onClose={() => setShowWalletPanel(false)}
-        wallet={wallet}
-        walletLoading={walletLoading}
-        showBalance={showWalletBalance}
-        setShowBalance={setShowWalletBalance}
-        monthSummary={walletMonthSummary}
-        monthRangeLabel={walletMonthRangeLabel}
-        transactions={walletTransactions}
-        onTopUp={openTopUpModal}
-        onWithdraw={() => setShowWithdrawModal(true)}
-        onHistory={() => { setShowWalletHistory(true); fetchWalletTransactions(); }}
-        onTransfer={() => setShowTransferModal(true)}
-        onVoucher={() => setShowVoucherModal(true)}
-        onInvoice={() => setShowInvoiceModal(true)}
-      />
 
       <TopUpModal
         isOpen={showTopUpModal}
