@@ -289,7 +289,7 @@ export default function AdminLoginPage() {
 
         {/* Footer Right */}
         <div className="flex flex-col sm:flex-row items-center justify-between pt-6 text-[11px] text-slate-400 font-medium w-full border-t border-slate-100 mt-auto">
-           <span>© 2024 Oneklik.id. All rights reserved.</span>
+           <span>© 2026 Oneklik.id. All rights reserved.</span>
            <span className="mt-2 sm:mt-0">Butuh bantuan? <Link href="#" className="text-blue-600 font-bold hover:underline">Hubungi Support</Link></span>
         </div>
 

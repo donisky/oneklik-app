@@ -210,7 +210,7 @@ export default function AboutPage() {
           <Link href="/"><Logo /></Link>
           
           <nav className="hidden md:flex items-center gap-9">
-            <Link href="/" className="text-[14px] font-bold text-slate-600 hover:text-blue-600 transition-colors">Beranda</Link>
+            <Link href="/#" className="text-[14px] font-bold text-slate-600 hover:text-blue-600 transition-colors">Beranda</Link>
             
             {/* DROPDOWN FITUR */}
             <div className="relative group py-2">
@@ -222,7 +222,7 @@ export default function AboutPage() {
               <div className="absolute top-[100%] left-1/2 -translate-x-1/2 mt-1 w-[280px] bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-3 group-hover:translate-y-0 z-50">
                 <div className="p-3 flex flex-col gap-1">
                   
-                  <Link href="/fitur/bio-link" className="flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors group/item">
+                  <Link href="/bio" className="flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors group/item">
                     <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
                        <User className="w-4 h-4" />
                     </div>
@@ -232,7 +232,7 @@ export default function AboutPage() {
                     </div>
                   </Link>
 
-                  <Link href="/fitur/pdf-tools" className="flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors group/item">
+                  <Link href="/tools/pdf-tools" className="flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors group/item">
                     <div className="w-9 h-9 rounded-lg bg-red-50 text-red-500 flex items-center justify-center shrink-0 mt-0.5">
                        <FileOutput className="w-4 h-4" />
                     </div>
@@ -242,7 +242,7 @@ export default function AboutPage() {
                     </div>
                   </Link>
 
-                  <Link href="/fitur/cv-generator" className="flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors group/item">
+                  <Link href="/tools/cv-generator" className="flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors group/item">
                     <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0 mt-0.5">
                        <FileText className="w-4 h-4" />
                     </div>
@@ -252,7 +252,7 @@ export default function AboutPage() {
                     </div>
                   </Link>
 
-                  <Link href="/fitur/url-shortener" className="flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors group/item">
+                  <Link href="/tools/url-shortener" className="flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors group/item">
                     <div className="w-9 h-9 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center shrink-0 mt-0.5">
                        <Link2 className="w-4 h-4" />
                     </div>
@@ -262,7 +262,7 @@ export default function AboutPage() {
                     </div>
                   </Link>
 
-                  <Link href="/fitur/file-to-qr" className="flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors group/item">
+                  <Link href="/tools/file-to-qr" className="flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors group/item">
                     <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 mt-0.5">
                        <QrCode className="w-4 h-4" />
                     </div>
@@ -303,7 +303,7 @@ export default function AboutPage() {
         <div className="absolute -bottom-1/4 -left-1/4 w-[600px] h-[600px] bg-purple-400/10 rounded-full blur-[100px] pointer-events-none z-0"></div>
 
         <div className="relative z-10 max-w-[1280px] mx-auto px-6 md:px-10 w-full transition-transform duration-100 ease-out" ref={heroContentRef}>
-            <Link href="/" className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-500 hover:text-blue-600 mb-12 transition-colors relative z-20">
+            <Link href="/#" className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-500 hover:text-blue-600 mb-12 transition-colors relative z-20">
               <ArrowLeft className="w-4 h-4" /> Kembali ke Beranda
             </Link>
 
@@ -322,7 +322,7 @@ export default function AboutPage() {
                   Oneklik.id hadir untuk membantu siapa saja mengelola kehadiran digital dengan mudah, cepat, dan profesional dalam satu platform all-in-one.
                 </p>
                 <div className="flex flex-wrap items-center gap-4 mb-10">
-                  <Link href="/features" className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 text-white px-8 py-3.5 rounded-xl text-[14px] font-bold shadow-xl shadow-blue-600/30 transition-all hover:-translate-y-0.5">
+                  <Link href="/tools" className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 text-white px-8 py-3.5 rounded-xl text-[14px] font-bold shadow-xl shadow-blue-600/30 transition-all hover:-translate-y-0.5">
                     Jelajahi Fitur <ArrowRight className="w-4 h-4" />
                   </Link>
                   <Link href="/contact" className="inline-flex items-center justify-center bg-white/80 backdrop-blur-md border border-slate-200 text-slate-700 px-8 py-3.5 rounded-xl text-[14px] font-bold shadow-sm hover:bg-white transition-colors">
@@ -410,31 +410,31 @@ export default function AboutPage() {
              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 mb-6"><User className="w-6 h-6" /></div>
              <h3 className="text-[18px] font-bold text-[#0f172a] mb-3">Bio Link</h3>
              <p className="text-slate-500 text-[14px] leading-[1.6] mb-8 flex-1">Buat halaman bio link profesional untuk semua media sosialmu.</p>
-             <Link href="/fitur/bio-link" className="inline-flex items-center gap-1 text-blue-600 font-bold text-[14px] hover:gap-2 transition-all">Pelajari lebih lanjut <ArrowRight className="w-4 h-4" /></Link>
+             <Link href="/bio" className="inline-flex items-center gap-1 text-blue-600 font-bold text-[14px] hover:gap-2 transition-all">Pelajari lebih lanjut <ArrowRight className="w-4 h-4" /></Link>
           </div>
           <div className="bg-white rounded-[24px] p-8 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] flex flex-col hover:shadow-lg transition-shadow">
              <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-red-500 mb-6"><FileOutput className="w-6 h-6" /></div>
              <h3 className="text-[18px] font-bold text-[#0f172a] mb-3">PDF Tools</h3>
              <p className="text-slate-500 text-[14px] leading-[1.6] mb-8 flex-1">Gabungkan, kompres, konversi, split, dan kelola file PDF dengan mudah.</p>
-             <Link href="/fitur/pdf-tools" className="inline-flex items-center gap-1 text-blue-600 font-bold text-[14px] hover:gap-2 transition-all">Pelajari lebih lanjut <ArrowRight className="w-4 h-4" /></Link>
+             <Link href="/tools/pdf-tools" className="inline-flex items-center gap-1 text-blue-600 font-bold text-[14px] hover:gap-2 transition-all">Pelajari lebih lanjut <ArrowRight className="w-4 h-4" /></Link>
           </div>
           <div className="bg-white rounded-[24px] p-8 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] flex flex-col hover:shadow-lg transition-shadow">
              <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 mb-6"><FileText className="w-6 h-6" /></div>
              <h3 className="text-[18px] font-bold text-[#0f172a] mb-3">CV Builder</h3>
              <p className="text-slate-500 text-[14px] leading-[1.6] mb-8 flex-1">Buat CV profesional, ATS-friendly, dengan berbagai template.</p>
-             <Link href="/fitur/cv-generator" className="inline-flex items-center gap-1 text-blue-600 font-bold text-[14px] hover:gap-2 transition-all">Pelajari lebih lanjut <ArrowRight className="w-4 h-4" /></Link>
+             <Link href="/tools/cv-generator" className="inline-flex items-center gap-1 text-blue-600 font-bold text-[14px] hover:gap-2 transition-all">Pelajari lebih lanjut <ArrowRight className="w-4 h-4" /></Link>
           </div>
           <div className="bg-white rounded-[24px] p-8 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] flex flex-col hover:shadow-lg transition-shadow md:col-start-1">
              <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 mb-6"><QrCode className="w-6 h-6" /></div>
              <h3 className="text-[18px] font-bold text-[#0f172a] mb-3">QR Code</h3>
              <p className="text-slate-500 text-[14px] leading-[1.6] mb-8 flex-1">Ubah link, teks, atau file menjadi QR Code dalam hitungan detik.</p>
-             <Link href="/fitur/file-to-qr" className="inline-flex items-center gap-1 text-blue-600 font-bold text-[14px] hover:gap-2 transition-all">Pelajari lebih lanjut <ArrowRight className="w-4 h-4" /></Link>
+             <Link href="/tools/file-to-qr" className="inline-flex items-center gap-1 text-blue-600 font-bold text-[14px] hover:gap-2 transition-all">Pelajari lebih lanjut <ArrowRight className="w-4 h-4" /></Link>
           </div>
           <div className="bg-white rounded-[24px] p-8 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] flex flex-col hover:shadow-lg transition-shadow">
              <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 mb-6"><Link2 className="w-6 h-6" /></div>
              <h3 className="text-[18px] font-bold text-[#0f172a] mb-3">Short Link</h3>
              <p className="text-slate-500 text-[14px] leading-[1.6] mb-8 flex-1">Buat link pendek custom, lacak klik, dan bagikan dengan mudah.</p>
-             <Link href="/fitur/url-shortener" className="inline-flex items-center gap-1 text-blue-600 font-bold text-[14px] hover:gap-2 transition-all">Pelajari lebih lanjut <ArrowRight className="w-4 h-4" /></Link>
+             <Link href="/tools/url-shortener" className="inline-flex items-center gap-1 text-blue-600 font-bold text-[14px] hover:gap-2 transition-all">Pelajari lebih lanjut <ArrowRight className="w-4 h-4" /></Link>
           </div>
         </div>
       </section>
@@ -563,11 +563,11 @@ export default function AboutPage() {
             <div>
               <h4 className="text-[16px] font-bold text-[#0f172a] mb-6">Produk</h4>
               <ul className="flex flex-col gap-4">
-                <li><Link href="/fitur/bio-link" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">Bio Link</Link></li>
-                <li><Link href="/fitur/pdf-tools" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">PDF Tools</Link></li>
-                <li><Link href="/fitur/cv-generator" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">CV Generator</Link></li>
-                <li><Link href="/fitur/url-shortener" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">URL Shortener</Link></li>
-                <li><Link href="/fitur/file-to-qr" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">File to QR</Link></li>
+                <li><Link href="/bio" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">Bio Link</Link></li>
+                <li><Link href="/tools/pdf-tools" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">PDF Tools</Link></li>
+                <li><Link href="/tools/cv-generator" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">CV Generator</Link></li>
+                <li><Link href="/tools/url-shortener" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">URL Shortener</Link></li>
+                <li><Link href="/tools/file-to-qr" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">File to QR</Link></li>
               </ul>
             </div>
 
@@ -576,7 +576,7 @@ export default function AboutPage() {
               <h4 className="text-[16px] font-bold text-[#0f172a] mb-6">Perusahaan</h4>
               <ul className="flex flex-col gap-4">
                 <li><Link href="/about" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">Tentang Kami</Link></li>
-                <li><Link href="/pricing" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">Harga</Link></li>
+                <li><Link href="/upgrade" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">Harga</Link></li>
                 <li><Link href="/blog" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">Blog</Link></li>
                 <li><Link href="/contact" className="text-[14px] font-medium text-slate-500 hover:text-blue-600 transition-colors">Kontak</Link></li>
               </ul>
