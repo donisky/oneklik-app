@@ -20,7 +20,6 @@ export default function NewBlogPost() {
   const [autoSlug, setAutoSlug] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  // Gunakan useRef untuk input file agar bisa di-reset
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const supabase = createClientComponentClient();
@@ -33,50 +32,59 @@ export default function NewBlogPost() {
     }
   }, [title, autoSlug]);
 
+  // --- FUNGSI UPLOAD GAMBAR YANG DISEMPURNAKAN ---
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // 1. Validasi ukuran file (maks 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Ukuran file maksimal 5MB.');
+      return;
+    }
+
     setUploadingImage(true);
-    
-    // Reset input file agar bisa upload file yang sama jika gagal
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input file
 
     try {
-      // 1. Cek apakah bucket 'blog_images' sudah ada
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const bucketExists = buckets?.some(b => b.name === 'blog_images');
-      if (!bucketExists) {
-        throw new Error('Bucket "blog_images" belum dibuat di Supabase Storage. Buat bucket publik terlebih dahulu!');
-      }
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `blog-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      // 2. Buat nama file unik dengan timestamp
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const fileName = `blog-${Date.now()}.${fileExt}`;
       
+      // 3. Lakukan upload ke Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('blog_images')
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: false
+          upsert: false,
+          contentType: file.type // Kirim MIME type yang benar
         });
 
-      if (uploadError) throw new Error(uploadError.message);
-
-      const { data: urlData } = supabase.storage.from('blog_images').getPublicUrl(fileName);
-      setImageUrl(urlData.publicUrl);
-      toast.success('Gambar berhasil diupload!');
-    } catch (err: any) {
-      console.error('Upload Error:', err);
-      
-      // Menampilkan error spesifik agar pengguna tahu apa yang salah
-      let errorMsg = err.message || 'Gagal upload gambar';
-      if (err.message.includes('row-level security') || err.message.includes('policy')) {
-        errorMsg = 'Izin upload ditolak oleh RLS Supabase. Pastikan Anda sudah membuat policy "INSERT" untuk bucket images.';
-      } else if (err.message.includes('bucket')) {
-        errorMsg = 'Bucket "blog_images" belum dibuat di dashboard Storage Supabase.';
+      if (uploadError) {
+        console.error('Upload Error Detail:', uploadError);
+        
+        // Tangani error spesifik yang sering terjadi
+        if (uploadError.message.includes('Bucket not found')) {
+          throw new Error('Bucket "blog_images" belum dibuat di Supabase. Silakan buat bucket publik terlebih dahulu!');
+        }
+        if (uploadError.message.includes('row-level security') || uploadError.message.includes('policy')) {
+          throw new Error('Izin RLS Storage belum diatur. Pastikan Anda sudah menjalankan perintah SQL di jawaban sebelumnya.');
+        }
+        throw new Error(uploadError.message);
       }
+
+      // 4. Ambil URL publik gambar
+      const { data: urlData } = supabase.storage.from('blog_images').getPublicUrl(fileName);
       
-      toast.error('Upload Gagal: ' + errorMsg);
+      if (urlData) {
+        setImageUrl(urlData.publicUrl);
+        toast.success('Gambar berhasil diupload dan siap dipublikasikan!');
+      } else {
+        throw new Error('Gagal mendapatkan URL publik gambar.');
+      }
+    } catch (err: any) {
+      console.error('Upload Image Error:', err);
+      toast.error('Upload Gagal: ' + (err.message || 'Terjadi kesalahan tidak diketahui'));
     } finally {
       setUploadingImage(false);
     }
