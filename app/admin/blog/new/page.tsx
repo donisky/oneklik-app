@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import toast from 'react-hot-toast';
@@ -15,93 +15,85 @@ export default function NewBlogPost() {
   const [content, setContent] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  
   const [uploadingImage, setUploadingImage] = useState(false);
-  
-  // --- STATE UNTUK AUTO-SLUG ---
   const [autoSlug, setAutoSlug] = useState(true);
-  
-  // --- STATE UNTUK PREVIEW ---
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  // Gunakan useRef untuk input file agar bisa di-reset
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const supabase = createClientComponentClient();
   const router = useRouter();
 
-  // --- LOGIKA GENERATE SLUG OTOMATIS (Real-time saat mengetik) ---
   useEffect(() => {
     if (autoSlug && title.trim()) {
-      const generated = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const generated = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-');
       setSlug(generated);
     }
   }, [title, autoSlug]);
 
-  // --- FUNGSI UPLOAD GAMBAR (DIPERBAIKI) ---
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) {
-      toast.error('Tidak ada file yang dipilih.');
-      return;
-    }
-
-    // Validasi file: hanya gambar
-    if (!file.type.startsWith('image/')) {
-      toast.error('File harus berupa gambar (jpg, png, webp, dll)');
-      return;
-    }
-
-    // Validasi ukuran file (maks 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ukuran gambar maksimal 5MB');
-      return;
-    }
+    if (!file) return;
 
     setUploadingImage(true);
+    
+    // Reset input file agar bisa upload file yang sama jika gagal
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
     try {
+      // 1. Cek apakah bucket 'blog_images' sudah ada
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const bucketExists = buckets?.some(b => b.name === 'blog_images');
+      if (!bucketExists) {
+        throw new Error('Bucket "blog_images" belum dibuat di Supabase Storage. Buat bucket publik terlebih dahulu!');
+      }
+
       const fileExt = file.name.split('.').pop();
       const fileName = `blog-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       
-      // Pastikan bucket 'blog_images' sudah dibuat di Supabase
       const { error: uploadError } = await supabase.storage
         .from('blog_images')
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: false,
+          upsert: false
         });
 
-      if (uploadError) {
-        // Jika bucket belum ada, beri pesan spesifik
-        if (uploadError.message.includes('bucket not found')) {
-          throw new Error('Bucket "blog_images" belum dibuat. Silakan buat bucket di Supabase Dashboard (Storage > New Bucket > nama "blog_images", public: true).');
-        }
-        throw new Error(uploadError.message);
-      }
+      if (uploadError) throw new Error(uploadError.message);
 
       const { data: urlData } = supabase.storage.from('blog_images').getPublicUrl(fileName);
       setImageUrl(urlData.publicUrl);
       toast.success('Gambar berhasil diupload!');
     } catch (err: any) {
-      console.error('Upload error:', err);
-      toast.error('Gagal upload gambar: ' + err.message);
+      console.error('Upload Error:', err);
+      
+      // Menampilkan error spesifik agar pengguna tahu apa yang salah
+      let errorMsg = err.message || 'Gagal upload gambar';
+      if (err.message.includes('row-level security') || err.message.includes('policy')) {
+        errorMsg = 'Izin upload ditolak oleh RLS Supabase. Pastikan Anda sudah membuat policy "INSERT" untuk bucket images.';
+      } else if (err.message.includes('bucket')) {
+        errorMsg = 'Bucket "blog_images" belum dibuat di dashboard Storage Supabase.';
+      }
+      
+      toast.error('Upload Gagal: ' + errorMsg);
     } finally {
       setUploadingImage(false);
     }
   };
 
-  // --- LOGIKA SIMPAN ARTIKEL ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    // 1. Generate slug akhir
     let finalSlug = slug.trim() || title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-    // 2. Cek apakah slug sudah ada di database
     const { data: existingSlug } = await supabase
       .from('blog_posts')
       .select('id')
       .eq('slug', finalSlug)
       .maybeSingle();
 
-    // 3. Jika slug sudah ada, tambahkan angka increment (misal: judul-1, judul-2)
     let suffix = 1;
     let tempSlug = finalSlug;
     while (existingSlug) {
@@ -121,7 +113,6 @@ export default function NewBlogPost() {
       toast.success(`Slug "${slug}" sudah dipakai, otomatis diubah menjadi "${finalSlug}"`);
     }
 
-    // 4. Simpan ke database
     const { error } = await supabase.from('blog_posts').insert({
       title,
       slug: finalSlug,
@@ -142,7 +133,6 @@ export default function NewBlogPost() {
     setLoading(false);
   };
 
-  // --- LIST KATEGORI ---
   const categoryOptions = ['Bio Link', 'Short Link', 'QR Code', 'CV Generator', 'PDF Tools', 'Afiliasi', 'Oneklik'];
 
   return (
@@ -178,7 +168,6 @@ export default function NewBlogPost() {
                 placeholder="(Biarkan kosong untuk generate otomatis)"
                 className="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-600 outline-none"
               />
-              
               <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 whitespace-nowrap">
                 <input
                   type="checkbox"
@@ -191,7 +180,6 @@ export default function NewBlogPost() {
             </div>
           </div>
 
-          {/* KATEGORI */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
             <select
@@ -206,7 +194,6 @@ export default function NewBlogPost() {
             </select>
           </div>
 
-          {/* --- GAMBAR DENGAN PREVIEW REAL-TIME --- */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">URL Gambar Utama</label>
             <div className="flex flex-col sm:flex-row gap-3">
@@ -218,16 +205,17 @@ export default function NewBlogPost() {
               />
               <div className="relative flex-shrink-0">
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" // pastikan z-index tinggi
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                   onChange={handleImageUpload}
                   disabled={uploadingImage}
                 />
                 <button
                   type="button"
                   disabled={uploadingImage}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50 relative"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {uploadingImage ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
                   {uploadingImage ? 'Uploading...' : 'Upload'}
@@ -236,7 +224,6 @@ export default function NewBlogPost() {
             </div>
             <p className="text-xs text-slate-400 mt-1">Upload gambar dari komputer, atau masukkan URL gambar eksternal.</p>
             
-            {/* --- PREVIEW GAMBAR --- */}
             {imageUrl && (
               <div className="mt-3">
                 <p className="text-xs font-medium text-slate-500 mb-1">Preview Gambar:</p>
@@ -252,7 +239,6 @@ export default function NewBlogPost() {
                 </div>
               </div>
             )}
-            {/* ------------------------------------ */}
           </div>
 
           <div>
@@ -274,8 +260,7 @@ export default function NewBlogPost() {
             />
           </div>
 
-          {/* --- TOMBOL PREVIEW DAN PUBLISH --- */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={() => setPreviewOpen(true)}
@@ -291,11 +276,9 @@ export default function NewBlogPost() {
               {loading ? <Loader2 className="animate-spin" size={18} /> : 'Publikasikan Artikel'}
             </button>
           </div>
-          {/* ---------------------------- */}
         </form>
       </div>
 
-      {/* --- MODAL PREVIEW ARTIKEL --- */}
       {previewOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
