@@ -34,26 +34,52 @@ export default function NewBlogPost() {
     }
   }, [title, autoSlug]);
 
-  // --- FUNGSI UPLOAD GAMBAR ---
+  // --- FUNGSI UPLOAD GAMBAR (DIPERBAIKI) ---
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      toast.error('Tidak ada file yang dipilih.');
+      return;
+    }
+
+    // Validasi file: hanya gambar
+    if (!file.type.startsWith('image/')) {
+      toast.error('File harus berupa gambar (jpg, png, webp, dll)');
+      return;
+    }
+
+    // Validasi ukuran file (maks 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Ukuran gambar maksimal 5MB');
+      return;
+    }
 
     setUploadingImage(true);
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `blog-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       
+      // Pastikan bucket 'blog_images' sudah dibuat di Supabase
       const { error: uploadError } = await supabase.storage
         .from('blog_images')
-        .upload(fileName, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
 
-      if (uploadError) throw new Error(uploadError.message);
+      if (uploadError) {
+        // Jika bucket belum ada, beri pesan spesifik
+        if (uploadError.message.includes('bucket not found')) {
+          throw new Error('Bucket "blog_images" belum dibuat. Silakan buat bucket di Supabase Dashboard (Storage > New Bucket > nama "blog_images", public: true).');
+        }
+        throw new Error(uploadError.message);
+      }
 
       const { data: urlData } = supabase.storage.from('blog_images').getPublicUrl(fileName);
       setImageUrl(urlData.publicUrl);
       toast.success('Gambar berhasil diupload!');
     } catch (err: any) {
+      console.error('Upload error:', err);
       toast.error('Gagal upload gambar: ' + err.message);
     } finally {
       setUploadingImage(false);
@@ -194,14 +220,14 @@ export default function NewBlogPost() {
                 <input
                   type="file"
                   accept="image/*"
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" // pastikan z-index tinggi
                   onChange={handleImageUpload}
                   disabled={uploadingImage}
                 />
                 <button
                   type="button"
                   disabled={uploadingImage}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50 relative"
                 >
                   {uploadingImage ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
                   {uploadingImage ? 'Uploading...' : 'Upload'}
@@ -220,7 +246,6 @@ export default function NewBlogPost() {
                     alt="Preview"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      // Jika gambar gagal dimuat, tampilkan placeholder
                       (e.target as HTMLImageElement).src = 'https://placehold.co/800x400/slate-200/slate-500?text=Gambar+Gagal+Dimuat';
                     }}
                   />
