@@ -20,7 +20,7 @@ const nextConfig = {
       }
     ];
   },
-  // --- TAMBAHKAN BAGIAN INI AGAR GAMBAR EKSTERNAL BISA DIMUAT ---
+  // --- PERBAIKAN BAGIAN INI AGAR GAMBAR SUPABASE BISA DIMUAT ---
   images: {
     remotePatterns: [
       {
@@ -31,6 +31,16 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'ui-avatars.com',
       },
+      // --- TAMBAHKAN DOMAIN SUPABASE ANDA DI SINI ---
+      {
+        protocol: 'https',
+        hostname: 'wjtmdsksarzipitzsscf.supabase.co',
+      },
+      // (Opsional) Jika Anda ingin mengizinkan semua bucket/storage di project Supabase Anda:
+      // {
+      //   protocol: 'https',
+      //   hostname: '*.supabase.co',
+      // },
     ],
   },
 };

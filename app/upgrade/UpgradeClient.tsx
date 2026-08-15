@@ -5,14 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { 
   Crown, CheckCircle2, XCircle, ArrowLeft, Zap, ShieldCheck, 
-  FileText, Layout, FileCheck, Sparkles, Globe, BarChart3
+  FileText, Layout, FileCheck, Sparkles, Globe, BarChart3,
+  Calendar, Timer
 } from 'lucide-react';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 
 export const dynamic = 'force-dynamic';
 
-// Deklarasi tipe global untuk window.snap (di luar komponen)
+// Deklarasi tipe global untuk window.snap
 declare global {
   interface Window {
     snap: {
@@ -21,12 +22,31 @@ declare global {
   }
 }
 
-// Komponen konten utama yang menggunakan useSearchParams
+// ============================================================
+// KONFIGURASI PROMO KEMERDEKAAN 81%
+// ============================================================
+const PROMO_END = new Date('2026-08-31T23:59:59');
+const REGULAR_MONTHLY = 49000;
+const REGULAR_YEARLY = 499000;
+const DISCOUNT_PERCENT = 0.81; // 81%
+const PROMO_MONTHLY = Math.round(REGULAR_MONTHLY * (1 - DISCOUNT_PERCENT)); // 9.310
+const PROMO_YEARLY = Math.round(REGULAR_YEARLY * (1 - DISCOUNT_PERCENT));    // 94.810
+
+// Fungsi untuk mengecek apakah promo masih aktif
+const isPromoActive = () => {
+  const now = new Date();
+  return now <= PROMO_END;
+};
+
+// Komponen konten utama
 function UpgradeContent() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [isUpgrading, setIsUpgrading] = useState(false);
+  // State untuk Timer Countdown
+  const [timeLeft, setTimeLeft] = useState<string>('');
+  const [promoActive, setPromoActive] = useState(true);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -34,23 +54,47 @@ function UpgradeContent() {
 
   const supabase = createClientComponentClient();
 
-  // Load script Snap Midtrans secara dinamis (sesuai environment)
+  // 1. Logika Timer Countdown
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = new Date();
+      const isActive = isPromoActive();
+      setPromoActive(isActive);
+
+      if (!isActive) {
+        setTimeLeft('Promo telah berakhir');
+        return;
+      }
+
+      const diff = PROMO_END.getTime() - now.getTime();
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      setTimeLeft(`${days} Hari ${hours} Jam ${minutes} Menit ${seconds} Detik`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 2. Load script Snap Midtrans
   useEffect(() => {
     if (!document.querySelector('#midtrans-snap-script')) {
       const script = document.createElement('script');
       script.id = 'midtrans-snap-script';
-      
-      // Tentukan URL berdasarkan Environment Variable
       const isProduction = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true';
       script.src = isProduction 
         ? 'https://app.midtrans.com/snap/snap.js' 
         : 'https://app.sandbox.midtrans.com/snap/snap.js';
-
       script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '');
       document.body.appendChild(script);
     }
   }, []);
 
+  // 3. Ambil Session & Cek Status Premium
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
@@ -71,8 +115,6 @@ function UpgradeContent() {
 
   const handlePayment = async (plan: 'free' | 'premium') => {
     if (!session || isUpgrading) return;
-    
-    // Validasi data user
     if (!session.user.id || !session.user.email) {
       toast.error('Data profil tidak lengkap. Silakan login kembali.');
       return;
@@ -88,7 +130,16 @@ function UpgradeContent() {
         return;
       }
 
-      const amount = billingCycle === 'monthly' ? 49000 : 499000;
+      // Tentukan harga berdasarkan promo yang aktif
+      const isActive = isPromoActive();
+      let amount = 0;
+      
+      if (billingCycle === 'monthly') {
+        amount = isActive ? PROMO_MONTHLY : REGULAR_MONTHLY;
+      } else {
+        amount = isActive ? PROMO_YEARLY : REGULAR_YEARLY;
+      }
+
       const orderId = `PR-${session.user.id.slice(0, 8)}-${Date.now()}`;
 
       const res = await fetch('/api/upgrade', {
@@ -138,6 +189,13 @@ function UpgradeContent() {
     }).format(price);
   };
 
+  // Harga yang akan ditampilkan di UI
+  const displayMonthly = promoActive ? PROMO_MONTHLY : REGULAR_MONTHLY;
+  const displayYearly = promoActive ? PROMO_YEARLY : REGULAR_YEARLY;
+  const currentPrice = billingCycle === 'monthly' ? displayMonthly : displayYearly;
+  const originalPrice = billingCycle === 'monthly' ? REGULAR_MONTHLY : REGULAR_YEARLY; // Untuk harga coret
+  const savingText = billingCycle === 'yearly' ? 'Hemat 15%' : '';
+
   const plans = {
     free: {
       name: 'Gratis',
@@ -157,8 +215,8 @@ function UpgradeContent() {
     },
     premium: {
       name: 'Premium',
-      priceMonthly: 49000,
-      priceYearly: 499000,
+      priceMonthly: displayMonthly,
+      priceYearly: displayYearly,
       description: 'Untuk kreator & pebisnis yang serius.',
       features: [
         { icon: Layout, text: 'Halaman Bio Tanpa Batas', included: true },
@@ -172,9 +230,6 @@ function UpgradeContent() {
       ]
     }
   };
-
-  const currentPrice = billingCycle === 'monthly' ? plans.premium.priceMonthly : plans.premium.priceYearly;
-  const savingText = billingCycle === 'yearly' ? 'Hemat 15%' : '';
 
   if (loading || !session) return <div className="min-h-screen flex items-center justify-center text-slate-600 bg-slate-50">Memuat halaman...</div>;
 
@@ -191,7 +246,7 @@ function UpgradeContent() {
       </div>
 
       <div className="max-w-5xl w-full text-center">
-        <div className="mb-12 space-y-4">
+        <div className="mb-8 space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 text-sm font-semibold border border-blue-100">
             <Zap size={16} className="fill-blue-600" /> Tingkatkan Produktivitas Anda
           </div>
@@ -202,6 +257,35 @@ function UpgradeContent() {
             Mulai dengan paket gratis, atau upgrade ke Premium untuk membuka potensi penuh Oneklik.id.
           </p>
         </div>
+
+        {/* ============================================================ */}
+        {/* 🌟 BANNER PROMO KEMERDEKAAN 81% */}
+        {/* ============================================================ */}
+        {promoActive && (
+          <div className="mb-6 bg-gradient-to-r from-[#DC2626] to-[#EF4444] rounded-2xl p-6 text-white border-2 border-red-500 shadow-[0_8px_30px_rgba(220,38,38,0.2)] relative overflow-hidden">
+            <div className="absolute -right-10 -top-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+            <div className="absolute -left-10 -bottom-10 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+            <div className="relative flex flex-col md:flex-row items-center justify-between gap-4 z-10">
+              <div className="text-left">
+                <div className="flex items-center gap-2 font-bold text-white/90 text-xs uppercase tracking-wider">
+                  <span className="text-xl">🇮🇩</span> Dirgahayu Republik Indonesia ke-81
+                </div>
+                <h3 className="text-2xl md:text-3xl font-black leading-tight mt-1">
+                  Diskon Spesial <span className="text-yellow-300">81%</span> untuk Premium!
+                </h3>
+                <div className="flex items-center gap-3 mt-2 text-sm font-medium text-white/90">
+                  <Calendar size={16} /> Hingga 31 Agustus 2026
+                  <span className="w-1 h-1 bg-white/30 rounded-full"></span>
+                  <Timer size={16} /> {timeLeft}
+                </div>
+              </div>
+              <div className="flex flex-col items-end bg-red-800/30 backdrop-blur-md px-6 py-3 rounded-xl border border-white/20">
+                <span className="text-[11px] font-bold text-white/80 line-through">Harga Normal {formatPrice(REGULAR_MONTHLY)}/bln</span>
+                <span className="text-3xl font-extrabold text-yellow-300">Rp {PROMO_MONTHLY.toLocaleString('id-ID')}</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-center items-center gap-4 mb-12 bg-white shadow-sm border border-slate-200 p-1.5 rounded-2xl w-max mx-auto">
           <button 
@@ -220,7 +304,7 @@ function UpgradeContent() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto text-left">
-          {/* Paket Gratis */}
+          {/* --- Paket Gratis --- */}
           <div className="bg-white/80 backdrop-blur-md p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-100/50 hover:shadow-2xl hover:-translate-y-1 transition-all flex flex-col relative">
             <div className="mb-6">
               <h3 className="text-xl font-bold text-slate-900">{plans.free.name}</h3>
@@ -247,7 +331,7 @@ function UpgradeContent() {
             </button>
           </div>
 
-          {/* Paket Premium */}
+          {/* --- Paket Premium --- */}
           <div className="bg-white p-8 rounded-3xl border-2 border-blue-500 shadow-[0_8px_30px_rgb(59,130,246,0.15)] hover:shadow-[0_8px_40px_rgb(59,130,246,0.25)] hover:-translate-y-1 transition-all flex flex-col relative overflow-hidden">
             <div className="absolute top-0 right-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1.5 rounded-bl-2xl text-[10px] font-bold uppercase tracking-wide flex items-center gap-1">
               <Crown size={12} /> Paling Laris
@@ -257,14 +341,32 @@ function UpgradeContent() {
               <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                 {plans.premium.name}
               </h3>
-              <div className="flex items-baseline gap-1 mt-2">
-                <span className="text-4xl font-extrabold text-slate-900">
-                  {formatPrice(currentPrice)}
-                </span>
-                <span className="text-sm text-slate-500 font-medium">
-                  /{billingCycle === 'monthly' ? 'bulan' : 'tahun'}
-                </span>
+              
+              {/* ============================================================ */}
+              {/* ✅ BAGIAN HARGA DIPERBARUI DENGAN HARGA ASLI CORET */}
+              {/* ============================================================ */}
+              <div className="flex flex-col items-baseline mt-2">
+                {promoActive && (
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm text-slate-400 line-through">
+                      {formatPrice(originalPrice)}
+                    </span>
+                    <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
+                      Hemat 81%
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-extrabold text-slate-900">
+                    {formatPrice(currentPrice)}
+                  </span>
+                  <span className="text-sm text-slate-500 font-medium">
+                    /{billingCycle === 'monthly' ? 'bulan' : 'tahun'}
+                  </span>
+                </div>
               </div>
+              {/* ============================================================ */}
+
               {savingText && (
                 <div className="mt-1 text-sm font-bold text-green-600 bg-green-50 inline-block px-2 py-0.5 rounded-full">
                   {savingText}
@@ -287,7 +389,7 @@ function UpgradeContent() {
               disabled={isUpgrading}
               className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-500/30 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isUpgrading ? 'Mengarahkan ke Pembayaran...' : 'Upgrade Sekarang'}
+              {isUpgrading ? 'Mengarahkan ke Pembayaran...' : promoActive ? 'Ambil Promo 81% Sekarang!' : 'Upgrade Sekarang'}
             </button>
           </div>
         </div>

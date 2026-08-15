@@ -11,7 +11,8 @@ import {
   ShieldCheck, Cloud, Settings, Link as LinkIcon, QrCode, Sparkles,
   Check, Star, Shield, HelpCircle, ChevronRight, GraduationCap,
   ArrowUpRight, Users, Smartphone, ExternalLink, Play, ChevronLeft,
-  Heart, Send, Mail, Grid2X2, UserPlus, TrendingUp, Clock, Cpu, Award
+  Heart, Send, Mail, Grid2X2, UserPlus, TrendingUp, Clock, Cpu, Award,
+  ShoppingBag
 } from 'lucide-react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
@@ -228,6 +229,28 @@ export default function LandingClient() {
     return () => clearInterval(timer);
   }, []);
 
+  // --- PROMO COUNTDOWN LOGIC (HINGGA 31 AGUSTUS 2026) ---
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  useEffect(() => {
+    const targetDate = new Date("2026-08-31T23:59:59").getTime();
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const distance = targetDate - now;
+      if (distance <= 0) {
+        clearInterval(interval);
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      } else {
+        setTimeLeft({
+          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+          seconds: Math.floor((distance % (1000 * 60)) / 1000)
+        });
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   // --- AUTH LOGIC ---
   const [session, setSession] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -273,7 +296,7 @@ export default function LandingClient() {
     <div className={`${jakarta.variable} ${inter.variable} min-h-screen bg-[#f8fafc] text-slate-800 font-sans selection:bg-blue-600 selection:text-white overflow-x-hidden`}>
       
       {/* --- NAVBAR FIXED --- */}
-      <header className="fixed top-0 left-0 w-full z-50 bg-white/95 border-b border-slate-100/80 shadow-[0_4px_20px_rgba(0,0,0,0.02)] transition-all will-change-transform">
+      <header className="fixed top-0 left-0 w-full z-50 bg-white/95 backdrop-blur-md border-b border-slate-100/80 shadow-[0_4px_20px_rgba(0,0,0,0.02)] transition-all will-change-transform">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           
           {/* LOGO GRADASI BIRU-UNGU (IKON SVG + TEKS HTML) */}
@@ -294,6 +317,13 @@ export default function LandingClient() {
           {/* Navigasi Tengah */}
           <nav className="hidden md:flex items-center gap-8 font-bold text-sm text-slate-700">
             <Link href="/" className="text-blue-600 transition-colors">Beranda</Link>
+            
+            {/* TAMBAHAN MENU MARKETPLACE */}
+            <Link href="/shop" className="flex items-center gap-1.5 hover:text-blue-600 transition-colors py-2 relative group">
+              <ShoppingBag size={16} className="text-blue-600 group-hover:scale-110 transition-transform" />
+              Marketplace
+              <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full animate-pulse ml-1">NEW</span>
+            </Link>
             
             {/* Dropdown Fitur */}
             <div className="relative" onMouseEnter={() => setFiturDropdown(true)} onMouseLeave={() => setFiturDropdown(false)}>
@@ -361,7 +391,13 @@ export default function LandingClient() {
         <AnimatePresence>
           {mobileMenuOpen && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="md:hidden bg-white border-b border-slate-100 px-6 py-6 space-y-4 shadow-xl will-change-transform">
-              <Link href="/" className="block font-semibold text-blue-600 py-1">Beranda</Link>
+              <Link href="/" className="block font-semibold text-slate-600 py-1">Beranda</Link>
+              
+              {/* TAMBAHAN MENU MARKETPLACE MOBILE */}
+              <Link href="/shop" className="block font-semibold text-blue-600 py-1 flex items-center">
+                Marketplace <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full ml-2 animate-pulse">NEW</span>
+              </Link>
+
               <div className="py-1 space-y-2 border-l-2 border-blue-100 pl-3">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Fitur</p>
                 <Link href="/bio" className="block text-sm text-slate-600 font-medium">Link Bio</Link>
@@ -393,7 +429,7 @@ export default function LandingClient() {
       </header>
 
       {/* --- KONTEN UTAMA --- */}
-      <div className="pt-5 md:pt-10">
+      <div className="pt-24 md:pt-32">
         
         {/* --- HERO SECTION --- */}
         <section className="relative max-w-7xl mx-auto px-6 pt-0 pb-0 md:pb-0 overflow-visible grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-4 items-center">
@@ -463,10 +499,8 @@ export default function LandingClient() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="lg:col-span-5 relative flex justify-center items-center w-full h-[580px] sm:h-[680px] lg:h-[780px] select-none overflow-visible z-20 will-change-transform"
           >
-            {/* INNER WRAPPER TO SHIFT EVERYTHING TOGETHER TOWARDS THE CENTER */}
             <div className="relative w-full h-full flex justify-center items-center lg:-ml-10">
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center -z-10 overflow-visible">
-                {/* FIXED: Removed max-w-none to prevent zoom crash, limited to 140% max */}
                 <svg viewBox="0 0 600 600" className="w-[140%] h-[140%] max-w-[140%] opacity-85 md:animate-pulse" style={{ animationDuration: '6s' }} xmlns="http://www.w3.org/2000/svg">
                   <defs>
                     <linearGradient id="trailCyan" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#22d3ee" stopOpacity="0" /><stop offset="50%" stopColor="#38bdf8" stopOpacity="0.8" /><stop offset="100%" stopColor="#818cf8" stopOpacity="0" /></linearGradient>
@@ -481,7 +515,6 @@ export default function LandingClient() {
               </div>
 
               {/* Efek Cahaya Podium bawah */}
-              {/* FIXED: Added max-w-[110%] to prevent zoom overflow */}
               <div className="absolute bottom-[6%] lg:bottom-[8%] left-1/2 -translate-x-1/2 w-[90%] lg:w-[110%] max-w-[110%] h-36 lg:h-44 pointer-events-none -z-5 flex items-center justify-center">
                 <div className="absolute w-full h-full rounded-[100%] border-[3px] border-cyan-400/70 shadow-[0_0_30px_rgba(34,211,238,0.8),inset_0_0_15px_rgba(56,189,248,0.6)] md:shadow-[0_0_60px_rgba(34,211,238,0.8),inset_0_0_30px_rgba(56,189,248,0.6)] opacity-95 md:animate-pulse" />
                 <div className="absolute w-[86%] h-[78%] rounded-[100%] border-[2px] border-purple-400/80 shadow-[0_0_35px_rgba(168,85,247,0.7),inset_0_0_15px_rgba(192,132,252,0.7)] md:shadow-[0_0_70px_rgba(168,85,247,0.7),inset_0_0_35px_rgba(192,132,252,0.7)]" />
@@ -545,8 +578,70 @@ export default function LandingClient() {
               </div>
             </div>
           </motion.div>
-
         </section>
+
+               {/* --- PROMO KEMERDEKAAN 17 AGUSTUS BANNER --- */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="max-w-6xl mx-auto px-6 mb-8 relative z-20 will-change-transform mt-4 md:mt-0"
+        >
+          <div 
+            className="rounded-3xl p-6 sm:p-8 text-white shadow-[0_20px_50px_rgba(220,38,38,0.25)] relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 border border-white/20 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: "url('/bg-17agustus.png')" }}
+          >
+            {/* Overlay gelap/gradien agar teks tetap terbaca di atas gambar background */}
+            <div className="absolute inset-0 bg-red-900/40 mix-blend-multiply pointer-events-none" />
+            <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-[50px] pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col md:flex-row items-center gap-5 text-center md:text-left w-full">
+              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center flex-shrink-0 shadow-inner">
+                <span className="text-3xl">🇮🇩</span>
+              </div>
+              <div className="flex-1">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 border border-white/30 text-white text-[10px] font-bold mb-2 uppercase tracking-wider backdrop-blur-sm">
+                  <Sparkles size={12} className="text-yellow-300" /> Dirgahayu Republik Indonesia ke-81
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black tracking-tight leading-tight drop-shadow-md">
+                  Diskon 81% Spesial 17 Agustus!
+                </h3>
+                <p className="text-white/95 text-sm mt-1 max-w-2xl font-medium leading-relaxed drop-shadow">
+                  Rayakan kemerdekaan dengan upgrade ke Premium. Dapatkan akses penuh ke semua template dan fitur eksklusif dengan harga spesial. Promo terbatas!
+                </p>
+              </div>
+              
+              {/* COUNTDOWN BOX */}
+              <div className="flex items-center gap-2 md:gap-3 bg-black/30 p-3 rounded-2xl border border-white/20 backdrop-blur-md shrink-0 shadow-lg">
+                <div className="flex flex-col items-center">
+                  <span className="text-xl md:text-2xl font-black bg-white/20 px-3 py-1.5 rounded-lg">{timeLeft.days}</span>
+                  <span className="text-[10px] font-medium mt-1 uppercase">Hari</span>
+                </div>
+                <span className="text-xl font-bold">:</span>
+                <div className="flex flex-col items-center">
+                  <span className="text-xl md:text-2xl font-black bg-white/20 px-3 py-1.5 rounded-lg">{timeLeft.hours}</span>
+                  <span className="text-[10px] font-medium mt-1 uppercase">Jam</span>
+                </div>
+                <span className="text-xl font-bold">:</span>
+                <div className="flex flex-col items-center">
+                  <span className="text-xl md:text-2xl font-black bg-white/20 px-3 py-1.5 rounded-lg">{timeLeft.minutes}</span>
+                  <span className="text-[10px] font-medium mt-1 uppercase">Mnt</span>
+                </div>
+                <span className="text-xl font-bold">:</span>
+                <div className="flex flex-col items-center">
+                  <span className="text-xl md:text-2xl font-black bg-white/20 px-3 py-1.5 rounded-lg">{timeLeft.seconds}</span>
+                  <span className="text-[10px] font-medium mt-1 uppercase">Dtk</span>
+                </div>
+              </div>
+            </div>
+            
+            <Link href="/upgrade" className="relative z-10 shrink-0 bg-white text-rose-700 hover:bg-slate-50 px-8 py-3.5 rounded-2xl font-black transition-all shadow-[0_10px_25px_rgba(0,0,0,0.2)] hover:scale-105 text-sm flex items-center gap-2 group will-change-transform text-center w-full md:w-auto justify-center">
+              Ambil Promo 81% <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+        </motion.div>
 
         {/* --- STUDENT PROMO BANNER --- */}
         <motion.div 
