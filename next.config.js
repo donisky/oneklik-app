@@ -14,6 +14,7 @@ const nextConfig = {
               img-src 'self' data: blob: https:;
               font-src 'self' data:;
               connect-src 'self' https://*.supabase.co https://*.supabase.com https://www.oneklik.my.id https://app.sandbox.midtrans.com https://app.midtrans.com;
+              frame-src 'self' https://app.sandbox.midtrans.com https://app.midtrans.com;
             `.replace(/\s{2,}/g, ' ').trim()
           }
         ]
@@ -34,11 +35,6 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'wjtmdsksarzipitzsscf.supabase.co',
       },
-      // Bisa tambahkan domain Supabase wildcard jika perlu:
-      // {
-      //   protocol: 'https',
-      //   hostname: '*.supabase.co',
-      // },
     ],
   },
 };

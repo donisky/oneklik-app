@@ -104,7 +104,7 @@ export default function WalletPage() {
 
   // State Utama
   const [userId, setUserId] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null); // Tambahan untuk API
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [balances, setBalances] = useState<WalletBalances | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,7 +155,7 @@ export default function WalletPage() {
       }
       const currentUserId = session.user.id;
       setUserId(currentUserId);
-      setUserEmail(session.user.email || null); // Simpan email
+      setUserEmail(session.user.email || null);
 
       // AMBIL KEDUA SALDO DARI TABEL wallets
       const { data: walletData, error: walletError } = await supabase
@@ -391,7 +391,7 @@ export default function WalletPage() {
     if (actionType === 'topup') {
       setIsProcessing(true);
       try {
-        // 🔥 PERBAIKAN: Panggil endpoint /api/wallet/topup yang sudah kita perbaiki
+        // Panggil endpoint /api/wallet/topup yang sudah diperbaiki
         const res = await fetch('/api/wallet/topup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -428,7 +428,7 @@ export default function WalletPage() {
               setIsProcessing(false);
             }
           });
-          return; // Jangan reset isProcessing di sini, akan di-reset saat popup ditutup
+          return; 
         } else {
           throw new Error('Script Midtrans gagal dimuat.');
         }
@@ -451,7 +451,7 @@ export default function WalletPage() {
     try {
       let newBalances = { ...balances };
 
-      // Hitung saldo baru
+      // Hitung saldo baru (Hanya di frontend untuk update state, sebaiknya gunakan RPC di production!)
       if (actionType === 'withdraw_aff') newBalances.affiliate_balance -= amount;
       else if (actionType === 'withdraw_shop') newBalances.shop_balance -= amount;
       else if (actionType === 'transfer_to_shop') { newBalances.affiliate_balance -= amount; newBalances.shop_balance += amount; }
@@ -461,7 +461,7 @@ export default function WalletPage() {
       const source = (actionType?.includes('aff') && actionType !== 'transfer_to_aff') || actionType === 'transfer_to_shop' ? 'Affiliate' : 'Shop';
       const orderId = isWithdrawal ? `WD-${Date.now().toString().slice(-6)}` : `TRF-${Date.now().toString().slice(-6)}`;
 
-      // Update Database
+      // Update Database langsung dari client (perbaikan: pastikan validasi RLS membatasi)
       const { error: errBal } = await supabase.from('wallets').update({
         affiliate_balance: newBalances.affiliate_balance,
         shop_balance: newBalances.shop_balance,
@@ -545,7 +545,7 @@ export default function WalletPage() {
   const isTopupAction = actionType === 'topup';
 
   // ==========================================
-  // AKSI CEPAT — daftar aksi (data driven, mudah ditambah)
+  // AKSI CEPAT
   // ==========================================
   const quickActions = [
     { icon: Download, label: 'Top Up Saldo', color: 'text-indigo-600', bg: 'bg-indigo-100/50 border-indigo-200/50', action: () => openModal('topup') },
@@ -564,8 +564,9 @@ export default function WalletPage() {
   // ==========================================
   // NOTIFIKASI
   // ==========================================
+  // ✅ PERBAIKAN: Tambahkan (transactions || []) agar tidak error undefined
   const notificationItems = useMemo(() => {
-    return transactions.slice(0, 5).map(tx => ({
+    return (transactions || []).slice(0, 5).map(tx => ({
       id: tx.id,
       title: tx.type === 'Pemasukan' ? 'Dana Masuk' : tx.type === 'Penarikan' ? 'Penarikan Diproses' : 'Transfer Berhasil',
       desc: `${tx.title} • ${formatRupiah(tx.amount)}`,
@@ -807,9 +808,9 @@ export default function WalletPage() {
               </div>
 
               <div className="overflow-y-auto custom-scrollbar flex-1 divide-y divide-slate-100">
-                {fullHistory.length === 0 && !historyLoading ? (
+                {(fullHistory || []).length === 0 && !historyLoading ? (
                   <div className="py-16 text-center text-slate-400 text-sm font-medium">Tidak ada transaksi ditemukan</div>
-                ) : fullHistory.map(tx => (
+                ) : (fullHistory || []).map(tx => (
                   <div key={tx.id} className="px-7 py-4 flex items-center gap-4 hover:bg-white/70 cursor-pointer transition-colors" onClick={() => setDetailTx(tx)}>
                     <div className={`w-11 h-11 rounded-[14px] flex items-center justify-center shadow-sm border shrink-0 ${tx.source === 'Affiliate' ? 'bg-purple-50 border-purple-100 text-purple-600' : 'bg-blue-50 border-blue-100 text-blue-600'}`}>
                       {txIcon(tx, 18)}
