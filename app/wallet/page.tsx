@@ -17,9 +17,6 @@ import toast, { Toaster } from 'react-hot-toast';
 
 // ==========================================
 // 0. ROUTE CONFIG
-// 🔧 Sesuaikan path di bawah ini dengan struktur routing Next.js Anda
-//    yang sebenarnya (App Router). Semua navigasi sidebar memakai objek ini
-//    supaya cukup diubah di satu tempat.
 // ==========================================
 const ROUTES = {
   home: '/',
@@ -33,7 +30,7 @@ const ROUTES = {
   premium: '/dashboard/premium',
 };
 
-const SUPPORT_EMAIL = 'support@oneklik.id'; // 🔧 ganti sesuai email support asli
+const SUPPORT_EMAIL = 'support@oneklik.id';
 
 // ==========================================
 // 1. SETUP SUPABASE CLIENT
@@ -81,8 +78,7 @@ const formatDate = (dateString: string) => {
 const getMidtransBankCode = (providerName: string): string => {
   const map: Record<string, string> = {
     'BCA': 'bca', 'Mandiri': 'mandiri', 'BNI': 'bni', 'BRI': 'bri',
-    'BSI': 'bsm',
-    'CIMB Niaga': 'cimb', 'Permata': 'permata', 'Bank Jago': 'artos', 'Seabank': 'kesejahteraan_ekonomi',
+    'BSI': 'bsm', 'CIMB Niaga': 'cimb', 'Permata': 'permata', 'Bank Jago': 'artos', 'Seabank': 'kesejahteraan_ekonomi',
     'GoPay': 'gopay', 'OVO': 'ovo', 'DANA': 'dana', 'ShopeePay': 'shopeepay', 'LinkAja': 'linkaja'
   };
   return map[providerName] || 'unknown';
@@ -108,21 +104,19 @@ export default function WalletPage() {
 
   // State Utama
   const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null); // Tambahan untuk API
   const [balances, setBalances] = useState<WalletBalances | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Modal & Form State (aksi wallet)
+  // Modal & Form State
   const [actionType, setActionType] = useState<ActionType>(null);
   const [amountStr, setAmountStr] = useState<string>('');
-
   const [destType, setDestType] = useState<DestType>('Bank');
   const [provider, setProvider] = useState<string>('BCA');
   const [accountNumber, setAccountNumber] = useState<string>('');
   const [accountName, setAccountName] = useState<string>('');
-
   const [topupDest, setTopupDest] = useState<TopupDestType>('Shop');
-
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -161,6 +155,7 @@ export default function WalletPage() {
       }
       const currentUserId = session.user.id;
       setUserId(currentUserId);
+      setUserEmail(session.user.email || null); // Simpan email
 
       // AMBIL KEDUA SALDO DARI TABEL wallets
       const { data: walletData, error: walletError } = await supabase
@@ -235,9 +230,7 @@ export default function WalletPage() {
   }, []);
 
   // ==========================================
-  // RIWAYAT LENGKAP (fetch semua transaksi, paginated)
-  // Query tambahan murni SELECT ke tabel wallet_transactions yang sudah
-  // ada — tidak mengubah integrasi/skema Supabase yang berjalan.
+  // RIWAYAT LENGKAP
   // ==========================================
   const fetchFullHistory = async (reset: boolean) => {
     if (!userId) return;
@@ -397,32 +390,45 @@ export default function WalletPage() {
     // --- TOP UP ---
     if (actionType === 'topup') {
       setIsProcessing(true);
-      const orderId = `TU-${Date.now().toString().slice(-6)}`;
-      const targetColumn = topupDest === 'Shop' ? 'shop_balance' : 'affiliate_balance';
-
       try {
-        const { error: topupErr } = await supabase.from('topups').insert([{
-          user_id: userId, amount, status: 'pending', order_id: orderId
-        }]);
-        if (topupErr) throw new Error('Gagal mencatat Top Up.');
-
-        const res = await fetch('/api/midtrans/snap', {
+        // 🔥 PERBAIKAN: Panggil endpoint /api/wallet/topup yang sudah kita perbaiki
+        const res = await fetch('/api/wallet/topup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ order_id: orderId, amount })
+          body: JSON.stringify({
+            amount: amount,
+            userId: userId,
+            email: userEmail || 'guest@oneklik.id'
+          })
         });
 
-        if (!res.ok) throw new Error('Gagal membuat pesanan.');
         const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Gagal membuat transaksi Top Up.');
+        }
 
         if (data.token && window.snap) {
           window.snap.pay(data.token, {
-            onSuccess: () => { toast.success('Top Up Berhasil!'); fetchData(); closeModal(); },
-            onPending: () => { toast.success('Pembayaran pending.'); closeModal(); },
-            onError: () => { toast.error('Pembayaran gagal.'); setIsProcessing(false); },
-            onClose: () => { toast.error('Pembayaran dibatalkan.'); setIsProcessing(false); }
+            onSuccess: () => {
+              toast.success('Top Up Berhasil!');
+              fetchData();
+              closeModal();
+            },
+            onPending: () => {
+              toast.success('Pembayaran pending.');
+              closeModal();
+            },
+            onError: () => {
+              toast.error('Pembayaran gagal.');
+              setIsProcessing(false);
+            },
+            onClose: () => {
+              toast.error('Pembayaran dibatalkan.');
+              setIsProcessing(false);
+            }
           });
-          return;
+          return; // Jangan reset isProcessing di sini, akan di-reset saat popup ditutup
         } else {
           throw new Error('Script Midtrans gagal dimuat.');
         }
@@ -464,7 +470,12 @@ export default function WalletPage() {
       if (errBal) throw new Error('Gagal update saldo: ' + errBal.message);
 
       const txPayload = {
-        user_id: userId, title: modalInfo.title, order_id: orderId, type: txType, source: source, amount: amount,
+        user_id: userId,
+        title: modalInfo.title,
+        order_id: orderId,
+        type: txType,
+        source: source,
+        amount: amount,
         destination_detail: isWithdrawal ? `${provider} - ${accountNumber} (${accountName})` : 'Transfer Internal'
       };
 
@@ -474,8 +485,13 @@ export default function WalletPage() {
       // Midtrans Iris Payout
       if (isWithdrawal) {
         const { data: wdData, error: errWd } = await supabase.from('withdrawals').insert([{
-          user_id: userId, amount, provider_type: destType, provider_name: provider,
-          account_number: accountNumber, account_name: accountName, status: 'pending'
+          user_id: userId,
+          amount,
+          provider_type: destType,
+          provider_name: provider,
+          account_number: accountNumber,
+          account_name: accountName,
+          status: 'pending'
         }]).select().single();
         if (errWd) throw new Error('Gagal mencatat Withdrawal.');
 
@@ -484,9 +500,12 @@ export default function WalletPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              reference_id: wdData.id, beneficiary_name: accountName,
-              beneficiary_account: accountNumber, beneficiary_bank: getMidtransBankCode(provider),
-              amount, notes: `Penarikan Oneklik.id`
+              reference_id: wdData.id,
+              beneficiary_name: accountName,
+              beneficiary_account: accountNumber,
+              beneficiary_bank: getMidtransBankCode(provider),
+              amount,
+              notes: `Penarikan Oneklik.id`
             })
           });
         } catch { /* Ignore fetch error, withdrawal saved in DB */ }
@@ -543,7 +562,7 @@ export default function WalletPage() {
   ];
 
   // ==========================================
-  // NOTIFIKASI — dibangun dari transaksi terbaru (data nyata, tanpa tabel baru)
+  // NOTIFIKASI
   // ==========================================
   const notificationItems = useMemo(() => {
     return transactions.slice(0, 5).map(tx => ({
@@ -566,7 +585,7 @@ export default function WalletPage() {
       <div className="absolute top-[30%] left-[20%] w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-[130px] pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-indigo-400/25 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* ================= MODAL AKSI WALLET (Top Up / Tarik / Transfer) ================= */}
+      {/* ================= MODAL AKSI WALLET ================= */}
       <AnimatePresence>
         {actionType && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -969,7 +988,7 @@ export default function WalletPage() {
             </div>
           </header>
 
-          {/* MAIN BALANCE CARDS - DATA SUDAH DIPISAHKAN */}
+          {/* MAIN BALANCE CARDS */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Card Affiliate */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-br from-indigo-500 via-purple-600 to-purple-800 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-[0_20px_40px_rgba(124,58,237,0.25)] border border-white/10 group">

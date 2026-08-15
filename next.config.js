@@ -9,18 +9,17 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: `
               default-src 'self';
-              script-src 'self' 'unsafe-eval' 'unsafe-inline';
+              script-src 'self' 'unsafe-eval' 'unsafe-inline' https://app.sandbox.midtrans.com https://app.midtrans.com;
               style-src 'self' 'unsafe-inline';
               img-src 'self' data: blob: https:;
               font-src 'self' data:;
-              connect-src 'self' https://*.supabase.co https://*.supabase.com https://www.oneklik.my.id;
+              connect-src 'self' https://*.supabase.co https://*.supabase.com https://www.oneklik.my.id https://app.sandbox.midtrans.com https://app.midtrans.com;
             `.replace(/\s{2,}/g, ' ').trim()
           }
         ]
       }
     ];
   },
-  // --- PERBAIKAN BAGIAN INI AGAR GAMBAR SUPABASE BISA DIMUAT ---
   images: {
     remotePatterns: [
       {
@@ -31,12 +30,11 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'ui-avatars.com',
       },
-      // --- TAMBAHKAN DOMAIN SUPABASE ANDA DI SINI ---
       {
         protocol: 'https',
         hostname: 'wjtmdsksarzipitzsscf.supabase.co',
       },
-      // (Opsional) Jika Anda ingin mengizinkan semua bucket/storage di project Supabase Anda:
+      // Bisa tambahkan domain Supabase wildcard jika perlu:
       // {
       //   protocol: 'https',
       //   hostname: '*.supabase.co',
