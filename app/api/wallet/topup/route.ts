@@ -31,7 +31,11 @@ export async function POST(req: Request) {
 
     const userIdStr = String(userId).trim();
     const amountNum = Number(amount);
-    const orderId = `TOPUP-${userIdStr}-${Date.now()}`;
+    
+    // ✅ PERBAIKAN: Membuat order_id lebih pendek agar tidak melebihi limit 50 karakter Midtrans.
+    // Contoh output: TU-1692158400000-A1B2C3 (Total ~23 karakter)
+    const shortRandom = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const orderId = `TU-${Date.now()}-${shortRandom}`;
 
     // 1. Simpan transaksi pending ke database
     const { error: insertError } = await supabase.from('wallet_transactions').insert({

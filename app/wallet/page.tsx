@@ -71,6 +71,7 @@ const formatRupiah = (value: number) => {
 };
 
 const formatDate = (dateString: string) => {
+  if (!dateString) return '-';
   const date = new Date(dateString);
   return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date) + ' WIB';
 };
@@ -92,11 +93,15 @@ const BANKS = ['BCA', 'Mandiri', 'BNI', 'BRI', 'BSI', 'CIMB Niaga', 'Permata', '
 const EWALLETS = ['GoPay', 'OVO', 'DANA', 'ShopeePay', 'LinkAja'];
 const HISTORY_PAGE_SIZE = 15;
 
+// ✅ PERBAIKAN: Proteksi null/undefined pada title untuk mencegah TypeError Crash
 const txIcon = (tx: Transaction, size = 20) => {
-  if (tx.type === 'Penarikan') return <ArrowUpRight size={size} />;
-  if (tx.type === 'Transfer') return <ArrowRightLeft size={size} />;
-  if (tx.title.includes('Top Up')) return <Download size={size} />;
-  return tx.source === 'Affiliate' ? <Users size={size} /> : <ShoppingBag size={size} />;
+  if (tx?.type === 'Penarikan') return <ArrowUpRight size={size} />;
+  if (tx?.type === 'Transfer') return <ArrowRightLeft size={size} />;
+  
+  // Mencegah crash jika tx.title ternyata undefined/null di database
+  if (typeof tx?.title === 'string' && tx.title.includes('Top Up')) return <Download size={size} />;
+  
+  return tx?.source === 'Affiliate' ? <Users size={size} /> : <ShoppingBag size={size} />;
 };
 
 export default function WalletPage() {
@@ -201,7 +206,7 @@ export default function WalletPage() {
   useEffect(() => {
     fetchData();
 
-    // ✅ PERBAIKAN PENTING: Deteksi mode dari Environment Variable
+    // Deteksi mode dari Environment Variable
     const isProduction = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true';
     const midtransScriptUrl = isProduction
       ? 'https://app.midtrans.com/snap/snap.js'
@@ -215,7 +220,13 @@ export default function WalletPage() {
       scriptTag.setAttribute('data-client-key', myMidtransClientKey);
       scriptTag.async = true;
       document.body.appendChild(scriptTag);
-      return () => { document.body.removeChild(scriptTag); }
+      
+      // ✅ PERBAIKAN: Memastikan elemen ada sebelum di-remove saat unmount
+      return () => { 
+        if (document.body.contains(scriptTag)) {
+          document.body.removeChild(scriptTag); 
+        }
+      }
     }
   }, []);
 
@@ -334,7 +345,7 @@ export default function WalletPage() {
           <p class="sub">Bukti Transaksi</p>
           <div class="amount">${tx.type === 'Pemasukan' ? '+' : '-'} ${formatRupiah(tx.amount)}</div>
           <div class="row"><span class="label">ID Transaksi</span><span>${tx.order_id}</span></div>
-          <div class="row"><span class="label">Judul</span><span>${tx.title}</span></div>
+          <div class="row"><span class="label">Judul</span><span>${tx.title || '-'}</span></div>
           <div class="row"><span class="label">Tipe</span><span>${tx.type}</span></div>
           <div class="row"><span class="label">Sumber Saldo</span><span>${tx.source}</span></div>
           <div class="row"><span class="label">Detail Tujuan</span><span>${tx.destination_detail || '-'}</span></div>
@@ -356,7 +367,7 @@ export default function WalletPage() {
     }
     const header = ['Tanggal', 'Judul', 'ID Transaksi', 'Tipe', 'Sumber', 'Nominal', 'Detail Tujuan'];
     const csvRows = rows.map(tx => [
-      formatDate(tx.created_at), tx.title, tx.order_id, tx.type, tx.source, String(tx.amount), tx.destination_detail || '-'
+      formatDate(tx.created_at), tx.title || '-', tx.order_id, tx.type, tx.source, String(tx.amount), tx.destination_detail || '-'
     ]);
     const csvContent = [header, ...csvRows]
       .map(r => r.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
@@ -389,7 +400,8 @@ export default function WalletPage() {
     else if (actionType === 'withdraw_shop' || actionType === 'transfer_to_aff') currentBalance = balances.shop_balance;
 
     if (actionType !== 'topup' && amount > currentBalance) {
-      return toast.error(`Saldo ${actionType?.includes('aff') ? 'Affiliate' : 'Shop'} tidak mencukupi.`);
+      // ✅ PERBAIKAN: Safe checks menggunakan (actionType || '')
+      return toast.error(`Saldo ${(actionType || '').includes('aff') ? 'Affiliate' : 'Shop'} tidak mencukupi.`);
     }
 
     // --- TOP UP ---
@@ -412,7 +424,7 @@ export default function WalletPage() {
           });
           return; 
         } else {
-          throw new Error('Script Midtrans gagal dimuat.');
+          throw new Error('Script Midtrans gagal dimuat. Pastikan pengaturan CSP Anda mengizinkan koneksi ke Midtrans.');
         }
       } catch (err: any) {
         setIsProcessing(false);
@@ -438,7 +450,8 @@ export default function WalletPage() {
       else if (actionType === 'transfer_to_aff') { newBalances.shop_balance -= amount; newBalances.affiliate_balance += amount; }
 
       const txType = isWithdrawal ? 'Penarikan' : 'Transfer';
-      const source = (actionType?.includes('aff') && actionType !== 'transfer_to_aff') || actionType === 'transfer_to_shop' ? 'Affiliate' : 'Shop';
+      // ✅ PERBAIKAN: Safe checks menggunakan (actionType || '')
+      const source = ((actionType || '').includes('aff') && actionType !== 'transfer_to_aff') || actionType === 'transfer_to_shop' ? 'Affiliate' : 'Shop';
       const orderId = isWithdrawal ? `WD-${Date.now().toString().slice(-6)}` : `TRF-${Date.now().toString().slice(-6)}`;
 
       const { error: errBal } = await supabase.from('wallets').update({
@@ -477,7 +490,7 @@ export default function WalletPage() {
 
       setBalances(newBalances);
       const newTx: Transaction = {
-        id: orderId, title: modalInfo.title, order_id: orderId, type: txType, source: source,
+        id: orderId, title: modalInfo.title, order_id: orderId, type: txType, source: source as 'Affiliate' | 'Shop',
         amount: amount, created_at: new Date().toISOString(),
         destination_detail: isWithdrawal ? `${provider} - ${accountNumber} (${accountName})` : 'Transfer Internal'
       };
@@ -536,7 +549,7 @@ export default function WalletPage() {
     return (transactions || []).slice(0, 5).map(tx => ({
       id: tx.id,
       title: tx.type === 'Pemasukan' ? 'Dana Masuk' : tx.type === 'Penarikan' ? 'Penarikan Diproses' : 'Transfer Berhasil',
-      desc: `${tx.title} • ${formatRupiah(tx.amount)}`,
+      desc: `${tx.title || 'Transaksi Sistem'} • ${formatRupiah(tx.amount)}`,
       time: formatDate(tx.created_at),
       unread: (Date.now() - new Date(tx.created_at).getTime()) < 24 * 60 * 60 * 1000,
       tx,
@@ -696,7 +709,7 @@ export default function WalletPage() {
                   <p className={`text-3xl font-black tracking-tight ${detailTx.type === 'Pemasukan' ? 'text-emerald-600' : detailTx.type === 'Transfer' ? 'text-indigo-600' : 'text-rose-600'}`}>
                     {detailTx.type === 'Pemasukan' ? '+' : '-'} {formatRupiah(detailTx.amount)}
                   </p>
-                  <p className="text-sm text-slate-500 font-semibold mt-1">{detailTx.title}</p>
+                  <p className="text-sm text-slate-500 font-semibold mt-1">{detailTx.title || 'Transaksi Sistem'}</p>
                 </div>
 
                 <div className="space-y-0.5">
@@ -783,7 +796,7 @@ export default function WalletPage() {
                       {txIcon(tx, 18)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-900 text-[13px] truncate">{tx.title}</p>
+                      <p className="font-bold text-slate-900 text-[13px] truncate">{tx.title || 'Transaksi Sistem'}</p>
                       <p className="text-[11px] text-slate-400 font-medium truncate">{tx.order_id} • {formatDate(tx.created_at)}</p>
                     </div>
                     <p className={`font-extrabold text-[13px] shrink-0 ${tx.type === 'Pemasukan' ? 'text-emerald-600' : tx.type === 'Transfer' ? 'text-indigo-600' : 'text-rose-600'}`}>
@@ -1074,7 +1087,6 @@ export default function WalletPage() {
                   </tr>
                 </thead>
                 <tbody className="text-sm font-medium text-slate-700">
-                  {/* ✅ PERBAIKAN ANTI CRASH DENGAN (transactions || []) */}
                   {(transactions || []).length === 0 ? (
                      <tr><td colSpan={6} className="py-8 text-center text-slate-400">Belum ada transaksi ditemukan</td></tr>
                   ) : (transactions || []).map((tx) => (
@@ -1084,7 +1096,7 @@ export default function WalletPage() {
                           {txIcon(tx, 20)}
                         </div>
                         <div>
-                          <p className="font-extrabold text-slate-900 text-[14px] group-hover:text-blue-600 transition-colors whitespace-nowrap">{tx.title}</p>
+                          <p className="font-extrabold text-slate-900 text-[14px] group-hover:text-blue-600 transition-colors whitespace-nowrap">{tx.title || 'Transaksi Sistem'}</p>
                           <p className="text-[12px] text-slate-400 font-medium">{tx.order_id}</p>
                         </div>
                       </td>
