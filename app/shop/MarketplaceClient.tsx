@@ -39,9 +39,17 @@ interface CartItem {
 // HELPERS & CUSTOM HOOKS
 // ============================================================
 function formatRupiah(value: number | string | undefined | null) {
-  if (typeof value === 'number') return `Rp${value.toLocaleString('id-ID')}`;
-  if (!value) return 'Rp0';
-  return value;
+  let num = 0;
+  if (typeof value === 'number') {
+    num = value;
+  } else if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9]/g, '');
+    num = cleaned ? parseFloat(cleaned) : 0;
+  } else if (!value) {
+    num = 0;
+  }
+  if (isNaN(num) || num === 0) return 'Rp0';
+  return `Rp${num.toLocaleString('id-ID')}`;
 }
 
 function toPriceNumber(value: number | string | undefined | null) {
@@ -673,13 +681,15 @@ export default function MarketplaceClient({
     const fetchData = async () => {
       // 1. Ambil Session & User
       const { data: { session } } = await supabase.auth.getSession();
+      let currentUserProfile = null;
       if (session?.user) {
         const { data: userData } = await supabase
           .from('users')
-          .select('full_name, avatar_url, is_premium')
+          .select('full_name, avatar_url, is_premium, id')
           .eq('id', session.user.id)
           .single();
         setUserProfile(userData);
+        currentUserProfile = userData;
 
         const { data: wallet } = await supabase
           .from('wallets')
@@ -701,9 +711,10 @@ export default function MarketplaceClient({
         return;
       }
 
+      let formattedProducts: any[] = [];
       if (productsData && productsData.length > 0) {
         // Mapping data dari kolom database ke format yang dipakai UI
-        const formattedProducts = productsData.map((item: any) => ({
+        formattedProducts = productsData.map((item: any) => ({
           id: item.id,
           title: item.title,
           price: Number(item.price) || 10000, // Pastikan price adalah angka
@@ -721,6 +732,35 @@ export default function MarketplaceClient({
         // Ambil 4 produk terbaru untuk section "Produk Terbaru"
         setDbNewProducts(formattedProducts.slice(0, 4));
       }
+
+      // ✅ Sinkronisasi Keranjang dari Database
+      const loadCartFromDB = async () => {
+        if (!currentUserProfile?.id || formattedProducts.length === 0) return;
+        const { data, error } = await supabase
+          .from('cart_items')
+          .select('product_id, quantity')
+          .eq('user_id', currentUserProfile.id);
+
+        if (error || !data) return;
+
+        const dbCartItems = data.map((item) => {
+          const prod = formattedProducts.find((p) => String(p.id) === String(item.product_id));
+          return {
+            id: item.product_id,
+            title: prod?.title || 'Produk Tidak Ditemukan',
+            price: prod?.price || 0,
+            image: prod?.image || '',
+            qty: item.quantity,
+          };
+        });
+
+        // Hanya replace jika ada item di database
+        if (dbCartItems.length > 0) {
+          setCartItems(dbCartItems);
+        }
+      };
+      if (currentUserProfile) loadCartFromDB();
+
     };
     fetchData();
   }, [supabase]);
@@ -825,16 +865,34 @@ export default function MarketplaceClient({
     );
   };
 
-  const addToCart = (product: any, qty: number = 1, openCartAfter: boolean = false) => {
+  // ✅ ADD TO CART (Dengan Sinkronisasi ke Supabase)
+  const addToCart = async (product: any, qty: number = 1, openCartAfter: boolean = false) => {
     const priceNumber = toPriceNumber(product.price);
     setCartItems((prev) => {
       const idx = prev.findIndex((item) => item.id === product.id);
+      let newState;
       if (idx > -1) {
         const next = [...prev];
         next[idx] = { ...next[idx], qty: next[idx].qty + qty };
-        return next;
+        newState = next;
+      } else {
+        newState = [...prev, { id: product.id, title: product.title, price: priceNumber, image: product.image, qty }];
       }
-      return [...prev, { id: product.id, title: product.title, price: priceNumber, image: product.image, qty }];
+
+      // Kirim ke Supabase
+      if (userProfile?.id) {
+        supabase.from('cart_items').upsert(
+          newState.map(item => ({
+            user_id: userProfile.id,
+            product_id: String(item.id),
+            quantity: item.qty
+          })), 
+          { onConflict: 'user_id, product_id' }
+        ).then(({ error }) => {
+          if (error) console.error('Gagal sync cart (add):', error);
+        });
+      }
+      return newState;
     });
     
     setIsCartBumping(true);
@@ -849,12 +907,43 @@ export default function MarketplaceClient({
     }
   };
 
-  const updateCartQty = (id: number | string, delta: number) => {
-    setCartItems((prev) => prev.map((item) => (item.id === id ? { ...item, qty: Math.max(1, item.qty + delta) } : item)));
+  // ✅ UPDATE CART QTY (Dengan Sinkronisasi ke Supabase)
+  const updateCartQty = async (id: number | string, delta: number) => {
+    setCartItems((prev) => {
+      const newState = prev.map((item) => 
+        item.id === id ? { ...item, qty: Math.max(1, item.qty + delta) } : item
+      );
+      if (userProfile?.id) {
+        supabase.from('cart_items').upsert(
+          newState.filter(item => String(item.id) === String(id)).map(item => ({
+            user_id: userProfile.id,
+            product_id: String(item.id),
+            quantity: item.qty
+          })),
+          { onConflict: 'user_id, product_id' }
+        ).then(({ error }) => {
+          if (error) console.error('Gagal sync cart (qty):', error);
+        });
+      }
+      return newState;
+    });
   };
 
-  const removeFromCart = (id: number | string) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== id));
+  // ✅ REMOVE FROM CART (Dengan Hapus dari Supabase)
+  const removeFromCart = async (id: number | string) => {
+    setCartItems((prev) => {
+      const newState = prev.filter((item) => item.id !== id);
+      if (userProfile?.id) {
+        supabase.from('cart_items')
+          .delete()
+          .eq('user_id', userProfile.id)
+          .eq('product_id', String(id))
+          .then(({ error }) => {
+            if (error) console.error('Gagal sync cart (remove):', error);
+          });
+      }
+      return newState;
+    });
   };
 
   const toggleWishlist = (product: any) => {
@@ -907,8 +996,6 @@ export default function MarketplaceClient({
   }, [hasActiveFilter, products, searchCatalog, activeCategory, searchQuery]);
 
   const isNavActive = (href: string) => pathname === href;
-
-  // Hitung total saldo dari database
   const totalBalance = (walletData?.shop_balance || 0) + (walletData?.affiliate_balance || 0);
 
   // ==========================================================
@@ -1447,7 +1534,6 @@ export default function MarketplaceClient({
           <div className="relative w-full rounded-2xl overflow-hidden bg-[url('/background-shop.png')] bg-cover bg-center mb-6 shadow-lg">
             <div className="absolute inset-0 bg-[#1E3A8A]/60 mix-blend-multiply"></div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-            
             <div className="relative z-10 flex flex-col md:flex-row items-center min-h-[240px] lg:min-h-[260px] p-6 md:p-8 lg:px-10">
               {/* Bagian Teks Kiri - Lebar tetap 3/5 */}
               <div className="w-full md:w-3/5 text-left pt-2 pb-6 md:pb-0 z-20">
@@ -1522,7 +1608,7 @@ export default function MarketplaceClient({
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 xl:gap-5">
                 <AnimatePresence mode="popLayout">
                   {displayedProducts.map((prod: any, index: number) => (
-                    <ProductCard key={prod.id ?? index} product={prod} onQuickView={setQuickViewProduct} onAddToCart={(p:any) => addToCart(p, 1, false)} isWishlisted={wishlist.includes(prod.id)} onToggleWishlist={toggleWishlist} />
+                    <ProductCard key={prod.id ?? index} product={prod} onQuickView={setQuickViewProduct} onAddToCart={(p:any) => addToCart(p, 1, false)} isWishlisted={(wishlist || []).includes(prod.id)} onToggleWishlist={toggleWishlist} />
                   ))}
                 </AnimatePresence>
               </div>
@@ -1574,7 +1660,7 @@ export default function MarketplaceClient({
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 xl:gap-5">
               {newProducts.map((prod: any, index: number) => (
-                <ProductCard key={prod.id ?? `new-${index}`} product={prod} onQuickView={setQuickViewProduct} onAddToCart={(p:any) => addToCart(p, 1, false)} isWishlisted={wishlist.includes(prod.id)} onToggleWishlist={toggleWishlist} />
+                <ProductCard key={prod.id ?? `new-${index}`} product={prod} onQuickView={setQuickViewProduct} onAddToCart={(p:any) => addToCart(p, 1, false)} isWishlisted={(wishlist || []).includes(prod.id)} onToggleWishlist={toggleWishlist} />
               ))}
             </div>
           </div>
@@ -1592,7 +1678,6 @@ export default function MarketplaceClient({
               <p className="text-white/95 text-[11px] font-medium mb-4">Untuk Semua Produk<br /><span className="font-normal opacity-90 text-[9px]">Berlaku hingga 31 Mei 2025</span></p>
               <span className="inline-flex bg-white text-[#2563EB] px-4 py-2 rounded-lg text-[11px] font-bold items-center w-fit shadow-sm group-hover:bg-blue-50 transition-colors">Lihat Promo</span>
             </div>
-            {/* Gambar floating dihapus karena sudah ada di dalam background-sidebar-kanan.png */}
           </Link>
 
           <div className="mb-8">
@@ -1658,7 +1743,7 @@ export default function MarketplaceClient({
       </nav>
 
       {/* --- 4. POPUP & MODAL RENDERS --- */}
-      <QuickViewModal product={quickViewProduct} onClose={() => setQuickViewProduct(null)} onAddToCart={addToCart} isWishlisted={quickViewProduct ? wishlist.includes(quickViewProduct.id) : false} onToggleWishlist={toggleWishlist} />
+      <QuickViewModal product={quickViewProduct} onClose={() => setQuickViewProduct(null)} onAddToCart={addToCart} isWishlisted={quickViewProduct ? (wishlist || []).includes(quickViewProduct.id) : false} onToggleWishlist={toggleWishlist} />
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cartItems} onUpdateQty={updateCartQty} onRemove={removeFromCart} subtotal={cartSubtotal} />
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} activeCategory={activeCategory} onSelectCategory={handleSelectCategory} />
 

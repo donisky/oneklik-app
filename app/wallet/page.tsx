@@ -512,7 +512,18 @@ export default function WalletPage() {
       }
 
       setBalances(newBalances);
-      setTransactions(prev => [{ ...txPayload, id: Math.random().toString(), created_at: new Date().toISOString() } as Transaction, ...prev]);
+      // PERBAIKAN: Gunakan orderId sebagai ID sementara dan created_at sekarang
+      const newTx: Transaction = {
+        id: orderId, // gunakan orderId sebagai ID sementara
+        title: modalInfo.title,
+        order_id: orderId,
+        type: txType,
+        source: source,
+        amount: amount,
+        created_at: new Date().toISOString(),
+        destination_detail: isWithdrawal ? `${provider} - ${accountNumber} (${accountName})` : 'Transfer Internal'
+      };
+      setTransactions(prev => [newTx, ...prev]);
 
       setIsProcessing(false);
       setIsSuccess(true);
