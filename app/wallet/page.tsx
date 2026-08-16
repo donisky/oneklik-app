@@ -198,14 +198,14 @@ export default function WalletPage() {
     }
   };
 
-    useEffect(() => {
+  useEffect(() => {
     fetchData();
 
-    // ✅ PERBAIKAN PENTING: Deteksi mode dan pilih domain yang benar!
+    // ✅ PERBAIKAN PENTING: Deteksi mode dari Environment Variable
     const isProduction = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true';
     const midtransScriptUrl = isProduction
-      ? 'https://app.midtrans.com/snap/snap.js'
-      : 'https://app.sandbox.midtrans.com/snap/snap.js';
+      ? 'https://app.midtrans.com/snap/snap.js'      // URL Live
+      : 'https://app.sandbox.midtrans.com/snap/snap.js'; // URL Sandbox
 
     const myMidtransClientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '';
 
@@ -374,7 +374,7 @@ export default function WalletPage() {
   };
 
   // ==========================================
-  // EXECUTION LOGIC (Memperhatikan saldo Affiliate/Shop)
+  // EXECUTION LOGIC
   // ==========================================
   const executeTransaction = async () => {
     const amount = parseInt(amountStr);
@@ -396,7 +396,6 @@ export default function WalletPage() {
     if (actionType === 'topup') {
       setIsProcessing(true);
       try {
-        // Panggil endpoint /api/wallet/topup yang sudah diperbaiki
         const res = await fetch('/api/wallet/topup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -433,7 +432,7 @@ export default function WalletPage() {
               setIsProcessing(false);
             }
           });
-          return; 
+          return;
         } else {
           throw new Error('Script Midtrans gagal dimuat.');
         }
@@ -456,7 +455,7 @@ export default function WalletPage() {
     try {
       let newBalances = { ...balances };
 
-      // Hitung saldo baru (Hanya di frontend untuk update state, sebaiknya gunakan RPC di production!)
+      // Hitung saldo baru
       if (actionType === 'withdraw_aff') newBalances.affiliate_balance -= amount;
       else if (actionType === 'withdraw_shop') newBalances.shop_balance -= amount;
       else if (actionType === 'transfer_to_shop') { newBalances.affiliate_balance -= amount; newBalances.shop_balance += amount; }
@@ -466,7 +465,7 @@ export default function WalletPage() {
       const source = (actionType?.includes('aff') && actionType !== 'transfer_to_aff') || actionType === 'transfer_to_shop' ? 'Affiliate' : 'Shop';
       const orderId = isWithdrawal ? `WD-${Date.now().toString().slice(-6)}` : `TRF-${Date.now().toString().slice(-6)}`;
 
-      // Update Database langsung dari client (perbaikan: pastikan validasi RLS membatasi)
+      // Update Database
       const { error: errBal } = await supabase.from('wallets').update({
         affiliate_balance: newBalances.affiliate_balance,
         shop_balance: newBalances.shop_balance,
@@ -517,9 +516,8 @@ export default function WalletPage() {
       }
 
       setBalances(newBalances);
-      // PERBAIKAN: Gunakan orderId sebagai ID sementara dan created_at sekarang
       const newTx: Transaction = {
-        id: orderId, // gunakan orderId sebagai ID sementara
+        id: orderId,
         title: modalInfo.title,
         order_id: orderId,
         type: txType,
@@ -580,7 +578,6 @@ export default function WalletPage() {
   // ==========================================
   // NOTIFIKASI
   // ==========================================
-  // ✅ PERBAIKAN: Tambahkan (transactions || []) agar tidak error undefined
   const notificationItems = useMemo(() => {
     return (transactions || []).slice(0, 5).map(tx => ({
       id: tx.id,
@@ -847,7 +844,7 @@ export default function WalletPage() {
                 )}
               </div>
 
-              {historyHasMore && !historyLoading && fullHistory.length > 0 && (
+              {historyHasMore && !historyLoading && (fullHistory || []).length > 0 && (
                 <div className="p-4 border-t border-slate-100 bg-white/30">
                   <button onClick={() => fetchFullHistory(false)} className={`${glassButton} w-full py-3 rounded-2xl text-sm font-bold text-slate-700`}>
                     Muat Lebih Banyak
