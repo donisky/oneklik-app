@@ -198,10 +198,15 @@ export default function WalletPage() {
     }
   };
 
-  useEffect(() => {
+    useEffect(() => {
     fetchData();
 
-    const midtransScriptUrl = 'https://app.sandbox.midtrans.com/snap/snap.js';
+    // ✅ PERBAIKAN PENTING: Deteksi mode dan pilih domain yang benar!
+    const isProduction = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true';
+    const midtransScriptUrl = isProduction
+      ? 'https://app.midtrans.com/snap/snap.js'
+      : 'https://app.sandbox.midtrans.com/snap/snap.js';
+
     const myMidtransClientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '';
 
     if (myMidtransClientKey) {
