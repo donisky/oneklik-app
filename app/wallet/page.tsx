@@ -204,8 +204,8 @@ export default function WalletPage() {
     // ✅ PERBAIKAN PENTING: Deteksi mode dari Environment Variable
     const isProduction = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true';
     const midtransScriptUrl = isProduction
-      ? 'https://app.midtrans.com/snap/snap.js'      // URL Live
-      : 'https://app.sandbox.midtrans.com/snap/snap.js'; // URL Sandbox
+      ? 'https://app.midtrans.com/snap/snap.js'
+      : 'https://app.sandbox.midtrans.com/snap/snap.js';
 
     const myMidtransClientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '';
 
@@ -374,7 +374,7 @@ export default function WalletPage() {
   };
 
   // ==========================================
-  // EXECUTION LOGIC
+  // EXECUTION LOGIC (Memperhatikan saldo Affiliate/Shop)
   // ==========================================
   const executeTransaction = async () => {
     const amount = parseInt(amountStr);
@@ -399,40 +399,18 @@ export default function WalletPage() {
         const res = await fetch('/api/wallet/topup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount: amount,
-            userId: userId,
-            email: userEmail || 'guest@oneklik.id'
-          })
+          body: JSON.stringify({ amount, userId: userId, email: userEmail || 'guest@oneklik.id' }),
         });
-
         const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error || 'Gagal membuat transaksi Top Up.');
-        }
-
+        if (!res.ok) throw new Error(data.error || 'Gagal membuat transaksi Top Up.');
         if (data.token && window.snap) {
           window.snap.pay(data.token, {
-            onSuccess: () => {
-              toast.success('Top Up Berhasil!');
-              fetchData();
-              closeModal();
-            },
-            onPending: () => {
-              toast.success('Pembayaran pending.');
-              closeModal();
-            },
-            onError: () => {
-              toast.error('Pembayaran gagal.');
-              setIsProcessing(false);
-            },
-            onClose: () => {
-              toast.error('Pembayaran dibatalkan.');
-              setIsProcessing(false);
-            }
+            onSuccess: () => { toast.success('Top Up Berhasil!'); fetchData(); closeModal(); },
+            onPending: () => { toast.success('Pembayaran pending.'); closeModal(); },
+            onError: () => { toast.error('Pembayaran gagal.'); setIsProcessing(false); },
+            onClose: () => { toast.error('Pembayaran dibatalkan.'); setIsProcessing(false); }
           });
-          return;
+          return; 
         } else {
           throw new Error('Script Midtrans gagal dimuat.');
         }
@@ -454,8 +432,6 @@ export default function WalletPage() {
 
     try {
       let newBalances = { ...balances };
-
-      // Hitung saldo baru
       if (actionType === 'withdraw_aff') newBalances.affiliate_balance -= amount;
       else if (actionType === 'withdraw_shop') newBalances.shop_balance -= amount;
       else if (actionType === 'transfer_to_shop') { newBalances.affiliate_balance -= amount; newBalances.shop_balance += amount; }
@@ -465,7 +441,6 @@ export default function WalletPage() {
       const source = (actionType?.includes('aff') && actionType !== 'transfer_to_aff') || actionType === 'transfer_to_shop' ? 'Affiliate' : 'Shop';
       const orderId = isWithdrawal ? `WD-${Date.now().toString().slice(-6)}` : `TRF-${Date.now().toString().slice(-6)}`;
 
-      // Update Database
       const { error: errBal } = await supabase.from('wallets').update({
         affiliate_balance: newBalances.affiliate_balance,
         shop_balance: newBalances.shop_balance,
@@ -474,42 +449,27 @@ export default function WalletPage() {
       if (errBal) throw new Error('Gagal update saldo: ' + errBal.message);
 
       const txPayload = {
-        user_id: userId,
-        title: modalInfo.title,
-        order_id: orderId,
-        type: txType,
-        source: source,
-        amount: amount,
+        user_id: userId, title: modalInfo.title, order_id: orderId, type: txType,
+        source: source, amount: amount,
         destination_detail: isWithdrawal ? `${provider} - ${accountNumber} (${accountName})` : 'Transfer Internal'
       };
 
       const { error: errTx } = await supabase.from('wallet_transactions').insert([txPayload]);
       if (errTx) throw new Error('Gagal mencatat transaksi: ' + errTx.message);
 
-      // Midtrans Iris Payout
       if (isWithdrawal) {
         const { data: wdData, error: errWd } = await supabase.from('withdrawals').insert([{
-          user_id: userId,
-          amount,
-          provider_type: destType,
-          provider_name: provider,
-          account_number: accountNumber,
-          account_name: accountName,
-          status: 'pending'
+          user_id: userId, amount, provider_type: destType, provider_name: provider,
+          account_number: accountNumber, account_name: accountName, status: 'pending'
         }]).select().single();
         if (errWd) throw new Error('Gagal mencatat Withdrawal.');
-
         try {
           await fetch('/api/midtrans/payout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              reference_id: wdData.id,
-              beneficiary_name: accountName,
-              beneficiary_account: accountNumber,
-              beneficiary_bank: getMidtransBankCode(provider),
-              amount,
-              notes: `Penarikan Oneklik.id`
+              reference_id: wdData.id, beneficiary_name: accountName,
+              beneficiary_account: accountNumber, beneficiary_bank: getMidtransBankCode(provider),
+              amount, notes: `Penarikan Oneklik.id`
             })
           });
         } catch { /* Ignore fetch error, withdrawal saved in DB */ }
@@ -517,13 +477,8 @@ export default function WalletPage() {
 
       setBalances(newBalances);
       const newTx: Transaction = {
-        id: orderId,
-        title: modalInfo.title,
-        order_id: orderId,
-        type: txType,
-        source: source,
-        amount: amount,
-        created_at: new Date().toISOString(),
+        id: orderId, title: modalInfo.title, order_id: orderId, type: txType, source: source,
+        amount: amount, created_at: new Date().toISOString(),
         destination_detail: isWithdrawal ? `${provider} - ${accountNumber} (${accountName})` : 'Transfer Internal'
       };
       setTransactions(prev => [newTx, ...prev]);
@@ -543,7 +498,6 @@ export default function WalletPage() {
   const getModalInfo = () => {
     const affBal = balances?.affiliate_balance || 0;
     const shopBal = balances?.shop_balance || 0;
-
     switch (actionType) {
       case 'topup': return { title: 'Top Up Saldo', color: 'text-indigo-600', bg: 'bg-indigo-100', btn: 'bg-indigo-600 hover:bg-indigo-700', max: 50000000 };
       case 'withdraw_aff': return { title: 'Tarik Saldo Affiliate', color: 'text-purple-600', bg: 'bg-purple-100', btn: 'bg-purple-600 hover:bg-purple-700', max: affBal };
@@ -844,7 +798,7 @@ export default function WalletPage() {
                 )}
               </div>
 
-              {historyHasMore && !historyLoading && (fullHistory || []).length > 0 && (
+              {historyHasMore && !historyLoading && fullHistory.length > 0 && (
                 <div className="p-4 border-t border-slate-100 bg-white/30">
                   <button onClick={() => fetchFullHistory(false)} className={`${glassButton} w-full py-3 rounded-2xl text-sm font-bold text-slate-700`}>
                     Muat Lebih Banyak
@@ -1120,14 +1074,13 @@ export default function WalletPage() {
                   </tr>
                 </thead>
                 <tbody className="text-sm font-medium text-slate-700">
-                  {transactions.length === 0 ? (
+                  {/* ✅ PERBAIKAN ANTI CRASH DENGAN (transactions || []) */}
+                  {(transactions || []).length === 0 ? (
                      <tr><td colSpan={6} className="py-8 text-center text-slate-400">Belum ada transaksi ditemukan</td></tr>
-                  ) : transactions.map((tx) => (
+                  ) : (transactions || []).map((tx) => (
                     <tr key={tx.id} className="hover:bg-white/70 transition-colors border-b border-slate-200/40 last:border-0 group cursor-pointer" onClick={() => setDetailTx(tx)}>
                       <td className="py-4 px-6 flex items-center gap-4">
-                        <div className={`w-11 h-11 rounded-[14px] flex items-center justify-center shadow-sm border shrink-0 ${
-                          tx.source === 'Affiliate' ? 'bg-purple-50 border-purple-100 text-purple-600' : 'bg-blue-50 border-blue-100 text-blue-600'
-                        }`}>
+                        <div className={`w-11 h-11 rounded-[14px] flex items-center justify-center shadow-sm border shrink-0 ${tx.source === 'Affiliate' ? 'bg-purple-50 border-purple-100 text-purple-600' : 'bg-blue-50 border-blue-100 text-blue-600'}`}>
                           {txIcon(tx, 20)}
                         </div>
                         <div>
